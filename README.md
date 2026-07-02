@@ -35,6 +35,7 @@ Upload research paper PDF
 * React
 * Next.js
 * TypeScript
+* Tailwind CSS
 * React Flow for concept map visualization
 
 ### Backend
@@ -58,19 +59,23 @@ git clone git@gitlab.com:sdsc-rds/summer-internships/rds-interns-su26/team-penta
 
 ## Project Structure
 
-The project structure will be updated as the frontend and backend are initialized.
-
 ```text
 relyze/
 ├── frontend/        # Next.js frontend application
 ├── backend/         # FastAPI backend application
 ├── docs/            # Planning documents, wireframes, and research notes
+├── .gitignore
 └── README.md
 ```
 
 ## Development Setup
 
-Setup instructions will be updated as the project structure is finalized.
+### Prerequisites
+
+* Node.js
+* npm
+* Python 3
+* Git
 
 ### Frontend
 
@@ -80,13 +85,48 @@ npm install
 npm run dev
 ```
 
+Frontend runs at:
+
+```text
+http://localhost:3000
+```
+
 ### Backend
 
 ```bash
 cd backend
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn main:app --reload
 ```
+
+Backend runs at:
+
+```text
+http://127.0.0.1:8000
+```
+
+Health check:
+
+```text
+http://127.0.0.1:8000/health
+```
+
+To deactivate the backend virtual environment:
+
+```bash
+deactivate
+```
+
+## Installed Frameworks
+
+* Next.js / React frontend
+* TypeScript
+* Tailwind CSS
+* React Flow
+* FastAPI backend
+* Uvicorn ASGI server
 
 ## Team Workflow
 
