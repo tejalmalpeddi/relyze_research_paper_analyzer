@@ -1,3 +1,19 @@
-<svg width="24" height="29" viewBox="0 0 24 29" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M1.50012 15.6425L9.33093 26.0004L21.8309 1.50034" stroke="#5E503F" stroke-width="3" stroke-linecap="round"/>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="24"
+   height="29"
+   viewBox="0 0 24 29"
+   fill="none"
+   version="1.1"
+   id="svg1"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1" />
+  <path
+     d="M 1.50012,15.6425 9.33093,26.0004 21.8309,1.50034"
+     stroke="#5e503f"
+     stroke-width="3"
+     stroke-linecap="round"
+     id="path1" />
 </svg>
