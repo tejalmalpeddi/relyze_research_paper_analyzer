@@ -71,3 +71,15 @@ def history_get_title():
 def history_get():
     response = supabase.table("history").select("*").execute()
     return response.data
+
+
+# Added for the "delete" button on the previous-papers cards on the
+# frontend homepage -- deletes exactly one row by its numeric id.
+@app.delete("/history/{history_id}", status_code=status.HTTP_200_OK)
+def history_delete(history_id: int):
+    response = supabase.table("history").delete().eq("id", history_id).execute()
+    if not response.data:
+        raise HTTPException(
+            status_code=404, detail=f"History item with id '{history_id}' not found."
+        )
+    return {"deleted": True, "id": history_id}
