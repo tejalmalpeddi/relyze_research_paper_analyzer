@@ -9,6 +9,7 @@ type PaperNode = Node<{
     isExpanded?: boolean;
     layer?: number;
     hasChild?: boolean;
+    isRootParent?: boolean;
     onExpand?: (id: string) => void;
 }, 'paper'>;
 
@@ -24,8 +25,10 @@ export default function PaperNode({ id, data }: NodeProps<PaperNode>) {
 
     const BLUE_COLOR = '#4281a4';
     const RED_COLOR = '#c1666b';
+    const GRAY = '#e5e5e5';
+    const WHITE = '#f4f4f4';
     const CIRCLE_SIZE = '32px';
-    const CIRCLE_TOP_POSITION = '35%'; //25 (padding above font) + 10 (half of font size)
+    const CIRCLE_TOP_POSITION = '35px'; //25 (padding above font) + 10 (half of font size)
     // a lot of the sizes of the padding and whatnot have been hard coded
 
     const currentLayer = data.layer !== undefined ? Number(data.layer) : 1;
@@ -33,7 +36,7 @@ export default function PaperNode({ id, data }: NodeProps<PaperNode>) {
     // const isMiddle = currentLayer === 1;
     const isLeaf = currentLayer === 2;
 
-    const leftHandleColor = isLeaf ? RED_COLOR : BLUE_COLOR;
+    const leftHandleColor = (isLeaf && !data.isRootParent) ? RED_COLOR : BLUE_COLOR;
     const rightHandleColor = isRoot ? BLUE_COLOR : RED_COLOR;
 
     return (
@@ -50,7 +53,7 @@ export default function PaperNode({ id, data }: NodeProps<PaperNode>) {
             flexDirection: 'column',
             position: 'relative',
         }}>
-  
+
             {!isRoot && (
                 <Handle
                     type="target"
@@ -85,7 +88,7 @@ export default function PaperNode({ id, data }: NodeProps<PaperNode>) {
                     borderBottom: 'none',
                     borderLeft: 'none',
                     borderRight: 'none',
-                    background: isHovered ? '#f4f4f4' : '#e5e5e5',
+                    background: isHovered ? WHITE : GRAY,
                     color: '#333',
                     padding: '12px',
                     fontSize: '11px',
@@ -169,7 +172,7 @@ export default function PaperNode({ id, data }: NodeProps<PaperNode>) {
                         transform: 'translateY(-50%) rotate(-90deg)',
                         right: `calc((${CIRCLE_SIZE} * -0.75))`,
                         position: 'absolute',
-                        filter: 'brightness(0) invert(1)'
+                        filter: isRoot ? 'invert(48%) sepia(21%) saturate(1000%) hue-rotate(161deg) brightness(91%) contrast(88%)' : 'invert(52%) sepia(21%) saturate(1400%) hue-rotate(300deg) brightness(85%) contrast(85%)'
                     }} />}
                     {/* {data.isExpanded ? ' ' : currentLayer} */}
                 </span>

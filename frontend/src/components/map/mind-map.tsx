@@ -66,7 +66,7 @@ export default function Map() {
     const [nodes, setNodes] = useState<Node[]>([]);
     const [edges, setEdges] = useState<Edge[]>([]);
 
-    // useCallback
+    // useCallback, so it only updates the map when the edges change
     const handleNodeExpand = useCallback((nodeId: string) => {
         setNodes((currentNodes) => {
             // toggles node collapsing and expanding
@@ -75,7 +75,7 @@ export default function Map() {
     }, [edges]);
 
     useEffect(() => {
-        fetch('http://127.0.0.1:8000/sample-map')
+        fetch('http://127.0.0.1:8000/') //TODO: replace with correct API endpoint
             .then((res) => res.json())
             .then((data) => {
                 const targetNodeIds = new Set(data.edges.map((edge: any) => edge.target));
@@ -110,6 +110,7 @@ export default function Map() {
                             ...node.data,
                             layer,
                             hasChild: hasChild,
+                            isRootParent: isRootParent,
                             isExpanded: false,
                         }
                     };
