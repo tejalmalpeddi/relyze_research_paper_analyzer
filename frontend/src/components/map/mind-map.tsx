@@ -66,7 +66,7 @@ export default function Map() {
     const [nodes, setNodes] = useState<Node[]>([]);
     const [edges, setEdges] = useState<Edge[]>([]);
 
-    // useCallback, so it only updates the map when the edges change
+    // useCallback
     const handleNodeExpand = useCallback((nodeId: string) => {
         setNodes((currentNodes) => {
             // toggles node collapsing and expanding
@@ -75,7 +75,7 @@ export default function Map() {
     }, [edges]);
 
     useEffect(() => {
-        fetch('http://127.0.0.1:8000/') //TODO: replace with correct API endpoint
+        fetch('http://127.0.0.1:8000/sample-map')
             .then((res) => res.json())
             .then((data) => {
                 const targetNodeIds = new Set(data.edges.map((edge: any) => edge.target));
@@ -87,30 +87,35 @@ export default function Map() {
                     .map((edge: any) => edge.target));
 
                 const initializedNodes = data.nodes.map((node: any): Node => {
-                    const isRootParent = !targetNodeIds.has(node.id);
-                    const isMiddleNode = childrenOfRoot.has(node.id);
-                    const isLeafNode = !sourceNodeIds.has(node.id) && !isMiddleNode;
+                    const isRoot = !targetNodeIds.has(node.id);
+                    const rootOfNode = new Set(data.edges
+                        .filter((edge: any) => edge.target === node.id)
+                        .map((edge: any) => edge.source));
+                    const hasRootParentNode = childrenOfRoot.has(node.id) && rootOfNode.has(rootNodeIds[0]);
+                    const isLeafNode = !sourceNodeIds.has(node.id);
                     const childrenOfNode = new Set(data.edges
                         .filter((edge: any) => edge.source === node.id)
-                        .map((edge: any) => edge.target))
+                        .map((edge: any) => edge.target));
 
-                    let layer = 1;
+                    let layer = 2;
                     let hasChild = childrenOfNode.size > 0;
-                    if (isRootParent) {
+                    if (isRoot) {
                         layer = 0;
-                    } else if (isLeafNode) {
+                    } else if (hasRootParentNode) {
+                        layer = 1;
+                    }
+                    else if (isLeafNode) {
                         layer = 2;
                     }
                     return {
                         ...node,
-                        hidden: !isRootParent,
+                        hidden: !isRoot,
                         targetPosition: Position.Left,
                         sourcePosition: Position.Right,
                         data: {
                             ...node.data,
                             layer,
                             hasChild: hasChild,
-                            isRootParent: isRootParent,
                             isExpanded: false,
                         }
                     };

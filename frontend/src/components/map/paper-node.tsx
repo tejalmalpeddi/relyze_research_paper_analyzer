@@ -9,7 +9,6 @@ type PaperNode = Node<{
     isExpanded?: boolean;
     layer?: number;
     hasChild?: boolean;
-    isRootParent?: boolean;
     onExpand?: (id: string) => void;
 }, 'paper'>;
 
@@ -33,10 +32,11 @@ export default function PaperNode({ id, data }: NodeProps<PaperNode>) {
 
     const currentLayer = data.layer !== undefined ? Number(data.layer) : 1;
     const isRoot = currentLayer === 0;
-    // const isMiddle = currentLayer === 1;
+    const hasRootParent = currentLayer === 1;
     const isLeaf = currentLayer === 2;
 
-    const leftHandleColor = (isLeaf && !data.isRootParent) ? RED_COLOR : BLUE_COLOR;
+    //if isRootParent, blue, else it's red
+    const leftHandleColor = hasRootParent ? BLUE_COLOR : RED_COLOR;
     const rightHandleColor = isRoot ? BLUE_COLOR : RED_COLOR;
 
     return (
