@@ -1,0 +1,134 @@
+.root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0px 10px 2px rgba(0, 0, 0, 0.5));
+}
+
+.woodBar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 65px;
+  height: 80px;
+  overflow: hidden;
+  box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.25);
+}
+
+.woodImg {
+  position: absolute;
+  height: 1200%;
+  left: -0.01%;
+  max-width: none;
+  top: 0;
+  width: 100.03%;
+  pointer-events: none;
+}
+
+.logo {
+  position: absolute;
+  background-color: #d9d9d9;
+  box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.25);
+  left: 10px;
+  top: 37px;
+  width: 13%;
+  min-width: 90px;
+  max-width: 160px;
+  height: 90px;
+  transform: rotate(-4.8deg);
+  transform-origin: bottom center;
+}
+
+.logoText {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
+  font-size: 32px;
+  color: #000;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.tabs {
+  position: absolute;
+  display: flex;
+  left: 18%;
+  right: 12%;
+  top: 75px;
+  height: 58.091px;
+}
+
+.tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #d9d9d9;
+  box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.25);
+  border: none;
+  cursor: pointer;
+}
+
+.tabLabel {
+  word-break: break-word;
+  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
+  font-size: 15px;
+  color: #000;
+  text-align: center;
+  line-height: normal;
+}
+
+.profileTab {
+  position: absolute;
+  background-color: #d9d9d9;
+  height: 67px;
+  overflow: hidden;
+  right: 6%;
+  top: 95px;
+  width: 62px;
+  box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.25);
+  border: none;
+  cursor: pointer;
+}
+
+.profileOverlay {
+  position: absolute;
+  background-color: rgba(0, 0, 0, 0.25);
+  inset: 9.16% 8.33% 14.5% 8.33%;
+}
+
+.profileImage {
+  position: absolute;
+  aspect-ratio: 1;
+  left: 17.74%;
+  right: 17.74%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.profilePlaceholder {
+  width: 100%;
+  height: 100%;
+  background-color: #b0a090;
+}
+
+.clip {
+  position: absolute;
+  top: 0;
+  right: 2.5%;
+  width: 42px;
+  aspect-ratio: 145 / 185;
+  box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.25);
+}
+
+.imgCover {
+  object-fit: cover;
+}
+
+.imgDecorative {
+  object-fit: cover;
+  pointer-events: none;
+}

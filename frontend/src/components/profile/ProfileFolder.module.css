@@ -1,0 +1,483 @@
+.root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Folder back ── */
+
+.folderBack {
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  filter: drop-shadow(0px 4px 5px rgba(0, 0, 0, 0.5));
+}
+
+.folderBg {
+  position: absolute;
+  inset: 0;
+  background-color: #927e67;
+}
+
+.folderBackShape {
+  position: absolute;
+  inset: 1.51% 0.77% 2.27% 1.91%;
+}
+
+.folderImgFill {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+}
+
+/* ── Profile page ── */
+
+.profilePage {
+  position: absolute;
+  inset: 4.93% 13.62% 18.88% 7.9%;
+}
+
+.paperSurface {
+  position: absolute;
+  background-color: #d9d9d9;
+  inset: 5.26% 0 -0.7% 6.64%;
+  box-shadow: 0px 4px 10px 0px rgba(0, 0, 0, 0.5);
+}
+
+/* ── Delete Account ── */
+
+.deleteBtnBox {
+  position: absolute;
+  background-color: #c1666b;
+  inset: 93.68% 5.14% -6.14% 56.1%;
+}
+
+.btnSvgWrap {
+  position: absolute;
+  inset: 0 -2.21% -11.27% -2.21%;
+}
+
+.btnSvg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.deleteBtnLabel {
+  position: absolute;
+  inset: 98.07% 14.13% -1.75% 65.1%;
+  word-break: break-word;
+  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
+  font-size: 16px;
+  text-align: center;
+  color: #fff;
+  white-space: nowrap;
+  line-height: normal;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+/* ── Sign Out ── */
+
+.signOutBtnBox {
+  position: absolute;
+  background-color: #5e503f;
+  inset: 93.68% 49.68% -6.14% 11.56%;
+}
+
+.signOutBtnLabel {
+  position: absolute;
+  inset: 98.07% 62.96% -1.75% 25.05%;
+  word-break: break-word;
+  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
+  font-size: 16px;
+  text-align: center;
+  color: #fff;
+  white-space: nowrap;
+  line-height: normal;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+/* ── Preferences ── */
+
+.prefsHeader {
+  position: absolute;
+  background-color: #5e503f;
+  height: 22px;
+  left: 43px;
+  top: 194px;
+  width: 413px;
+}
+
+.prefsHeaderLabel {
+  position: absolute;
+  left: 56.32px;
+  top: 197px;
+  width: 59.211px;
+  word-break: break-word;
+  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
+  font-size: 12px;
+  color: #d9d9d9;
+  line-height: normal;
+}
+
+.scrollFrame {
+  position: absolute;
+  height: 299px;
+  left: 43px;
+  top: 216px;
+}
+
+.scrollContent {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  overflow-x: clip;
+  overflow-y: auto;
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.scrollBorder {
+  position: absolute;
+  inset: 0;
+  border: 1px solid #5e503f;
+  pointer-events: none;
+}
+
+/* ── Account ── */
+
+.accountHeader {
+  position: absolute;
+  background-color: #5e503f;
+  height: 22px;
+  left: 177px;
+  top: 44px;
+  width: 279px;
+}
+
+.accountHeaderLabel {
+  position: absolute;
+  left: 186px;
+  top: 47px;
+  word-break: break-word;
+  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
+  font-size: 12px;
+  color: #d9d9d9;
+  white-space: nowrap;
+  line-height: normal;
+}
+
+.emailBox {
+  position: absolute;
+  background-color: #d9d9d9;
+  border: 1px solid #5e503f;
+  inset: 11.58% 2.36% 78.25% 37.9%;
+}
+
+.emailLabel {
+  position: absolute;
+  word-break: break-word;
+  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
+  font-size: 12px;
+  color: #5e503f;
+  line-height: normal;
+  inset: 12.81% 44.75% 84.39% 39.83%;
+}
+
+.emailValue {
+  position: absolute;
+  word-break: break-word;
+  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
+  font-size: 18px;
+  color: #000;
+  line-height: normal;
+  inset: 15.96% 26.55% 80% 39.83%;
+}
+
+.passwordBox {
+  position: absolute;
+  background-color: #d9d9d9;
+  border: 1px solid #5e503f;
+  inset: 21.58% 2.36% 68.25% 37.9%;
+}
+
+.passwordLabel {
+  position: absolute;
+  word-break: break-word;
+  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
+  font-size: 12px;
+  color: #5e503f;
+  line-height: normal;
+  inset: 22.46% 3.64% 74.74% 39.83%;
+}
+
+.passwordValue {
+  position: absolute;
+  word-break: break-word;
+  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
+  font-size: 16px;
+  color: #000;
+  line-height: normal;
+  inset: 26.14% 3.64% 70.18% 39.83%;
+}
+
+.editIcon {
+  position: absolute;
+  aspect-ratio: 1;
+  left: 91.65%;
+  right: 5.02%;
+  top: 144px;
+}
+
+.editIconImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+/* ── Profile picture card ── */
+
+.profileCardOuter {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inset: 1.8% 65.11% 67.64% 0;
+  container-type: size;
+}
+
+.profileCardRotate {
+  flex: none;
+  height: hypot(10.4824cqw, 90.9712cqh);
+  width: hypot(89.5176cqw, -9.02881cqh);
+  rotate: -6.15deg;
+  position: relative;
+}
+
+.profileCardBg {
+  position: absolute;
+  inset: 0;
+  background-color: #d9d9d9;
+  box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.25);
+}
+
+.profileCardOverlay {
+  position: absolute;
+  background-color: rgba(0, 0, 0, 0.25);
+  inset: 9.16% 8.33% 14.5% 8.33%;
+}
+
+.profileCardImage {
+  position: absolute;
+  aspect-ratio: 1;
+  left: 17.2%;
+  right: 18.28%;
+  top: calc(50% + 3.32px);
+  transform: translateY(-50%);
+}
+
+.profileCardPlaceholder {
+  width: 100%;
+  height: 100%;
+  background-color: #b0a090;
+}
+
+/* ── Paperclip ── */
+
+.paperclipOuter {
+  position: absolute;
+  aspect-ratio: 52.11977374876483 / 113.95799776884243;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  left: 0.63%;
+  right: 88.21%;
+  top: 0;
+  container-type: size;
+}
+
+.paperclipRotate {
+  flex: none;
+  height: hypot(22.6616cqw, 96.1887cqh);
+  width: hypot(77.3384cqw, -3.81134cqh);
+  rotate: -6.15deg;
+  position: relative;
+}
+
+/* ── Edit profile icon ── */
+
+.editProfileOuter {
+  position: absolute;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  left: 28.48%;
+  right: 66.32%;
+  top: 140px;
+  container-type: size;
+}
+
+.editProfileRotate {
+  flex: none;
+  height: hypot(12.8955cqw, 87.1045cqh);
+  width: hypot(87.1045cqw, -12.8955cqh);
+  rotate: -8.42deg;
+  position: relative;
+}
+
+/* ── Spine ── */
+
+.spineOuter {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inset: 9.34% 2.7% 73.15% 92.93%;
+  container-type: size;
+}
+
+.spineRotate {
+  flex: none;
+  height: 100cqw;
+  rotate: 90deg;
+  width: 100cqh;
+}
+
+.spineText {
+  position: relative;
+  word-break: break-word;
+  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
+  font-size: 20px;
+  color: #5e503f;
+  text-align: center;
+  white-space: nowrap;
+  line-height: normal;
+}
+
+/* ── Folder front ── */
+
+.folderFront {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inset: 0 96.12% 0 -96.12%;
+  container-type: size;
+}
+
+.folderFrontInner {
+  flex: none;
+  transform: scaleX(-1);
+  height: 100cqh;
+  width: 100cqw;
+  overflow: clip;
+  position: relative;
+}
+
+.folderFrontShape {
+  position: absolute;
+  inset: 1.69% 10.46% 2.55% 1.7%;
+}
+
+/* ── DifficultySelect ── */
+
+.difficultyOuter {
+  position: absolute;
+  inset: 55.37% 2.91% 11.57% 25.91%;
+}
+
+.difficultyPill {
+  position: absolute;
+  height: 40px;
+  left: 0;
+  top: 0;
+  width: 294px;
+}
+
+.difficultyBg {
+  position: absolute;
+  inset: 0;
+  background-color: #5e503f;
+  border-radius: 10px;
+}
+
+.difficultyIndicator {
+  position: absolute;
+  background-color: #c6ac8f;
+  border-radius: 11px;
+  transition: inset 200ms;
+}
+
+.difficultyBtn {
+  position: absolute;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
+  font-size: 16px;
+  text-align: center;
+  word-break: break-word;
+  line-height: 0;
+}
+
+.difficultyBtnText {
+  line-height: normal;
+}
+
+/* ── PreferenceTab ── */
+
+.prefTab {
+  position: relative;
+  flex-shrink: 0;
+  height: 121px;
+  width: 413px;
+}
+
+.prefTabMargin {
+  margin-bottom: -1px;
+}
+
+.prefTabBg {
+  position: absolute;
+  inset: 0;
+  background-color: #d9d9d9;
+  border: 1px solid #5e503f;
+}
+
+.prefTabTitle {
+  position: absolute;
+  inset: 21.49% 4.84% 61.16% 26.63%;
+  word-break: break-word;
+  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
+  font-size: 16px;
+  color: #000;
+  line-height: normal;
+}
+
+.prefTabPaper {
+  position: absolute;
+  inset: 12.4% 77.97% 11.57% 3.63%;
+  background-color: #fff;
+}
+
+/* ── Shared ── */
+
+.imgDecorative {
+  object-fit: cover;
+  pointer-events: none;
+}
+
+.imgCover {
+  object-fit: cover;
+}
