@@ -6,7 +6,7 @@ import UploadPopup from "@/components/home/uploadpopup";
 export default function Home() {
 
   return (
-    <main>
+    <body>
       {/* TODO: insert navbar here */}
 
 
@@ -33,7 +33,7 @@ export default function Home() {
       {/* borders adapt to screen size */}
       <div className="drawer-bg fixed bottom-0 left-0 w-full h-screen box-border -z-10"></div>
 
-    </main>
+    </body>
   );
 
 }
