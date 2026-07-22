@@ -13,12 +13,22 @@
 
 "use client";
 
+// useRef: a NEW hook, different from useState. Like useState, it gives
+// you a box that survives across re-renders. UNLIKE useState, changing a
+// ref's value does NOT trigger a re-render -- React just silently
+// remembers it. Refs are most commonly used to get a direct handle on a
+// real, physical DOM element (like the hidden <input> below), so you can
+// call real browser methods on it (like .click()) from your own code.
 import { useRef, useState } from "react";
 import Image from "next/image";
 import Navbar from "@/components/Navbar";
 import PreviousPapersSection from "@/components/History";
 
 export default function HomePage() {
+  // useRef<HTMLInputElement>(null) -- the <HTMLInputElement> generic says
+  // "whatever real DOM element this ref eventually points at will be an
+  // <input> element specifically" (not a <div>, not a <button>, etc.).
+  //
   // The plain HTML <input type="file"> element is invisible (see
   // className="hidden" below) -- clicking the leather-pad tray instead
   // triggers a click on this hidden input, via this ref, which is how
@@ -28,27 +38,46 @@ export default function HomePage() {
 
   // Just remembers which file name to show as feedback after picking
   // one. IMPORTANT: this does NOT send the file anywhere. There is no
-  // backend route yet that accepts an uploaded PDF (see the earlier
-  // conversation about the /analyze endpoint not existing) -- your
-  // teammates' PDF-parsing and AI-summarizing pipeline has to exist
-  // first. This is purely the visual "you picked a file" feedback.
+  // backend route yet that accepts an uploaded PDF. purely the visual "you picked a file" feedback.
+  // useState: the moment a file is picked,the screen needs to actually update to show the file name text.
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
 
+  // Runs when you click the big leather-pad tray (the visible "button").
+  // fileInputRef.current is where React actually stores the real <input>
   function handleUploadTrayClick() {
     if (fileInputRef.current !== null) {
       fileInputRef.current.click();
     }
   }
 
+  // Runs automatically whenever the browser's real file picker closes
+  // with a file chosen (wired up below via onChange={handleFileInputChange}
+  // on the actual <input>).
   function handleFileInputChange(event: React.ChangeEvent<HTMLInputElement>) {
+    // collection of every file the user selected (could be more than one
+    // if the input allowed it, though this one only expects a single PDF).
     const chosenFiles = event.target.files;
+
+    // chosenFiles can technically be null (nothing selected / picker was
+    // cancelled), and even if it exists it could be empty -- both checked
+    // here before trying to read anything out of it.
     if (chosenFiles !== null && chosenFiles.length > 0) {
+      // chosenFiles[0] -- grab the first (and, in practice here, only)
+      // selected file. .name is that file's real filename, e.g.
+      // "physicspaper1.pdf" -- exactly what gets displayed on screen.
       setSelectedFileName(chosenFiles[0].name);
     } else {
+      // Nothing was actually selected -- clear out any previously shown
+      // filename instead of leaving stale text on screen.
       setSelectedFileName(null);
     }
   }
 
+  // Everything below is JSX -- describes what should appear on screen,
+  // re-run every time this component re-renders (e.g. after
+  // setSelectedFileName runs). Same "flex h-screen flex-col" full-page
+  // layout trick as the Mind Map page: Navbar takes a fixed strip at the
+  // top, everything else stretches to fill the rest.
   return (
     <div className="flex h-screen flex-col">
       <Navbar />
@@ -58,25 +87,14 @@ export default function HomePage() {
         className="relative flex flex-1 items-center justify-center gap-16 px-16"
         style={{ backgroundImage: "url(/background/wood.png)", backgroundSize: "cover" }}
       >
-        {/* The "Visualize your research, your way" card.
-
-            Gotcha worth knowing if you touch this: torn-paper.svg's own
-            painted shape doesn't actually fill its whole file -- stretching
-            it across a TALL card (via `fill` + object-fill) left the
-            bottom half see-through, because there was nothing painted
-            there to stretch. Instead of fighting that, this card is a
-            plain solid rectangle (bg-stone-50) that holds the actual text
-            in normal document flow -- and torn-paper.svg is only used as
-            a thin decorative strip pinned to the very bottom, where its
-            actual ragged edge reads correctly at a size close to its
-            natural proportions. */}
+        {/* The "Visualize your research, your way" card.*/}
         <div className="relative w-96 bg-stone-50 pb-9 shadow-lg">
           <Image
             src="/interface/magnifying-glass.png"
             alt=""
             width={110}
             height={90}
-            className="absolute -left-12 -top-8 z-10 h-auto w-28 -rotate-12 object-contain"
+            className="absolute -left-25 -top-10 z-10 h-auto w-60 -rotate-20 object-contain -scale-x-100"
           />
 
           <div className="flex flex-col items-center gap-4 px-12 py-10 text-center">
@@ -93,7 +111,12 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* The leather-pad "Upload PDF" tray. */}
+        {/* The leather-pad "Upload PDF" tray -- this is the actual,
+            visible, clickable thing you see and press. It's a real
+            <button>, styled to look like a leather pad image, NOT the
+            real file input itself (that one's hidden below). Clicking it
+            runs handleUploadTrayClick, which finds the real hidden
+            <input> via fileInputRef and calls .click() on it. */}
         <button
           type="button"
           onClick={handleUploadTrayClick}
@@ -109,6 +132,9 @@ export default function HomePage() {
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
             <span className="font-serif text-lg text-white">Upload PDF</span>
             <Image src="/icons/upload.svg" alt="" width={50} height={52} />
+            {/* Same {condition && (...)} idiom from the Mind Map page:
+                only show the filename text once something has actually
+                been picked (selectedFileName is no longer null). */}
             {selectedFileName !== null && (
               <span className="mt-2 max-w-55 truncate font-serif text-xs text-stone-200">
                 {selectedFileName}
@@ -117,7 +143,21 @@ export default function HomePage() {
           </div>
         </button>
 
-        {/* The actual, invisible file picker input. */}
+        {/* The actual, invisible file picker input -- this is the REAL
+            file-picker the browser knows how to open; className="hidden"
+            makes it invisible on screen, but it's still a fully working
+            element sitting in the page.
+              - ref={fileInputRef}: this is the line that actually fills
+                in fileInputRef.current, the moment this <input> mounts --
+                connecting the plain JS ref object from earlier to this
+                specific, real DOM element.
+              - type="file": tells the browser this input's job is
+                picking a file, not typing text.
+              - accept="application/pdf": hints to the browser's file
+                picker to only show/allow PDF files (a UI hint, not a
+                hard security guarantee).
+              - onChange={handleFileInputChange}: runs the function from
+                earlier the moment a file is actually chosen. */}
         <input
           ref={fileInputRef}
           type="file"
@@ -128,7 +168,9 @@ export default function HomePage() {
       </div>
 
       {/* The "Previous Papers" section -- entirely built and data-fetched
-          inside History.tsx. This page just drops it in. */}
+          inside History.tsx. This page just drops it in, exactly like
+          <Navbar /> above -- a whole separate component's output getting
+          inserted here, with zero knowledge of it required by this file. */}
       <PreviousPapersSection />
     </div>
   );

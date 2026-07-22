@@ -13,7 +13,12 @@
 //      either real data or a thrown Error, depending on whether the
 //      backend reported success or failure.
 
+// Every single exported function in that file follows the identical pattern: 
+// build a URL matching one specific backend route, send the request, 
+// hand the raw response through handleResponse for parsing/error-checking. 
+
 import { HistoryCreatePayload, HistoryEntry } from "./types";
+//generic type ^^ later comes in to play 
 
 // Where the backend actually lives. NEXT_PUBLIC_API_URL can be set in a
 // .env.local file to point at a different backend (e.g. a deployed one)
@@ -27,15 +32,20 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 //   - validation errors (HTTP 422) come back as { "detail": [ ... ] }
 //   - our own raised errors (HTTPException) come back as
 //     { "detail": "some message string" }
+
+//async means "this function is allowed to use await inside it, 
+// and automatically wraps whatever it returns in a Promise"
+
+//before .json() runs, the response is an untranslated envelope containing raw 
+// text that's expected — but not guaranteed — to be JSON-formatted. 
+// .json() is the actual act of opening it and turning it into something your code can work with.
 async function handleResponse<ExpectedShape>(
-  response: Response
-): Promise<ExpectedShape> {
+  response: Response //actual input is "Response" aka built in browser type w raw network reply 
+): Promise<ExpectedShape> { //generic type
   if (response.ok === false) {
-    // .json() can itself fail if the body isn't valid JSON at all (e.g.
-    // the backend crashed and returned an HTML error page instead) --
-    // .catch(() => null) means "if that happens, just treat it as no
-    // useful error body" instead of throwing a second, more confusing
-    // error on top of the first one.
+    //"Try to translate the envelope's contents as JSON — but if that translation itself 
+    // fails (because what's inside isn't actually JSON), don't crash; just treat it as null 
+    // (nothing useful inside) instead."
     const errorBody = await response.json().catch(() => null);
 
     let errorMessage: string;
@@ -48,19 +58,37 @@ async function handleResponse<ExpectedShape>(
     throw new Error(errorMessage);
   }
 
+  //.json() is the "open the envelope and translate it" step
+  //This is the line that actually converts that raw JSON-formatted text into a real, usable JavaScript 
+  // object/array — one you can do .title or .map((x) => ...) on. 
+  // Before this line runs, you have an envelope; after it runs, 
+  // you have the actual letter, read and understood.
+
   const parsedData = await response.json();
   return parsedData as ExpectedShape;
 }
 
 // GET /history -- every saved paper, full data including map_json.
-// Used by the homepage's "Previous Papers" section, and by the Mind Map
-// page to find the one specific paper the user clicked into (see
-// app/mindmap/page.tsx for why there isn't a dedicated "get one paper by
-// id" endpoint yet -- we just fetch the whole list and search it here in
-// the frontend).
+// Used by the homepage's "Previous Papers" section. No longer used by
+// the Mind Map page at all -- looking up one specific clicked-into paper
+// calls fetchHistoryById (GET /history/{id}), and showing the most
+// recently saved paper calls fetchLatestHistory (GET /history/latest),
+// so neither case needs to download the whole list anymore.
+
+// entire job of this function is to build the right url, send the request, 
+// and hand the raw response to the shared parsing logic: handleResponse
+// this function is the waiter that doesn't cook anything, just carries the order to the kitchen
+// and gets the result back
+
+// frontend: fetch(`${API_URL}/history`)   → sends a request to the path "/history"
+// backend: @app.get("/history")         → registered to respond to the path "/history"
 export async function fetchHistoryList(): Promise<HistoryEntry[]> {
+  //await fetch sends network request to localhost/history (the backend) 
+  //essentially, await fetch function is a get request which arrives to backend.
+  //backend told: any get request whose path is exactly /history, run history_get()
   const response = await fetch(`${API_URL}/history`);
   return handleResponse<HistoryEntry[]>(response);
+  //array of history entries ^
 }
 
 // GET /history/search?title=... -- one entry, found by an EXACT title
@@ -70,6 +98,25 @@ export async function fetchHistoryByTitle(title: string): Promise<HistoryEntry> 
   const response = await fetch(
     `${API_URL}/history/search?title=${encodeURIComponent(title)}`
   );
+  return handleResponse<HistoryEntry>(response);
+}
+
+// GET /history/{id} -- one entry, found by its exact numeric id. Used by
+// the Mind Map page when it's reached via a specific paper's "redirect"
+// button, so it can ask the backend for exactly that one row instead of
+// downloading every saved paper and searching through them here.
+export async function fetchHistoryById(id: number): Promise<HistoryEntry> {
+  const response = await fetch(`${API_URL}/history/${id}`);
+  return handleResponse<HistoryEntry>(response);
+}
+
+// GET /history/latest -- one entry, whichever was created most recently.
+// Used by the Mind Map page when it's reached via the plain "Mind Map"
+// navbar tab (no "?id=" in the URL), so it can ask the backend to sort
+// and pick the newest row directly instead of downloading every saved
+// paper and comparing created_at timestamps here.
+export async function fetchLatestHistory(): Promise<HistoryEntry> {
+  const response = await fetch(`${API_URL}/history/latest`);
   return handleResponse<HistoryEntry>(response);
 }
 

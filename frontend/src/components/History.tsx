@@ -16,11 +16,6 @@
 //                            and the grid of PaperCards. This is also the
 //                            ONLY component in this file that talks to the
 //                            backend -- it fetches the list itself.
-//
-// Every conditional in this file is written as a full if/else block that
-// builds a plain variable, instead of a one-line ternary or a
-// `condition && (...)` shortcut -- slower to type, much easier to read
-// and change one piece at a time.
 
 "use client";
 
@@ -336,14 +331,28 @@ function PaperCard({ entry, onDeleted }: PaperCardProps) {
 // appears on screen, the same way page.tsx used to in the very first
 // version of this app.
 export default function PreviousPapersSection() {
+  //current value and function to change it. 
+  //changes entries(paper starts as empty list), isLoading, loadErrorMessage, filter tags, and filter panel open
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadErrorMessage, setLoadErrorMessage] = useState<string | null>(null);
   const [selectedFilterTags, setSelectedFilterTags] = useState<Set<string>>(new Set());
   const [isFiltersPanelOpen, setIsFiltersPanelOpen] = useState(false);
 
+  //useEffect: run the first argument (the function) after this component (previous papers page)
+  //renders, and only re-run it again later if something in the dependency array has changed since 
+  // last time." An empty array means "nothing to compare against, so never re-run it"
+  // in practice, that makes this run exactly once, right after PreviousPapersSection 
+  // first appears on screen.
+
+
+  //fetchHistoryList() sends network request to GET/history 
+  //Inside handleResponse (in lib/api.ts), the line 
+    // const parsedData = await response.json(); takes that raw text and turns it into a real, 
+    // usable JavaScript array/object. parsed from JSON is what enters as input "fetchedEntries"
+  //then, catch, finally is promise chaining for error handling instead of nested ifs and callbacks
   useEffect(() => {
-    fetchHistoryList()
+    fetchHistoryList() //async function from api.ts that needs .then to complete once succeeds
       .then((fetchedEntries) => {
         setEntries(fetchedEntries);
         setLoadErrorMessage(null);
@@ -416,55 +425,61 @@ export default function PreviousPapersSection() {
 
   return (
     <div className="bg-[#2a2117] px-8 py-6" style={{ backgroundImage: "url(/background/drawer.png)", backgroundSize: "cover" }}>
-      <div className="mb-5 flex items-center justify-between">
-        <h2 className="font-serif text-xl text-stone-100">Previous Papers</h2>
+      {/* This inner wrapper is what actually shifts the section to the
+          right: a fixed max width plus ml-auto (an "automatic" left
+          margin) makes the block hug the right edge of the outer div
+          instead of stretching across the whole page. */}
+      <div className="ml-auto w-full max-w-400">
+        <div className="mb-5 flex items-center justify-between pt-5">
+          <h2 className="font-serif text-xl text-stone-100">Previous Papers</h2>
 
-        <div className="relative">
-          <button
-            type="button"
-            onClick={handleFiltersButtonClick}
-            className="flex items-center gap-2 rounded-sm bg-stone-200 px-4 py-2 font-serif text-stone-900"
-          >
-            Filters
-            <Image src="/icons/filter.svg" alt="" width={16} height={16} />
-          </button>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={handleFiltersButtonClick}
+              className="flex items-center gap-2 rounded-sm bg-stone-200 px-4 py-2 font-serif text-stone-900"
+            >
+              Filters
+              <Image src="/icons/filter.svg" alt="" width={16} height={16} />
+            </button>
 
-          {isFiltersPanelOpen === true && (
-            <div className="absolute right-0 z-40 mt-2">
-              <FiltersPanel
-                availableFilterTags={availableFilterTags}
-                selectedFilterTags={selectedFilterTags}
-                onToggleFilterTag={handleToggleFilterTag}
-                onClose={() => setIsFiltersPanelOpen(false)}
-              />
-            </div>
-          )}
+            {isFiltersPanelOpen === true && (
+              <div className="absolute right-0 z-40 mt-2">
+                <FiltersPanel
+                  availableFilterTags={availableFilterTags}
+                  selectedFilterTags={selectedFilterTags}
+                  onToggleFilterTag={handleToggleFilterTag}
+                  onClose={() => setIsFiltersPanelOpen(false)}
+                />
+              </div>
+            )}
+          </div>
         </div>
+
+        {isLoading === true && (
+          <p className="font-serif text-stone-300">Loading your papers...</p>
+        )}
+
+        {loadErrorMessage !== null && (
+          <p className="font-serif text-[#c1666b]">
+            Couldn&apos;t load your papers: {loadErrorMessage}
+          </p>
+        )}
+
+        {isLoading === false && loadErrorMessage === null && visibleEntries.length === 0 && (
+          <p className="font-serif text-stone-300">
+            No papers analyzed yet -- upload one above to get started.
+          </p>
+        )}
+
+        {isLoading === false && loadErrorMessage === null && visibleEntries.length > 0 && (
+          <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-6">
+            {visibleEntries.map((entry) => (
+              <PaperCard key={entry.id} entry={entry} onDeleted={handlePaperDeleted} />
+            ))}
+          </div>
+        )}
       </div>
-
-      {isLoading === true && (
-        <p className="font-serif text-stone-300">Loading your papers...</p>
-      )}
-
-      {loadErrorMessage !== null && (
-        <p className="font-serif text-[#c1666b]">
-          Couldn&apos;t load your papers: {loadErrorMessage}
-        </p>
-      )}
-
-      {isLoading === false && loadErrorMessage === null && visibleEntries.length === 0 && (
-        <p className="font-serif text-stone-300">
-          No papers analyzed yet -- upload one above to get started.
-        </p>
-      )}
-
-      {isLoading === false && loadErrorMessage === null && visibleEntries.length > 0 && (
-        <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-6">
-          {visibleEntries.map((entry) => (
-            <PaperCard key={entry.id} entry={entry} onDeleted={handlePaperDeleted} />
-          ))}
-        </div>
-      )}
     </div>
   );
 }

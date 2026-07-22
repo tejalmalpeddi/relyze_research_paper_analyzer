@@ -46,7 +46,7 @@ export default function Navbar() {
   const currentPath = usePathname();
 
   return (
-    <div className="relative flex items-center gap-4 border-b border-black/20 bg-[#5b4636] px-6 py-4">
+    <div className="relative flex items-center gap-4 border-b border-black/20 bg-[#3b291e] px-6 py-4">
       {/* The "Relyze" logo card -- a torn-paper shape, rotated slightly,
           sitting in the top-left corner. Fixed h-16 w-44 + fill +
           object-fill, same reasoning as the homepage's Visualize card:
