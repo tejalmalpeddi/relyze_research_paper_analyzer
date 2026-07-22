@@ -4,6 +4,8 @@ from pathlib import Path
 import pymupdf
 from docling.document_converter import DocumentConverter
 
+from database import connect_to_supabase, save_document
+
 # Base directory (parser/)
 PARSER_DIRECTORY = Path(__file__).resolve().parent
 
@@ -15,6 +17,8 @@ STRUCTURED_JSON = PARSER_DIRECTORY / "output_structured.json"
 MARKDOWN_FILE = PARSER_DIRECTORY / "output_paper.md"
 
 IMAGE_OUTPUT_DIRECTORY = PARSER_DIRECTORY / "assets"
+
+
 
 
 def extract_raw_text_from_pdf(pdf_path):
@@ -210,3 +214,16 @@ if __name__ == "__main__":
         PDF_INPUT_FILE,
         IMAGE_OUTPUT_DIRECTORY
     )
+
+    # Save parsed document to Supabase
+    supabase = connect_to_supabase()
+
+    response = save_document(
+        supabase,
+        PDF_INPUT_FILE.name,
+        raw_text_data,
+        structured_document,
+        markdown_document
+    )
+
+    print(response.data)
