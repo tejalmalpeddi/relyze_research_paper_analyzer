@@ -6,10 +6,7 @@ import UploadPopup from "@/components/home/uploadpopup";
 export default function Home() {
 
   return (
-    <body>
-      {/* TODO: insert navbar here */}
-
-
+    <main>
       {/* Upper Desk Section */}
       {/* "Visualize..." hero blurb + Upload PDF */}
       <section
@@ -32,8 +29,7 @@ export default function Home() {
       {/* fixed to the bottom of the screen to give "pulling out drawer" effect */}
       {/* borders adapt to screen size */}
       <div className="drawer-bg fixed bottom-0 left-0 w-full h-screen box-border -z-10"></div>
-
-    </body>
+    </main>
   );
 
 }

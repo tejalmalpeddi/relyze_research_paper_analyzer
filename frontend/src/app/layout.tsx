@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import NavBar from "@/components/navbar/NavBar";
 
 export const metadata: Metadata = {
   title: "Relyze",
@@ -15,7 +16,10 @@ export default function RootLayout({
     <html
       lang="en"
     >
-      <body>{children}</body>
+      <body>
+        <NavBar/>
+        {children}
+      </body>
     </html>
   );
 }
