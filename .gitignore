@@ -20,3 +20,8 @@ venv/
 .DS_Store
 .vscode/
 .idea/
+
+parser/output_raw.json
+parser/output_structured.json
+parser/output_paper.md
+parser/assets/
