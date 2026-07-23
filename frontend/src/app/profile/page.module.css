@@ -1,0 +1,71 @@
+.page {
+  background-color: #fff;
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
+}
+
+.stage {
+  position: relative;
+  width: 100vw;
+  height: 900px;
+  overflow: hidden;
+  flex: none;
+}
+
+/* ── Wood background ── */
+
+.woodBg {
+  position: absolute;
+  left: -237px;
+  right: 0;
+  height: 945px;
+  top: 79px;
+  box-shadow: 0px 10px 4px 0px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.woodBgImg {
+  position: absolute;
+  height: 135.02%;
+  left: -0.01%;
+  max-width: none;
+  top: 0;
+  width: 100.03%;
+}
+
+/* ── Folder positioning ── */
+
+.folderWrapper {
+  position: absolute;
+  height: 766.016px;
+  left: 421px;
+  top: 100px;
+  width: 617.749px;
+  transform: none;
+}
+
+.folderRotate {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 595.072px;
+  height: 748.108px;
+  transform: rotate(-1.76deg);
+  transform-origin: 0 0;
+}
+
+.folderSize {
+  height: 748.108px;
+  position: relative;
+  width: 595.072px;
+}
+
+.navFullWrapper {
+  position: absolute;
+  height: 175px;
+  left: 0;
+  top: -65px;
+  width: 100vw;
+}
