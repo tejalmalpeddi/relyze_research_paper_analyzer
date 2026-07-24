@@ -98,11 +98,6 @@ def history_get():
     response = supabase.table("history").select("*").execute()
     return response.data
 
-
-# Added so the Mind Map page can ask for exactly one saved paper by its
-# numeric id, instead of fetching every row and searching client-side.
-#decorator for HTTP get request where url is history/.../
-#whatever the /.../ final segment is, hand it to the function as history_id
 @app.get("/history/{history_id}")
 def history_get_by_id(history_id: int):
     response = supabase.table("history").select("*").eq("id", history_id).execute()
@@ -112,9 +107,6 @@ def history_get_by_id(history_id: int):
         )
     return response.data[0]
 
-
-# Added for the "delete" button on the previous-papers cards on the
-# frontend homepage -- deletes exactly one row by its numeric id.
 @app.delete("/history/{history_id}", status_code=status.HTTP_200_OK)
 def history_delete(history_id: int):
     response = supabase.table("history").delete().eq("id", history_id).execute()

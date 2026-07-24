@@ -49,8 +49,8 @@ async function handleResponse<ExpectedShape>(
     const errorBody = await response.json().catch(() => null);
 
     let errorMessage: string;
-    if (errorBody !== null && typeof errorBody.detail === "string") {
-      errorMessage = errorBody.detail;
+    if (errorBody !== null && typeof errorBody.message === "string") {
+      errorMessage = errorBody.message;
     } else {
       errorMessage = `Request failed with status ${response.status}`;
     }

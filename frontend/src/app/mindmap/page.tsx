@@ -35,7 +35,7 @@ import { HistoryEntry } from "@/lib/types";
 // return of this function is stored in MindMapView. 
 // function checks if code from MindMap.tsx has arrived yet, and if not, goes and fetches it. 
 const MindMapView = dynamic(
-  () => import("@/components/MindMap").then((module) => ({ default: module.MindMapView })), //Promise returned 
+  () => import("@/components/map/MindMap").then((module) => ({ default: module.MindMapView })), //Promise returned 
   { ssr: false } //don't render on server 
 );
 
