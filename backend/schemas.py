@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, EmailStr
-from typing import Any
+from typing import Any, Optional
 from datetime import datetime, timezone
 
 class HistoryCreate(BaseModel):
@@ -19,7 +19,16 @@ class HistoryRead(BaseModel):
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
+    raw_user_meta_data: Optional[dict[str, Any]] = None
+    # "data": {
+    #         "display_name": "Jane Doe" # Appears in dashboard UI
+    #}
     
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+    
+class UserEdit(BaseModel):
+    email: Optional[EmailStr] = None
+    password: Optional[str] = None
+    raw_user_meta_data: Optional[dict[str, Any]] = None

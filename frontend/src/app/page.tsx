@@ -1,8 +1,11 @@
 import Image from "next/image";
-import Auth from "./auth/auth-test"
+import AuthTest from "./auth/auth-test";
+import {AuthProvider} from "./auth/auth-query";
 
 export default function Home() {
   return (
-    <Auth />
+    <AuthProvider>
+    <AuthTest />
+    </AuthProvider>
   );
 }

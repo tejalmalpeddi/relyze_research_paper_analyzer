@@ -1,51 +1,111 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+'use client';
 
-//fetches user + user session? + user preferences
-const fetchMe = async () => {
-  const res = await fetch('/api/auth/get-user-details', {
-    credentials: 'include', // httponly cookie
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { UserLogin, UserProfile, UserEdit, AuthContextType } from './auth-types';
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const BASE_URL = 'http://localhost:8000';
+
+const requestWrapper = async <TResponse, TBody = undefined>(
+  url: string,
+  method: string,
+  body?: TBody
+): Promise<TResponse> => {
+  const res = await fetch(`${BASE_URL}${url}`, {
+    method,
+    headers: body ? { 'Content-Type': 'application/json' } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+    credentials: 'include',
   });
-  if (!res.ok) throw new Error('Not authenticated');
-  return res.json();
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || 'requestWrapper failed');
+  return data;
 };
 
-export function useAuth() {
-  const queryClient = useQueryClient();
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
 
-  const { data: user, isLoading, error } = useQuery({
-    queryKey: ['authUser'],
-    queryFn: fetchMe,
-    retry: false, 
-  });
+  const fetchUser = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const data = await requestWrapper<UserProfile>('/auth/get-user-details', 'GET');
+      setUser(data);
+      setError(null);
+    } catch (err: any) {
+      setUser(null);
+      setError(err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
-  const loginMutation = useMutation({
-    mutationFn: async (credentials) => {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(credentials),
-      });
-      if (!res.ok) throw new Error('Login failed');
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['authUser'] });
-    },
-  });
+  useEffect(() => {
+    fetchUser();
+  }, [fetchUser]);
 
-  // 3. Logout Mutation
-  const logoutMutation = useMutation({
-    mutationFn: async () => fetch('/api/auth/logout', { method: 'POST' }),
-    onSuccess: () => {
-      queryClient.setQueryData(['authUser'], null);
-    },
-  });
-
-  return {
-    user: user || null,
-    isLoading,
-    isAuthenticated: !!user,
-    login: loginMutation.mutateAsync,
-    logout: logoutMutation.mutateAsync,
+  //auth functions
+  const signup = async (logincredentials: UserEdit) => {
+    return requestWrapper('/auth/signup', 'POST', logincredentials);
   };
+
+  const login = async (logincredentials: UserLogin) => {
+    const res = await requestWrapper('/auth/login', 'POST', logincredentials);
+    await fetchUser();
+    return res;
+  };
+
+  const logout = async () => {
+    const res = await requestWrapper('/auth/logout', 'POST');
+    setUser(null);
+    return res;
+  };
+
+  const loginAnonymously = async () => {
+    const res = await requestWrapper('/auth/login-anonymous', 'POST');
+    await fetchUser();
+    return res;
+  };
+
+  const editUser = async (dataUpdate: UserEdit) => {
+    const res = await requestWrapper('/auth/edit-user', 'PUT', dataUpdate);
+    await fetchUser();
+    return res;
+  };
+
+  const deleteUser = async () => {
+    const res = await requestWrapper('/auth/delete-user', 'POST');
+    setUser(null);
+    return res;
+  };
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        isLoading,
+        error,
+        isAuthenticated: !!user,
+        signup,
+        login,
+        loginAnonymously,
+        logout,
+        editUser,
+        deleteUser,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('AuthContext Error!!!!!!');
+  }
+  return context;
 }

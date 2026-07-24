@@ -1,19 +1,10 @@
 from fastapi import status, HTTPException, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from db import supabase
-
+from core.db import supabase
 
 security = HTTPBearer()
 
-def sign_in_anonymously():
-    try:
-        response = supabase.auth.sign_in_anonymously()
-        return response
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-
-def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+def verify_jwt(credentials: HTTPAuthorizationCredentials = Depends(security)):
     token = credentials.credentials
     try:
         user = supabase.auth.get_user(token)
@@ -23,7 +14,7 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     except Exception as e:
         raise HTTPException(status_code=401, detail=str(e))
     
-def verify_jwt(request: Request):
+def verify_cookie(request: Request):
     token = request.cookies.get("access_token")
     
     if not token:

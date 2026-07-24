@@ -1,12 +1,12 @@
 from fastapi import APIRouter, HTTPException, Depends, status
-from backend.schemas import HistoryCreate
-from backend.core.db import supabase
-from backend.core.auth import verify_jwt
+from schemas import HistoryCreate, HistoryRead
+from core.db import supabase
+from core.auth import verify_cookie
 
 router = APIRouter(prefix="/history", tags=["history"])
 
 @router.post("/create", status_code=status.HTTP_201_CREATED)
-def history_create(payload: HistoryCreate, user=Depends(verify_jwt)):
+def history_create(payload: HistoryCreate, user=Depends(verify_cookie)):
     history_dump = payload.model_dump()
     response = (
         supabase.table("history")
@@ -29,7 +29,7 @@ def history_create(payload: HistoryCreate, user=Depends(verify_jwt)):
 
 
 @router.get("/search")
-def history_search(title: str, user=Depends(verify_jwt)):
+def history_search(title: str, user=Depends(verify_cookie)):
     response = supabase.table("history").select("*").eq("user_id", user.id).eq("title", title).execute()
     if not response.data:
         raise HTTPException(
@@ -39,12 +39,12 @@ def history_search(title: str, user=Depends(verify_jwt)):
 
 
 @router.get("/get_title") #grabs all titles for display
-def history_get_title(user=Depends(verify_jwt)):
+def history_get_title(user=Depends(verify_cookie)):
     response = supabase.table("history").eq("user_id", user.id).select("title").execute()
     return response.data
 
 
 @router.get("") #gets everything
-def history_get(user=Depends(verify_jwt)):
+def history_get(user=Depends(verify_cookie)):
     response = supabase.table("history").select("*").eq("user_id", user.id).execute()
     return response.data
