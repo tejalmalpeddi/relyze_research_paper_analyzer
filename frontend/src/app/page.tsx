@@ -6,18 +6,16 @@ import UploadPopup from "@/components/home/uploadpopup";
 export default function Home() {
 
   return (
-    <main>
+    <main className="sticky top-[0] h-fit">
       {/* Upper Desk Section */}
       {/* "Visualize..." hero blurb + Upload PDF */}
       <section
-        className="sticky top-[-80%] h-[90vh] max-h-[700px] w-full bg-cover bg-center shadow-xl/50 flex items-center justify-center gap-10"
+        className="h-[90vh] max-h-[700px] w-full bg-cover bg-center shadow-xl/50 flex items-center justify-center gap-10 pt-[5%]"
         style={{ backgroundImage: "url('/background/wood.png')" }}
       >
         <VisualizeBlurb/>
         <UploadPDF/>
-        
-        <UploadPopup/>
-        
+                
       </section>
 
 
