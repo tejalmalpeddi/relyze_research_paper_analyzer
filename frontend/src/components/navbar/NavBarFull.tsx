@@ -1,7 +1,8 @@
 'use client';
 
 import Image from 'next/image';
-import { useState } from 'react';
+import { usePathname } from 'next/navigation';
+import { useMemo, useState } from 'react';
 import styles from './NavBarFull.module.css';
 
 interface NavTab {
@@ -11,7 +12,7 @@ interface NavTab {
 
 const NAV_TABS: NavTab[] = [
   { label: 'Home Page', href: '/' },
-  { label: 'Mind Map', href: '/mind-map' },
+  { label: 'Mind Map', href: '/map' },
   { label: 'Background', href: '/background' },
   { label: 'Interactive Paper', href: '/paper' },
   { label: 'Relevant Papers', href: '/relevant-papers' },
@@ -19,12 +20,17 @@ const NAV_TABS: NavTab[] = [
 
 // Pixel positions from design (assumes 1440px wide container)
 const TAB_POSITIONS = [
-  { left: 345, top: 76 },
-  { left: 538, top: 76 },
-  { left: 733, top: 75 },
-  { left: 926, top: 75 },
-  { left: 1121, top: 75 },
+  { left: 468, top: 76 },
+  { left: 661, top: 76 },
+  { left: 856, top: 75 },
+  { left: 1049, top: 75 },
+  { left: 1244, top: 75 },
 ];
+
+const PROFILE_TAB_POSITION = {
+  left: 1318,
+  top: 76,
+};
 
 interface NavBarFullProps {
   profileSrc?: string;
@@ -39,7 +45,15 @@ export default function NavBarFull({
   onTabClick,
   onProfileClick,
 }: NavBarFullProps) {
+  const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const resolvedActiveTab = activeTab ?? pathname ?? '/';
+  const isProfileActive = resolvedActiveTab === '/profile';
+  const activeTabIndex = useMemo(
+    () => NAV_TABS.findIndex((tab) => tab.href === resolvedActiveTab),
+    [resolvedActiveTab],
+  );
 
   function handleNavClick(href: string) {
     if (onTabClick) {
@@ -49,6 +63,23 @@ export default function NavBarFull({
     }
     setIsMenuOpen(false);
   }
+
+  const activeTabOffset = 16;
+  const activeClipLeft =
+    activeTabIndex >= 0
+      ? TAB_POSITIONS[activeTabIndex].left + 90 - 43.5
+      : PROFILE_TAB_POSITION.left + 90 - 43.5;
+  const clipStyle = isProfileActive
+    ? {
+        left: 'auto',
+        right: 'calc(2rem - 12px)',
+        top: 0,
+      }
+    : {
+        left: activeClipLeft,
+        right: 'auto',
+        top: 0,
+      };
 
   return (
     <div className={styles.root} data-name="Nav Bar (Full)">
@@ -61,12 +92,15 @@ export default function NavBarFull({
           key={tab.href}
           className={styles.tab}
           data-name={tab.label}
-          style={{ left: TAB_POSITIONS[i].left, top: TAB_POSITIONS[i].top }}
+          style={{
+            left: TAB_POSITIONS[i].left,
+            top: TAB_POSITIONS[i].top + (activeTabIndex === i ? activeTabOffset : 0),
+          }}
           onClick={() => onTabClick?.(tab.href)}
         >
           <p
             className={styles.tabLabel}
-            style={{ opacity: activeTab === tab.href ? 0.6 : 1 }}
+            style={{ opacity: resolvedActiveTab === tab.href ? 0.6 : 1 }}
           >
             {tab.label}
           </p>
@@ -101,22 +135,34 @@ export default function NavBarFull({
         )}
       </div>
 
-      <div className={styles.clip} data-name="clip 1">
+      <button
+        className={styles.profileTab}
+        data-name="Profile"
+        style={{
+          position: 'fixed',
+          left: 'auto',
+          right: '2rem',
+          top: PROFILE_TAB_POSITION.top + (isProfileActive ? activeTabOffset : 0),
+          transform: 'translate(0, 0)',
+        }}
+        onClick={onProfileClick}
+      >
+        <div className={styles.profileOverlay} />
+        <div className={styles.profileImage}>
+          {profileSrc ? (
+            <Image alt="Profile" fill src={profileSrc} className={styles.imgCover} />
+          ) : (
+            <Image alt="Profile" fill src="/icons/profile.png" className={styles.profilePlaceholder} />
+          )}
+        </div>
+      </button>
+
+      <div
+        className={styles.clip}
+        data-name="clip 1"
+        style={clipStyle}
+      >
         <Image alt="" fill src="/interface/clip.png" className={styles.imgDecorative} />
-        <button
-          className={styles.profileTab}
-          data-name="Profile"
-          onClick={onProfileClick}
-        >
-          <div className={styles.profileOverlay} />
-          <div className={styles.profileImage}>
-            {profileSrc ? (
-              <Image alt="Profile" fill src={profileSrc} className={styles.imgCover} />
-            ) : (
-              <Image alt="Profile" fill src="/icons/profile.png" className={styles.profilePlaceholder} />
-            )}
-          </div>
-        </button>
       </div>
 
       <div className={styles.logoOuter} data-name="Logo">
