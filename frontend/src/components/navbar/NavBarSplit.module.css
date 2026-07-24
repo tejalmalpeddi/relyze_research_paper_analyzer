@@ -1,8 +1,11 @@
 .root {
-  position: relative;
-  width: 100%;
-  height: 100%;
+  position: fixed;
+  top: -65px;
+  left: 0;
+  width: 100vw;
+  height: fit-content;
   filter: drop-shadow(0px 10px 2px rgba(0, 0, 0, 0.5));
+  z-index: 100;
 }
 
 .woodBar {
@@ -27,174 +30,129 @@
 
 .logo {
   position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  left: 10px;
+  top: 70px;
+  width: 218px;
+  height: 105px;
   background-color: #d9d9d9;
   box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.25);
-  left: 10px;
-  top: 37px;
-  width: 13%;
-  min-width: 90px;
-  max-width: 160px;
-  height: 90px;
   transform: rotate(-4.8deg);
   transform-origin: bottom center;
 }
 
 .logoText {
-  position: absolute;
-  inset: 0;
+  position: relative;
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: var(--font-eb-garamond), 'EB Garamond', serif;
-  font-size: 32px;
+  font-size: 40px;
   color: #000;
   text-align: center;
   white-space: nowrap;
 }
 
-.tabs {
+.menu {
   position: absolute;
-  display: flex;
-  left: 18%;
-  right: 12%;
   top: 75px;
-  height: 58.091px;
+  right: 2rem;
+  width: 180px;
+  z-index: 10;
+  overflow: visible;
 }
 
-@media (max-width: 819px) {
-  .tabs {
-    display: none;
-  }
+.clip {
+  position: absolute;
+  top: calc((var(--tab-height) * -1.9) + 1rem);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 87px;
+  aspect-ratio: 145 / 185;
+  filter: drop-shadow(0px 4px 4px rgba(0, 0, 0, 0.25));
+  pointer-events: none;
 }
 
-.tab {
-  flex: 1;
+.menuButton,
+.profileMenuButton {
+  --tab-height: 58.091px;
+  position: relative;
+  width: 180px;
+  height: var(--tab-height);
+  background-color: #d9d9d9;
+  border: none;
+  box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #d9d9d9;
-  box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.25);
-  border: none;
-  cursor: pointer;
 }
 
-.tabLabel {
-  word-break: break-word;
+.menuButton {
+  padding: 0;
+  overflow: visible;
+}
+
+.profileMenuButton {
+  justify-content: flex-start;
+  padding-left: 16px;
+  padding-right: 72px;
+  overflow: visible;
+}
+
+.activeMenuLabel,
+.profileMenuLabel {
   font-family: var(--font-eb-garamond), 'EB Garamond', serif;
-  font-size: 15px;
+  font-size: 16px;
   color: #000;
   text-align: center;
   line-height: normal;
 }
 
-.menu {
+.profileMenuImage {
   position: absolute;
-  display: none;
-  left: 34%;
-  right: 18%;
-  top: 75px;
-  z-index: 10;
-}
-
-@media (max-width: 819px) {
-  .menu {
-    display: block;
-  }
-}
-
-.menuButton {
-  width: 100%;
-  height: 58px;
+  right: 0;
+  top: 50%;
+  width: 62px;
+  height: 67px;
+  transform: translateY(-50%);
+  overflow: hidden;
   background-color: #d9d9d9;
-  border: none;
   box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.25);
-  cursor: pointer;
-  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
-  font-size: 18px;
-  color: #000;
+}
+
+.profileMenuImage :global(img) {
+  object-fit: cover;
 }
 
 .menuPanel {
-  margin-top: 8px;
-  background-color: #d9d9d9;
-  border: 1px solid #5e503f;
-  box-shadow: 0px 6px 8px rgba(0, 0, 0, 0.25);
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .menuItem {
-  display: block;
-  width: 100%;
-  min-height: 42px;
+  width: 180px;
+  min-height: 58.091px;
   padding: 8px 12px;
-  background: transparent;
-  border: 0;
-  border-bottom: 1px solid rgba(94, 80, 63, 0.35);
+  background-color: #d9d9d9;
+  border: none;
+  box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.25);
   cursor: pointer;
   font-family: var(--font-eb-garamond), 'EB Garamond', serif;
   font-size: 16px;
   color: #000;
-  text-align: left;
+  text-align: center;
+  line-height: normal;
 }
 
-.menuItem:last-child {
-  border-bottom: 0;
-}
-
-.profileTab {
-  position: absolute;
-  background-color: #d9d9d9;
-  height: 67px;
-  overflow: hidden;
-  left: 50%;
-  top: 118%;
-  transform: translate(-50%, -50%);
-  width: 62px;
-  box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.25);
-  border: none;
-  cursor: pointer;
-  z-index: 1;
-}
-
-.profileOverlay {
-  position: absolute;
-  background-color: rgba(0, 0, 0, 0.25);
-  inset: 9.16% 8.33% 14.5% 8.33%;
-}
-
-.profileImage {
-  position: absolute;
-  aspect-ratio: 1;
-  left: 17.74%;
-  right: 17.74%;
-  top: 50%;
-  transform: translateY(-50%);
-  background-color: #a3a3a3;
-}
-
+.imgCover,
 .profilePlaceholder {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  background-color: #a3a3a3;
-}
-
-.clip {
-  position: absolute;
-  top: 0;
-  right: 2.5%;
-  width: 42px;
-  aspect-ratio: 145 / 185;
-  box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.25);
-  overflow: visible;
-}
-
-.clip :global(img) {
-  z-index: 2;
-}
-
-.imgCover {
   object-fit: cover;
 }
 
