@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react';
 import Image from 'next/image';
 import styles from './ProfileFolder.module.css';
+import { useAuth } from '../../app/auth/auth-query';
 
 type Difficulty = 'Beginner' | 'Intermediate' | 'Advanced';
 

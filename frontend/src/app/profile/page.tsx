@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import ProfileFolder from '@/components/profile/ProfileFolder';
 import NavBarFull from '@/components/navbar/NavBarFull';
 import styles from './page.module.css';
+import {AuthProvider} from "../auth/auth-query";
 
 const DESIGN_VIEWPORT_WIDTH = 1440;
 const FOLDER_DESKTOP_LEFT = 421;
@@ -33,6 +34,7 @@ export default function ProfilePage() {
   }, []);
 
   return (
+    <AuthProvider>
     <div className={styles.page}>
       <div className={styles.stage}>
         <WoodBackground />
@@ -48,5 +50,6 @@ export default function ProfilePage() {
         </div>
       </div>
     </div>
+    </AuthProvider>
   );
 }
