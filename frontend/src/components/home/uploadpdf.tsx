@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import UploadPopup from "./uploadpopup";
 
 // TODO: pass PDF to backend and open popups
 
@@ -52,6 +53,9 @@ export default function UploadPDF() {
         <h2>Upload PDF</h2>
         <img src="/icons/upload.svg" alt="upload icon" className="h-[5rem] mt-[1rem]" />
         {isDraggingOver && <p>Drop PDF here</p>}
+        {fileName !== null && (
+          <UploadPopup/>
+        )}
     </form>
   );
 }

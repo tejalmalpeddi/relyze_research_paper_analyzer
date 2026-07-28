@@ -15,7 +15,7 @@ export default function Filters() {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <form className="inline-flex flex-col w-[50%] max-w-[300px]">
+    <form className="relative inline-flex flex-col w-[50%] max-w-[300px]">
       <button
         type="button"
         onClick={() => setExpanded((prev) => !prev)}
