@@ -79,7 +79,7 @@ export default function HomePage() {
   // layout trick as the Mind Map page: Navbar takes a fixed strip at the
   // top, everything else stretches to fill the rest.
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex min-h-screen flex-col">
       <Navbar />
 
       {/* The main wood-desk hero area. */}

@@ -23,7 +23,7 @@ import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { HistoryEntry } from "@/lib/types";
-import { fetchHistoryList, deleteHistory } from "@/lib/api";
+import { fetchHistoryList, deleteHistory, ApiError } from "@/lib/api";
 
 // ---------------------------------------------------------------------
 // MaskedIcon
@@ -270,7 +270,7 @@ function PaperCard({ entry, onDeleted }: PaperCardProps) {
       </div>
 
       <div className="flex items-center justify-between bg-stone-200 px-3 py-2">
-        <span className="line-clamp-2 font-serif text-sm text-stone-900">
+        <span className="line-clamp-2 font-serif text-sm font-semibold text-stone-900">
           {entry.title}
         </span>
         <button
@@ -331,11 +331,18 @@ function PaperCard({ entry, onDeleted }: PaperCardProps) {
 // appears on screen, the same way page.tsx used to in the very first
 // version of this app.
 export default function PreviousPapersSection() {
-  //current value and function to change it. 
+  const router = useRouter();
+
+  //current value and function to change it.
   //changes entries(paper starts as empty list), isLoading, loadErrorMessage, filter tags, and filter panel open
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadErrorMessage, setLoadErrorMessage] = useState<string | null>(null);
+  // True specifically when the backend said "you're not logged in" (a 401
+  // from GET /history, which now always filters by whoever's cookie sent
+  // the request). Kept separate from loadErrorMessage so the UI can show
+  // a friendly "please log in" prompt instead of a scary error message.
+  const [isLoggedOut, setIsLoggedOut] = useState(false);
   const [selectedFilterTags, setSelectedFilterTags] = useState<Set<string>>(new Set());
   const [isFiltersPanelOpen, setIsFiltersPanelOpen] = useState(false);
 
@@ -356,9 +363,14 @@ export default function PreviousPapersSection() {
       .then((fetchedEntries) => {
         setEntries(fetchedEntries);
         setLoadErrorMessage(null);
+        setIsLoggedOut(false);
       })
       .catch((error) => {
-        if (error instanceof Error) {
+        if (error instanceof ApiError && error.status === 401) {
+          // Nobody's logged in -- this isn't really a failure, so it
+          // doesn't go into loadErrorMessage at all.
+          setIsLoggedOut(true);
+        } else if (error instanceof Error) {
           setLoadErrorMessage(error.message);
         } else {
           setLoadErrorMessage("Something went wrong while loading your papers.");
@@ -424,20 +436,35 @@ export default function PreviousPapersSection() {
   }, [entries, selectedFilterTags]);
 
   return (
-    <div className="bg-[#2a2117] px-8 py-6" style={{ backgroundImage: "url(/background/drawer.png)", backgroundSize: "cover" }}>
+    <div
+      // Extra bottom padding while the Filters dropdown is open. The
+      // dropdown is position:absolute, so it doesn't naturally push this
+      // container taller -- without this, a tall dropdown pokes out past
+      // the bottom edge of this drawer background into whatever's below
+      // (bare page background, showing as black). Padding forces this
+      // box to actually be tall enough to contain it, and since
+      // backgroundSize "cover" is recalculated against this box's real
+      // height, the drawer art extends to cover that space too.
+      className={
+        isFiltersPanelOpen === true
+          ? "bg-[#2a2117] px-8 pt-8 pb-72"
+          : "bg-[#2a2117] px-8 py-8"
+      }
+      style={{ backgroundImage: "url(/background/drawer.png)", backgroundSize: "cover" }}
+    >
       {/* This inner wrapper is what actually shifts the section to the
           right: a fixed max width plus ml-auto (an "automatic" left
           margin) makes the block hug the right edge of the outer div
           instead of stretching across the whole page. */}
       <div className="ml-auto w-full max-w-400">
-        <div className="mb-5 flex items-center justify-between pt-5">
-          <h2 className="font-serif text-xl text-stone-100">Previous Papers</h2>
+        <div className="mb-6 flex items-center justify-between pt-5">
+          <h2 className="font-serif text-xl font-bold text-stone-100">Previous Papers</h2>
 
-          <div className="relative">
+          <div className="relative mr-10">
             <button
               type="button"
               onClick={handleFiltersButtonClick}
-              className="flex items-center gap-2 rounded-sm bg-stone-200 px-4 py-2 font-serif text-stone-900"
+              className="flex items-center gap-2 rounded-sm bg-stone-200 px-4 py-2 font-serif font-semibold text-stone-900"
             >
               Filters
               <Image src="/icons/filter.svg" alt="" width={16} height={16} />
@@ -460,19 +487,35 @@ export default function PreviousPapersSection() {
           <p className="font-serif text-stone-300">Loading your papers...</p>
         )}
 
-        {loadErrorMessage !== null && (
+        {isLoading === false && isLoggedOut === false && loadErrorMessage !== null && (
           <p className="font-serif text-[#c1666b]">
             Couldn&apos;t load your papers: {loadErrorMessage}
           </p>
         )}
 
-        {isLoading === false && loadErrorMessage === null && visibleEntries.length === 0 && (
-          <p className="font-serif text-stone-300">
-            No papers analyzed yet -- upload one above to get started.
-          </p>
-        )}
+        {/* Covers two cases with the same message: an explicit 401 from
+            the backend (isLoggedOut), and a plain empty list with no
+            error. Both currently mean the same thing in practice, since
+            nobody being logged in shows up as an empty list rather than
+            a 401 right now -- see the note on PreviousPapersSection. */}
+        {isLoading === false &&
+          loadErrorMessage === null &&
+          (isLoggedOut === true || visibleEntries.length === 0) && (
+            <div className="flex w-full flex-col items-center gap-4 py-10 text-center">
+              <p className="font-serif text-stone-300">
+                You are currently logged out, nothing to display!
+              </p>
+              <button
+                type="button"
+                onClick={() => router.push("/auth")}
+                className="rounded-sm bg-[#5b4636] px-6 py-2 font-serif font-semibold text-white"
+              >
+                Sign In
+              </button>
+            </div>
+          )}
 
-        {isLoading === false && loadErrorMessage === null && visibleEntries.length > 0 && (
+        {isLoading === false && isLoggedOut === false && loadErrorMessage === null && visibleEntries.length > 0 && (
           <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-6">
             {visibleEntries.map((entry) => (
               <PaperCard key={entry.id} entry={entry} onDeleted={handlePaperDeleted} />

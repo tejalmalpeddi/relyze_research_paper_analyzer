@@ -26,36 +26,47 @@ import { HistoryCreatePayload, HistoryEntry } from "./types";
 // running the backend locally with `uvicorn main:app` on its default port.
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-// Turns a raw fetch() Response into either the parsed data (on success)
-// or a thrown JavaScript Error with a readable message (on failure).
-// FastAPI's two error shapes are both handled here:
-//   - validation errors (HTTP 422) come back as { "detail": [ ... ] }
-//   - our own raised errors (HTTPException) come back as
-//     { "detail": "some message string" }
+// A regular Error, plus the HTTP status code that caused it. Callers
+// (like History.tsx) can check err.status === 401 to tell "you're not
+// logged in" apart from every other kind of failure, without having to
+// parse the message text to guess.
+export class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
 
-//async means "this function is allowed to use await inside it, 
+// Turns a raw fetch() Response into either the parsed data (on success)
+// or a thrown ApiError with a readable message (on failure). FastAPI's
+// error shape is handled here -- raised HTTPExceptions (including the
+// 401s that verify_cookie raises when there's no valid login) come back
+// as { "detail": "some message string" }.
+
+//async means "this function is allowed to use await inside it,
 // and automatically wraps whatever it returns in a Promise"
 
-//before .json() runs, the response is an untranslated envelope containing raw 
-// text that's expected — but not guaranteed — to be JSON-formatted. 
+//before .json() runs, the response is an untranslated envelope containing raw
+// text that's expected — but not guaranteed — to be JSON-formatted.
 // .json() is the actual act of opening it and turning it into something your code can work with.
 async function handleResponse<ExpectedShape>(
-  response: Response //actual input is "Response" aka built in browser type w raw network reply 
+  response: Response //actual input is "Response" aka built in browser type w raw network reply
 ): Promise<ExpectedShape> { //generic type
   if (response.ok === false) {
-    //"Try to translate the envelope's contents as JSON — but if that translation itself 
-    // fails (because what's inside isn't actually JSON), don't crash; just treat it as null 
+    //"Try to translate the envelope's contents as JSON — but if that translation itself
+    // fails (because what's inside isn't actually JSON), don't crash; just treat it as null
     // (nothing useful inside) instead."
     const errorBody = await response.json().catch(() => null);
 
     let errorMessage: string;
-    if (errorBody !== null && typeof errorBody.message === "string") {
-      errorMessage = errorBody.message;
+    if (errorBody !== null && typeof errorBody.detail === "string") {
+      errorMessage = errorBody.detail;
     } else {
       errorMessage = `Request failed with status ${response.status}`;
     }
 
-    throw new Error(errorMessage);
+    throw new ApiError(errorMessage, response.status);
   }
 
   //.json() is the "open the envelope and translate it" step
@@ -83,10 +94,17 @@ async function handleResponse<ExpectedShape>(
 // frontend: fetch(`${API_URL}/history`)   → sends a request to the path "/history"
 // backend: @app.get("/history")         → registered to respond to the path "/history"
 export async function fetchHistoryList(): Promise<HistoryEntry[]> {
-  //await fetch sends network request to localhost/history (the backend) 
+  //await fetch sends network request to localhost/history (the backend)
   //essentially, await fetch function is a get request which arrives to backend.
   //backend told: any get request whose path is exactly /history, run history_get()
-  const response = await fetch(`${API_URL}/history`);
+  //
+  //credentials: "include" is the part that actually attaches your login
+  //cookie to this request. Without it, the browser sends the request
+  //with NO cookie at all -- fetch() doesn't include cookies by default
+  //for a request going to a different port (3000 -> 8000 counts as
+  //"different"), so every route protected by verify_cookie would 401
+  //even for someone who's genuinely logged in.
+  const response = await fetch(`${API_URL}/history`, { credentials: "include" });
   return handleResponse<HistoryEntry[]>(response);
   //array of history entries ^
 }
@@ -96,7 +114,8 @@ export async function fetchHistoryList(): Promise<HistoryEntry[]> {
 // app yet, but kept here since the backend route exists and works.
 export async function fetchHistoryByTitle(title: string): Promise<HistoryEntry> {
   const response = await fetch(
-    `${API_URL}/history/search?title=${encodeURIComponent(title)}`
+    `${API_URL}/history/search?title=${encodeURIComponent(title)}`,
+    { credentials: "include" }
   );
   return handleResponse<HistoryEntry>(response);
 }
@@ -106,7 +125,7 @@ export async function fetchHistoryByTitle(title: string): Promise<HistoryEntry> 
 // button, so it can ask the backend for exactly that one row instead of
 // downloading every saved paper and searching through them here.
 export async function fetchHistoryById(id: number): Promise<HistoryEntry> {
-  const response = await fetch(`${API_URL}/history/${id}`);
+  const response = await fetch(`${API_URL}/history/${id}`, { credentials: "include" });
   return handleResponse<HistoryEntry>(response);
 }
 
@@ -116,7 +135,7 @@ export async function fetchHistoryById(id: number): Promise<HistoryEntry> {
 // and pick the newest row directly instead of downloading every saved
 // paper and comparing created_at timestamps here.
 export async function fetchLatestHistory(): Promise<HistoryEntry> {
-  const response = await fetch(`${API_URL}/history/latest`);
+  const response = await fetch(`${API_URL}/history/latest`, { credentials: "include" });
   return handleResponse<HistoryEntry>(response);
 }
 
@@ -124,7 +143,7 @@ export async function fetchLatestHistory(): Promise<HistoryEntry> {
 // map_json attached. Meant for a future autocomplete/search box; not used
 // anywhere in the app yet.
 export async function fetchHistoryTitles(): Promise<{ title: string }[]> {
-  const response = await fetch(`${API_URL}/history/get_title`);
+  const response = await fetch(`${API_URL}/history/get_title`, { credentials: "include" });
   return handleResponse<{ title: string }[]>(response);
 }
 
@@ -139,6 +158,7 @@ export async function createHistory(
   const response = await fetch(`${API_URL}/history/create`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify(payload),
   });
   return handleResponse<HistoryEntry>(response);
@@ -149,6 +169,7 @@ export async function createHistory(
 export async function deleteHistory(id: number): Promise<{ deleted: boolean; id: number }> {
   const response = await fetch(`${API_URL}/history/${id}`, {
     method: "DELETE",
+    credentials: "include",
   });
   return handleResponse<{ deleted: boolean; id: number }>(response);
 }
