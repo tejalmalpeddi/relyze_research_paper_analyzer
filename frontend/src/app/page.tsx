@@ -21,7 +21,7 @@
 // call real browser methods on it (like .click()) from your own code.
 import { useRef, useState } from "react";
 import Image from "next/image";
-import Navbar from "@/components/Navbar";
+import NavBarFull from "@/components/navbar/NavBarFull";
 import PreviousPapersSection from "@/components/History";
 
 export default function HomePage() {
@@ -80,7 +80,7 @@ export default function HomePage() {
   // top, everything else stretches to fill the rest.
   return (
     <div className="flex min-h-screen flex-col">
-      <Navbar />
+      <NavBarFull />
 
       {/* The main wood-desk hero area. */}
       <div
