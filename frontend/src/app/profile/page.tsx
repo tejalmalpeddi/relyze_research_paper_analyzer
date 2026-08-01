@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import ProfileFolder from '@/components/profile/ProfileFolder';
-import NavBarFull from '@/components/navbar/NavBarFull';
 import styles from './page.module.css';
 
 const DESIGN_VIEWPORT_WIDTH = 1440;
@@ -42,9 +41,6 @@ export default function ProfilePage() {
               <ProfileFolder />
             </div>
           </div>
-        </div>
-        <div className={styles.navFullWrapper}>
-          <NavBarFull />
         </div>
       </div>
     </div>
