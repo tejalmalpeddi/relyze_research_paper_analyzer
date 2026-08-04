@@ -1,0 +1,202 @@
+/* Pixel positions assume a 1440px-wide container (large-screen design) */
+
+.root {
+  position: fixed;
+  top: -65px;
+  left: 0;
+  width: 100vw;
+  height: fit-content;
+  filter: drop-shadow(0px 10px 2px rgba(0, 0, 0, 0.5));
+  z-index: 100;
+  color: #000;
+}
+
+/* Wood texture band, applied directly to the header via ::before */
+.root::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 65px;
+  width: 100vw;
+  height: 80px;
+  background-image: url('/background/wood.png');
+  background-position: -0.01% 0;
+  background-size: 100.03% 1200%;
+  background-repeat: no-repeat;
+  box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+}
+
+.logo {
+  position: absolute;
+  left: 10px;
+  top: 70px;
+  width: 218px;
+  height: 89px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #d9d9d9;
+  transform: rotate(-4.8deg);
+  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
+  font-size: 40px;
+  font-weight: normal;
+}
+
+.imgCover {
+  object-fit: cover;
+}
+
+.imgDecorative {
+  object-fit: cover;
+  pointer-events: none;
+}
+
+.tabLabel,
+.activeMenuLabel,
+.menuItem {
+  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
+  font-size: 16px;
+  text-align: center;
+  line-height: normal;
+}
+
+:global(.full) {
+  display: contents;
+}
+
+:global(.split) {
+  display: none;
+}
+
+@media (max-width: 1319px) {
+  :global(.full) {
+    display: none;
+  }
+
+  :global(.split) {
+    display: block;
+    position: absolute;
+    top: 75px;
+    right: 2rem;
+    width: 180px;
+    z-index: 10;
+    overflow: visible;
+  }
+}
+
+.tabList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tabListItem {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+:global(.full) .tab {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #d9d9d9;
+  height: 58.091px;
+  width: 180px;
+  box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.25);
+  border: none;
+  cursor: pointer;
+}
+
+.tabLabel {
+  word-break: break-word;
+}
+
+.profileTab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #d9d9d9;
+  height: 67px;
+  width: 62px;
+  padding: 6px 6px 11px 6px;
+  overflow: hidden;
+  box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.25);
+  border: none;
+  cursor: pointer;
+  z-index: 1;
+}
+
+.profileImage {
+  display: block;
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+  background-color: #a3a3a3;
+}
+
+.profileImage.imgCover {
+  object-fit: cover;
+}
+
+:global(.full) .clip {
+  position: absolute;
+  right: 35px;
+  top: 0;
+  filter: drop-shadow(0px 4px 4px rgba(0, 0, 0, 0.25));
+  z-index: 2;
+}
+
+:global(.split) .clip {
+  position: absolute;
+  top: calc((var(--tab-height) * -1.9) + 1rem);
+  left: 50%;
+  transform: translateX(-50%);
+  filter: drop-shadow(0px 4px 4px rgba(0, 0, 0, 0.25));
+  pointer-events: none;
+}
+
+:global(.split) .menuButton {
+  --tab-height: 58.091px;
+  position: relative;
+  width: 180px;
+  height: var(--tab-height);
+  padding: 0;
+  overflow: visible;
+  background-color: #d9d9d9;
+  border: none;
+  box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+:global(.split) .menuPanel {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.menuPanelItem {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+:global(.split) .menuItem {
+  width: 180px;
+  min-height: 58.091px;
+  padding: 8px 12px;
+  background-color: #d9d9d9;
+  border: none;
+  box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+}

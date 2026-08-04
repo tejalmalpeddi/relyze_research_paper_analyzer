@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import ProfileFolder from '@/components/profile/ProfileFolder';
-import NavBarFull from '@/components/navbar/NavBarFull';
 import styles from './page.module.css';
 import {AuthProvider} from "../auth/auth-query";
 
@@ -44,9 +43,6 @@ export default function ProfilePage() {
               <ProfileFolder />
             </div>
           </div>
-        </div>
-        <div className={styles.navFullWrapper}>
-          <NavBarFull />
         </div>
       </div>
     </div>
