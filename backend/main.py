@@ -4,11 +4,15 @@ import os
 from dotenv import load_dotenv
 from supabase import create_client, Client
 from schemas import HistoryCreate, HistoryRead
+from app.routers.subcategories import router as subcategories_router
 
 load_dotenv()
 
 app = FastAPI(title="Relyze API")
 supabase: Client = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
+
+# Register subcategories router (POST /api/subcategories/generate)
+app.include_router(subcategories_router)
 
 app.add_middleware(
     CORSMiddleware,

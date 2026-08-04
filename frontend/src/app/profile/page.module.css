@@ -61,11 +61,3 @@
   position: relative;
   width: 595.072px;
 }
-
-.navFullWrapper {
-  position: absolute;
-  height: 175px;
-  left: 0;
-  top: -65px;
-  width: 100vw;
-}
