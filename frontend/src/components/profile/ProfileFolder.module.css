@@ -200,17 +200,17 @@
 
 .emailValue {
   position: absolute;
-  word-break: break-word;
   font-family: var(--font-eb-garamond), 'EB Garamond', serif;
   font-size: 18px;
   color: #000;
   line-height: normal;
-  inset: 15.96% 26.55% 80% 39.83%;
+  inset: 15.96% 4.5% 80% 39.83%;
   z-index: 1;
   padding: 0;
   background: transparent;
   border: 0;
   outline: 0;
+  min-width: 0;
 }
 
 .passwordBox {
