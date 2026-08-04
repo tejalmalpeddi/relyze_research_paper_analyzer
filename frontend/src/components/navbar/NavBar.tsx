@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import styles from './NavBar.module.css';
 
@@ -12,7 +12,7 @@ interface NavTab {
 
 const NAV_TABS: NavTab[] = [
   { label: 'Home Page', href: '/' },
-  { label: 'Mind Map', href: '/map' },
+  { label: 'Mind Map', href: '/mindmap' },
   { label: 'Background', href: '/background' },
   { label: 'Interactive Paper', href: '/paper' },
   { label: 'Relevant Papers', href: '/relevant-papers' },
@@ -55,6 +55,7 @@ export default function NavBar({
   onProfileClick,
 }: NavBarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [isSplitMenuOpen, setIsSplitMenuOpen] = useState(false);
 
   const resolvedActiveTab = activeTab ?? pathname ?? '/';
@@ -74,7 +75,7 @@ export default function NavBar({
     if (onTabClick) {
       onTabClick(href);
     } else {
-      window.location.href = href;
+      router.push(href);
     }
     setIsSplitMenuOpen(false);
   }

@@ -27,7 +27,7 @@ export default function RootLayout({
       className={`${ebGaramond.variable} h-full antialiased`}
     >
       <body className="h-full">
-        <NavBar/>
+        <NavBar />
         {children}
       </body>
     </html>
