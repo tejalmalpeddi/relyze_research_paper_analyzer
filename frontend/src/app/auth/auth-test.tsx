@@ -7,7 +7,7 @@ export default function AuthTest() {
     const { user, isLoading, isAuthenticated, login, signup, loginAnonymously, logout, editUser, deleteUser } = useAuth();
 
     const [email, setEmail] = useState<string>('');
-    const [name, setName] = useState<string>(''); //somehow transform this into "data" : {"":""}
+    const [name, setName] = useState<string>('');
     const [password, setPassword] = useState<string>('');
     const [newEmail, setNewEmail] = useState<string>('');
     const [msg, setMsg] = useState<string>('');

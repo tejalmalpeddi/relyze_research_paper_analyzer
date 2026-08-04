@@ -6,14 +6,19 @@ export interface UserLogin {
 export interface UserEdit {
   email?: string;
   password?: string;
-  raw_user_meta_data?: Record<string, any>; //TODO: need to add name into this? need ot figure out hwo
+  raw_user_meta_data?: Record<string, unknown>;
 }
 
 export interface UserProfile {
   id: string;
   email?: string;
-  is_anonymous?: boolean; //TODO: get rid of anonymous; need to provide defaults
-  raw_user_meta_data?: Record<string, any>;
+  is_anonymous?: boolean;
+  raw_user_meta_data?: Record<string, unknown>;
+}
+
+export interface AuthMessageResponse {
+  message?: string;
+  user?: UserProfile;
 }
 
 export interface AuthContextType {
@@ -21,10 +26,10 @@ export interface AuthContextType {
   isLoading: boolean;
   error: Error | null;
   isAuthenticated: boolean;
-  signup: (credentials: UserLogin) => Promise<any>;
-  login: (credentials: UserLogin) => Promise<any>;
-  loginAnonymously: () => Promise<any>;
-  logout: () => Promise<any>;
-  editUser: (updateData: UserEdit) => Promise<any>;
-  deleteUser: () => Promise<any>;
+  signup: (credentials: UserLogin) => Promise<AuthMessageResponse>;
+  login: (credentials: UserLogin) => Promise<AuthMessageResponse>;
+  loginAnonymously: () => Promise<AuthMessageResponse>;
+  logout: () => Promise<AuthMessageResponse>;
+  editUser: (updateData: UserEdit) => Promise<AuthMessageResponse>;
+  deleteUser: () => Promise<AuthMessageResponse>;
 }

@@ -3,7 +3,6 @@
 import { useRef, useState } from 'react';
 import Image from 'next/image';
 import styles from './ProfileFolder.module.css';
-import { useAuth } from '../../app/auth/auth-query';
 
 type Difficulty = 'Beginner' | 'Intermediate' | 'Advanced';
 
@@ -232,7 +231,7 @@ export default function ProfileFolder({
             onClick={handlePasswordEditClick}
             data-name="edit"
           >
-            <img alt="" className={styles.editIconImg} src="/icons/pencil.svg" />
+            <Image alt="" className={styles.editIconImg} fill sizes="20px" src="/icons/pencil.svg" />
           </button>
 
           <div className={styles.profileCardOuter} data-name="Profile">
@@ -257,7 +256,7 @@ export default function ProfileFolder({
 
           <div className={styles.editProfileOuter}>
             <div className={styles.editProfileRotate}>
-              <img alt="Edit profile picture" className={styles.editIconImg} src="/icons/pencil.svg" />
+              <Image alt="Edit profile picture" className={styles.editIconImg} fill sizes="32px" src="/icons/pencil.svg" />
             </div>
           </div>
         </div>

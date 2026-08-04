@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import ProfileFolder from '@/components/profile/ProfileFolder';
 import styles from './page.module.css';
 import {AuthProvider} from "../auth/auth-query";
@@ -13,7 +14,7 @@ const FOLDER_MIN_LEFT = -20;
 function WoodBackground() {
   return (
     <div className={styles.woodBg}>
-      <img alt="" className={styles.woodBgImg} src="/background/wood.png" />
+      <Image alt="" className={styles.woodBgImg} fill priority sizes="100vw" src="/background/wood.png" />
     </div>
   );
 }
