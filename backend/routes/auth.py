@@ -62,6 +62,10 @@ def logout(response: Response, user=Depends(verify_cookie)):
 def edit_user(payload: UserEdit, user=Depends(verify_cookie)):
     try:
         update_data = payload.model_dump(exclude_unset=True)
+        user_metadata = update_data.pop("raw_user_meta_data", None)
+
+        if user_metadata is not None:
+            update_data["user_metadata"] = user_metadata
 
         if not update_data:
             raise HTTPException(
@@ -98,7 +102,7 @@ def delete_user(response: Response, user=Depends(verify_cookie)):
 @router.get("/get-user-details")
 def get_user_details(user=Depends(verify_cookie)):
     try:
-        return {"user": user}
+        return user
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to fetch user: {str(e)}")
     

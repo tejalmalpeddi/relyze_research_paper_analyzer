@@ -20,9 +20,6 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
     raw_user_meta_data: Optional[dict[str, Any]] = None
-    # "data": {
-    #         "display_name": "Jane Doe" # Appears in dashboard UI
-    #}
     
 class UserLogin(BaseModel):
     email: EmailStr
