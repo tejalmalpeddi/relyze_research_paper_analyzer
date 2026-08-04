@@ -243,6 +243,7 @@ export default function ProfileFolder({
             aria-label={isPasswordVisible ? 'Hide password' : 'Show password'}
             className={styles.eyeIcon}
             type="button"
+            onMouseDown={(event) => event.preventDefault()}
             onClick={() => setIsPasswordVisible((visible) => !visible)}
           >
             <svg className={styles.eyeIconSvg} fill="none" viewBox="0 0 24 24" aria-hidden="true">
@@ -265,6 +266,7 @@ export default function ProfileFolder({
             aria-pressed={isPasswordEditing}
             className={styles.editIcon}
             type="button"
+            onMouseDown={(event) => event.preventDefault()}
             onClick={handlePasswordEditClick}
             data-name="edit"
           >
