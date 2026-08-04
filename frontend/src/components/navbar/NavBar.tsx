@@ -14,7 +14,7 @@ const NAV_TABS: NavTab[] = [
   { label: 'Home Page', href: '/' },
   { label: 'Mind Map', href: '/mindmap' },
   { label: 'Background', href: '/background' },
-  { label: 'Interactive Paper', href: '/paper' },
+  { label: 'Interactive Paper', href: '/paperview' },
   { label: 'Relevant Papers', href: '/relevant-papers' },
 ];
 
@@ -110,7 +110,6 @@ export default function NavBar({
     <header className={styles.root} data-name="Nav Bar">
       <h1 className={styles.logo}>Relyze</h1>
 
-      {/* ---------- Full (horizontal) variant — toggle via CSS with .full ---------- */}
       <nav className="full" data-name="Nav Bar (Full)">
         <ul className={styles.tabList}>
           {NAV_TABS.map((tab, i) => {
@@ -179,7 +178,6 @@ export default function NavBar({
         />
       </nav>
 
-      {/* ---------- Split (vertical) variant — toggle via CSS with .split ---------- */}
       <nav className="split" data-name="Nav Bar (Split)">
         <button
           className={styles.menuButton}
