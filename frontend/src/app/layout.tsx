@@ -1,11 +1,17 @@
 import type { Metadata } from "next";
 import { EB_Garamond } from "next/font/google";
+import { EB_Garamond } from "next/font/google";
 import "./globals.css";
-import NavBarFull from "@/components/navbar/NavBarFull";
+import NavBar from "@/components/navbar/NavBar";
 
 const ebGaramond = EB_Garamond({
   variable: "--font-eb-garamond",
+const ebGaramond = EB_Garamond({
+  variable: "--font-eb-garamond",
   subsets: ["latin"],
+  weight: ["400", "500"],
+  style: ["normal", "italic"],
+  display: "swap",
   weight: ["400", "500"],
   style: ["normal", "italic"],
   display: "swap",
@@ -13,7 +19,7 @@ const ebGaramond = EB_Garamond({
 
 export const metadata: Metadata = {
   title: "Relyze",
-  description: "Research Paper Analyzer",
+  description: "Academic paper analysis platform",
 };
 
 export default function RootLayout({
@@ -25,9 +31,10 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${ebGaramond.variable} h-full antialiased`}
+      className={`${ebGaramond.variable} h-full antialiased`}
     >
-      <body>
-        <NavBarFull/>
+      <body className="h-full">
+        <NavBar />
         {children}
       </body>
     </html>
