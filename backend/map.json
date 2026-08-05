@@ -1,0 +1,139 @@
+{
+  "root": {
+    "id": "root",
+    "label": "Test Paper",
+    "type": "root",
+    "domain": "general"
+  },
+  "nodes": [
+    {
+      "id": "node-chunk-0",
+      "label": "Introduction",
+      "type": "background",
+      "content": "Introduction",
+      "parent": "root",
+      "depth": 1,
+      "metadata": {
+        "source_text": "Introduction",
+        "confidence": 1.0,
+        "params": {},
+        "tags": [
+          "general"
+        ]
+      }
+    },
+    {
+      "id": "node-chunk-1",
+      "label": "This study",
+      "type": "method",
+      "content": "This study explores protein folding mechanisms.",
+      "parent": "node-chunk-0",
+      "depth": 2,
+      "metadata": {
+        "source_text": "This study explores protein folding mechanisms.",
+        "confidence": 0.383,
+        "params": {},
+        "tags": [
+          "This study",
+          "mechanisms",
+          "protein"
+        ]
+      }
+    },
+    {
+      "id": "node-chunk-2",
+      "label": "the exact process",
+      "type": "background",
+      "content": "However, the exact process remains unclear.",
+      "parent": "node-chunk-0",
+      "depth": 2,
+      "metadata": {
+        "source_text": "However, the exact process remains unclear.",
+        "confidence": 0.279,
+        "params": {},
+        "tags": [
+          "the exact process"
+        ]
+      }
+    },
+    {
+      "id": "node-chunk-3",
+      "label": "Methods",
+      "type": "background",
+      "content": "Methods",
+      "parent": "root",
+      "depth": 1,
+      "metadata": {
+        "source_text": "Methods",
+        "confidence": 1.0,
+        "params": {},
+        "tags": [
+          "general"
+        ]
+      }
+    },
+    {
+      "id": "node-chunk-4",
+      "label": "10 minutes",
+      "type": "background",
+      "content": "Samples were centrifuged at 3000rpm for 10 minutes.",
+      "parent": "node-chunk-3",
+      "depth": 2,
+      "metadata": {
+        "source_text": "Samples were centrifuged at 3000rpm for 10 minutes.",
+        "confidence": 0.334,
+        "params": {
+          "rpm": "3000",
+          "min": "10"
+        },
+        "tags": [
+          "10 minutes",
+          "Samples"
+        ]
+      }
+    },
+    {
+      "id": "node-chunk-5",
+      "label": "buffer solution",
+      "type": "background",
+      "content": "Furthermore, buffer solution was added at 4 degrees C.",
+      "parent": "node-chunk-3",
+      "depth": 2,
+      "metadata": {
+        "source_text": "Furthermore, buffer solution was added at 4 degrees C.",
+        "confidence": 0.19,
+        "params": {},
+        "tags": [
+          "buffer solution",
+          "4 degrees"
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e0",
+      "source": "node-chunk-0",
+      "target": "node-chunk-1",
+      "type": "has_child"
+    },
+    {
+      "id": "e1",
+      "source": "node-chunk-0",
+      "target": "node-chunk-2",
+      "type": "has_child"
+    },
+    {
+      "id": "e2",
+      "source": "node-chunk-3",
+      "target": "node-chunk-4",
+      "type": "has_child"
+    },
+    {
+      "id": "e3",
+      "source": "node-chunk-3",
+      "target": "node-chunk-5",
+      "type": "has_child"
+    }
+  ]
+}

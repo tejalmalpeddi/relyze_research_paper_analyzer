@@ -40,3 +40,11 @@ uvloop==0.22.1
 watchfiles==1.1.1
 websockets==15.0.1
 yarl==1.24.2
+nltk
+spacy
+sentence-transformers
+scikit-learn
+transformers
+torch
+groq
+

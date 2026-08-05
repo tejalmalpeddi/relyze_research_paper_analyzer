@@ -1,7 +1,9 @@
+"""
+splits raw text into labeled chunks.
+"""
 
 import re
 import nltk
-
 
 try:
     nltk.data.find("tokenizers/punkt_tab")
@@ -13,7 +15,6 @@ try:
 except LookupError:
     nltk.download("punkt", quiet=True)
 
-
 DISCOURSE_MARKERS = re.compile(
     r"^(however|furthermore|in contrast|additionally|on the other hand|"
     r"as a result|therefore|in summary|to summarize|finally|"
@@ -22,17 +23,20 @@ DISCOURSE_MARKERS = re.compile(
     re.IGNORECASE,
 )
 
-HEADER_PATTERN = re.compile(r"^[A-Z][^\n.!?]{2,60}$")
-
+HEADER_PATTERN = re.compile(
+    r"^(\d+\.?\d*\s+)?[A-Z][^\n.!?]{2,60}$"
+)
 
 DOMAIN_SIGNALS: dict[str, list[str]] = {
     "science": [
         "hypothesis", "experiment", "specimen", "protein", "cell",
         "gene", "molecule", "clinical", "trial", "dataset", "methodology",
+        "equation", "thermodynamic", "plasma", "laser", "quantum",
     ],
     "tech": [
         "algorithm", "function", "api", "model", "framework",
         "database", "deploy", "architecture", "latency", "endpoint",
+        "neural", "training", "inference", "pipeline", "transformer",
     ],
     "legal": [
         "plaintiff", "defendant", "statute", "court", "ruling",
@@ -46,7 +50,6 @@ DOMAIN_SIGNALS: dict[str, list[str]] = {
 
 
 def detect_domain(text: str) -> str:
-    
     text_lower = text.lower()
     scores: dict[str, int] = {"general": 1}
     for domain, signals in DOMAIN_SIGNALS.items():
@@ -55,14 +58,12 @@ def detect_domain(text: str) -> str:
 
 
 def _is_header(text: str) -> bool:
-    
     t = text.strip()
     return (
         2 < len(t) < 80
-        and t[0].isupper()
         and not t.endswith(",")
         and not t.endswith(".")
-        and len(t.split()) < 10
+        and len(t.split()) < 12
         and bool(HEADER_PATTERN.match(t))
     )
 
@@ -76,7 +77,6 @@ def segment(text: str) -> list[dict]:
     text = re.sub(r" {3,}", " ", text)
 
     paragraphs = re.split(r"\n{2,}", text)
-
     chunks: list[dict] = []
     position = 0
     current_sentences: list[str] = []
@@ -118,7 +118,7 @@ def segment(text: str) -> list[dict]:
                 flush("discourse_marker" if discourse else "paragraph_break")
 
             if header:
-                flush("paragraph_break")   # flush anything before header
+                flush("paragraph_break")
                 chunks.append({
                     "id":              f"chunk-{position}",
                     "text":            sent,
