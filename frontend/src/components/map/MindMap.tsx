@@ -8,15 +8,21 @@ import {
     ReactFlow,
     ReactFlowProvider,
     useReactFlow,
+    useNodesState,
+    useEdgesState,
     Panel,
     Node,
     Edge,
     Handle,
     Position,
     NodeProps,
+    useStore
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { HistoryEntry, MapNode } from "@/lib/types";
+import { StickyNoteNode, StickyNoteData } from "./StickyNote";
+import { StickyToolbar } from "./StickyNoteToolbar";
+import { fetchStickyNotes, createStickyNotes } from "@/lib/api";
 
 const ebGaramond = EB_Garamond({
     weight: ["400"],
@@ -34,13 +40,13 @@ function getCssFilterForColor(color: string): string {
     const BLACKEN = "brightness(0) saturate(100%) ";
 
     switch (color.toLowerCase()) {
-        case "#4281a4": 
+        case "#4281a4":
             return BLACKEN + "invert(48%) sepia(21%) saturate(1000%) hue-rotate(161deg) brightness(91%) contrast(88%)";
         case "#c1666b":
             return BLACKEN + "invert(52%) sepia(21%) saturate(1400%) hue-rotate(300deg) brightness(85%) contrast(85%)";
         case "#7c8a52":
             return BLACKEN + "invert(55%) sepia(25%) saturate(700%) hue-rotate(40deg) brightness(90%) contrast(85%)";
-        case "#b08a3e": 
+        case "#b08a3e":
             return BLACKEN + "invert(58%) sepia(40%) saturate(800%) hue-rotate(5deg) brightness(90%) contrast(90%)";
         default:
             return BLACKEN + "invert(50%)";
@@ -301,7 +307,6 @@ function PaperNode({ data }: NodeProps<PaperFlowNode>) {
                             alignItems: "center",
                         }}>
                             <p style={{ margin: 0, padding: 0, lineHeight: 1 }}>{data.childCount}</p>
-                             {/* <p style={{ margin: 0, padding: 0, lineHeight: 1 }}>{}</p> */}
                             <img
                                 src="/icons/chevron.svg"
                                 alt="Expand"
@@ -404,7 +409,10 @@ function MagnifyingGlassIcon({ showPlus }: { showPlus: boolean }) {
     );
 }
 
-const nodeTypes = { paper: PaperNode };
+const nodeTypes = {
+    paper: PaperNode,
+    stickyNote: StickyNoteNode,
+};
 
 interface MapCanvasProps {
     entry: HistoryEntry;
@@ -414,7 +422,10 @@ function MapCanvas({ entry }: MapCanvasProps) {
     const rawNodes = useMemo(() => entry.map_json.nodes as RawNode[], [entry]);
     const edges = useMemo(() => entry.map_json.edges as Edge[], [entry]);
 
-    const { fitView } = useReactFlow();
+    const { fitView, screenToFlowPosition } = useReactFlow();
+
+    const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
+    const [visibleEdges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
     const children = useMemo(() => buildChildrenMap(edges), [edges]);
     const depths = useMemo(() => computeDepths(rawNodes, edges), [rawNodes, edges]);
@@ -432,6 +443,10 @@ function MapCanvas({ entry }: MapCanvasProps) {
 
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
     const [selectedLevel, setSelectedLevel] = useState<DifficultyLevel>("beginner");
+
+    const [placingColor, setPlacingColor] = useState<string | null>(null);
+    const [cursorPos, setCursorPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+    const zoom = useStore((state) => state.transform[2]);
 
     function toggleExpand(id: string) {
         setExpandedIds((previousExpandedIds) => {
@@ -468,77 +483,127 @@ function MapCanvas({ entry }: MapCanvasProps) {
         return visited;
     }, [rootIds, children, expandedIds]);
 
-    const { nodes, visibleEdges } = useMemo(() => {
-        const unpositionedNodes: Node<PaperNodeData>[] = [];
-
-        for (const node of rawNodes) {
-            if (visibleIds.has(node.id) === false) continue;
-
-            const depth = depths.get(node.id) ?? 0;
-            const childIds = children.get(node.id);
-            const childCount = childIds !== undefined ? childIds.length : 0;
-
-            unpositionedNodes.push({
-                id: node.id,
-                type: "paper",
-                position: { x: 0, y: 0 },
-                data: {
-                    title: node.data.title,
-                    bullets: node.data.bullets,
-                    depth: depth,
-                    isExpanded: expandedIds.has(node.id),
-                    childCount: childCount,
-                    handleColor: depth > 0 ? colorForDepth(depth - 1) : undefined,
-                    expandColor: colorForDepth(depth),
-                    onToggleChildren: () => toggleExpand(node.id),
-                },
-            });
-        }
-
-        const filteredEdges: Edge[] = [];
-        for (const edge of edges) {
-            if (visibleIds.has(edge.source) === true && visibleIds.has(edge.target) === true) {
-                const sourceDepth = depths.get(edge.source) ?? 0;
-                filteredEdges.push({
-                    ...edge,
-                    type: "straight",
-                    style: {
-                        stroke: colorForDepth(sourceDepth), 
-                        strokeWidth: 5,
-                        strokeLinecap: "round",
-                    },
-                });
+    useEffect(() => {
+        async function loadStickyNotes() {
+            if (!entry?.id) return;
+            try {
+                const data = await fetchStickyNotes(entry.id);
+                if (Array.isArray(data)) {
+                    const loadedNotes: Node<StickyNoteData>[] = data.map((item: any) => ({
+                        id: `sticky-${item.id || Math.random()}`,
+                        type: "stickyNote",
+                        position: { x: item.position_x ?? 0, y: item.position_y ?? 0 },
+                        data: {
+                            content: item.content ?? "",
+                            color: item.color ?? "#4281a4",
+                            isEditing: false,
+                        },
+                    }));
+                    setNodes((prevNodes) => [
+                        ...prevNodes.filter((n) => n.type !== "stickyNote"),
+                        ...loadedNotes,
+                    ]);
+                }
+            } catch (error) {
+                console.error("Failed to load sticky notes:", error);
             }
         }
 
-        const layoutedNodes = layoutNodesWithDagre(unpositionedNodes, filteredEdges);
-        return { nodes: layoutedNodes, visibleEdges: filteredEdges };
-    }, [rawNodes, edges, visibleIds, depths, children, expandedIds]);
+        loadStickyNotes();
+    }, [entry?.id, setNodes]);
+
+    const handleMouseMove = (e: React.MouseEvent) => {
+        if (!placingColor) return;
+        setCursorPos({ x: e.clientX, y: e.clientY });
+    };
+
+    const handleCanvasClick = async (e: React.MouseEvent) => {
+        if (!placingColor) return;
+
+        const canvasPos = screenToFlowPosition({ x: e.clientX - 104, y: e.clientY - 104 });
+        const createdAt = new Date().toISOString();
+
+        try {
+            await createStickyNotes({
+                document_id: entry.id,
+                color: placingColor,
+                content: "",
+                position_x: canvasPos.x,
+                position_y: canvasPos.y,
+                created_at: createdAt,
+            });
+
+            const newStickyNode: Node<StickyNoteData> = {
+                id: `sticky-${Date.now()}`,
+                type: "stickyNote",
+                position: canvasPos,
+                data: {
+                    content: "",
+                    color: placingColor,
+                    isEditing: true,
+                },
+            };
+
+            setNodes((nds) => [...nds, newStickyNode]);
+        } catch (error) {
+            console.error("Failed to save sticky note:", error);
+        }
+
+        setPlacingColor(null);
+    };
 
     useEffect(() => {
         fitView({ duration: 250 });
-    }, [nodes, fitView]);
+    }, [expandedIds, fitView]);
 
     return (
-        <ReactFlow
-            nodes={nodes}
-            edges={visibleEdges}
-            nodeTypes={nodeTypes}
-            nodesDraggable={true}
-            nodesConnectable={false}
-            elementsSelectable={true}
-            style={{
-                backgroundImage: "url(/background/corkboard.jpg)",
-                backgroundSize: "cover",
-            }}
+        <div
+            className="w-full h-full relative"
+            onMouseMove={handleMouseMove}
+            onClick={handleCanvasClick}
         >
-            <Panel position="bottom-left">
-                <div className="flex items-center gap-4">
-                    <DifficultyToggle selectedLevel={selectedLevel} onSelectLevel={setSelectedLevel} />
-                    <ZoomControls />
+            {/* cursor hover */}
+            {placingColor && (
+                <div
+                    style={{
+                        left: `${cursorPos.x - (100 * zoom)}px`,
+                        top: `${cursorPos.y - (100 * zoom)}px`,
+                        width: `${200 * zoom}px`,
+                        height: `${200 * zoom}px`,
+                        backgroundColor: placingColor,
+                    }}
+                    className="pointer-events-none fixed z-[99999] w-52 h-52 opacity-70 rounded-lg border-2 border-dashed border-white shadow-2xl flex items-center justify-center text-white font-medium text-xs"
+                >
+
                 </div>
-            </Panel>
-        </ReactFlow>
+            )}
+
+            <ReactFlow
+                nodes={nodes}
+                edges={visibleEdges}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                nodeTypes={nodeTypes}
+                nodesDraggable={true}
+                nodesConnectable={false}
+                elementsSelectable={true}
+                style={{
+                    backgroundImage: "url(/background/corkboard.jpg)",
+                    backgroundSize: "cover",
+                }}
+            >
+                <Panel position="bottom-left" className="!z-[9999] pointer-events-auto">
+                    <div className="flex items-center gap-4 bg-[#212327]/90 p-2 rounded-full border border-stone-700 backdrop-blur-md shadow-2xl">
+                        <DifficultyToggle selectedLevel={selectedLevel} onSelectLevel={setSelectedLevel} />
+                        <ZoomControls />
+                        <StickyToolbar
+                            activeColor={placingColor}
+                            onSelectColor={(color) => setPlacingColor(color)}
+                        />
+                    </div>
+                </Panel>
+            </ReactFlow>
+        </div>
     );
 }
 

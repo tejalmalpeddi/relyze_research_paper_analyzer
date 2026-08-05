@@ -152,3 +152,39 @@ export async function deleteHistory(id: number): Promise<{ deleted: boolean; id:
   });
   return handleResponse<{ deleted: boolean; id: number }>(response);
 }
+
+export async function fetchStickyNotes(documentId: string | number) {
+    const res = await fetch(`${API_URL}/sticky_notes/get/${documentId}`, {
+        method: "GET",
+        credentials: "include",
+    });
+    if (!res.ok) throw new Error("Failed to fetch sticky notes");
+    return res.json();
+}
+
+export async function createStickyNotes(payload: {
+    document_id: string | number;
+    color: string;
+    content: string;
+    position_x: number;
+    position_y: number;
+    created_at: string;
+}) {
+    const res = await fetch(`${API_URL}/sticky_notes/create`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error("Failed to create sticky note");
+    return res.json();
+}
+
+export async function clearStickyNotes(documentId: string | number) {
+    const res = await fetch(`${API_URL}/sticky_notes/clear/${documentId}`, {
+        method: "POST",
+        credentials: "include",
+    });
+    if (!res.ok) throw new Error("Failed to clear sticky notes");
+    return res.json();
+}
