@@ -1,11 +1,15 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { UserLogin, UserProfile, UserEdit, AuthContextType } from './auth-types';
+import { AuthMessageResponse, UserLogin, UserProfile, UserEdit, AuthContextType } from './auth-types';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const BASE_URL = 'http://localhost:8000';
+
+function toError(error: unknown, fallbackMessage: string) {
+  return error instanceof Error ? error : new Error(fallbackMessage);
+}
 
 const requestWrapper = async <TResponse, TBody = undefined>(
   url: string,
@@ -35,49 +39,68 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const data = await requestWrapper<UserProfile>('/auth/get-user-details', 'GET');
       setUser(data);
       setError(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setUser(null);
-      setError(err);
+      setError(toError(err, 'Failed to fetch user'));
     } finally {
       setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchUser();
-  }, [fetchUser]);
+    let isActive = true;
 
-  //auth functions
-  const signup = async (logincredentials: UserEdit) => {
-    return requestWrapper('/auth/signup', 'POST', logincredentials);
+    requestWrapper<UserProfile>('/auth/get-user-details', 'GET')
+      .then((data) => {
+        if (!isActive) return;
+        setUser(data);
+        setError(null);
+      })
+      .catch((err: unknown) => {
+        if (!isActive) return;
+        setUser(null);
+        setError(toError(err, 'Failed to fetch user'));
+      })
+      .finally(() => {
+        if (!isActive) return;
+        setIsLoading(false);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  const signup = async (logincredentials: UserLogin) => {
+    return requestWrapper<AuthMessageResponse, UserLogin>('/auth/signup', 'POST', logincredentials);
   };
 
   const login = async (logincredentials: UserLogin) => {
-    const res = await requestWrapper('/auth/login', 'POST', logincredentials);
+    const res = await requestWrapper<AuthMessageResponse, UserLogin>('/auth/login', 'POST', logincredentials);
     await fetchUser();
     return res;
   };
 
   const logout = async () => {
-    const res = await requestWrapper('/auth/logout', 'POST');
+    const res = await requestWrapper<AuthMessageResponse>('/auth/logout', 'POST');
     setUser(null);
     return res;
   };
 
   const loginAnonymously = async () => {
-    const res = await requestWrapper('/auth/login-anonymous', 'POST');
+    const res = await requestWrapper<AuthMessageResponse>('/auth/login-anonymous', 'POST');
     await fetchUser();
     return res;
   };
 
   const editUser = async (dataUpdate: UserEdit) => {
-    const res = await requestWrapper('/auth/edit-user', 'PUT', dataUpdate);
+    const res = await requestWrapper<AuthMessageResponse, UserEdit>('/auth/edit-user', 'PUT', dataUpdate);
     await fetchUser();
     return res;
   };
 
   const deleteUser = async () => {
-    const res = await requestWrapper('/auth/delete-user', 'POST');
+    const res = await requestWrapper<AuthMessageResponse>('/auth/delete-user', 'POST');
     setUser(null);
     return res;
   };
@@ -105,7 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('AuthContext Error!!!!!!');
+    throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 }

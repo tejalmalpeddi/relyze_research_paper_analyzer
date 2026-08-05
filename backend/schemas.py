@@ -21,9 +21,6 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
     raw_user_meta_data: Optional[dict[str, Any]] = None
-    # "data": {
-    #         "display_name": "Jane Doe" # Appears in dashboard UI
-    #}
     
 class UserLogin(BaseModel):
     email: EmailStr
@@ -33,6 +30,7 @@ class UserEdit(BaseModel):
     email: Optional[EmailStr] = None
     password: Optional[str] = None
     raw_user_meta_data: Optional[dict[str, Any]] = None
+<<<<<<< HEAD
     
 class StickyNotesCreate(BaseModel):
     color: str
@@ -41,3 +39,5 @@ class StickyNotesCreate(BaseModel):
     position_y: float
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     document_id: UUID
+=======
+>>>>>>> origin/main

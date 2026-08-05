@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends, status
-from schemas import HistoryCreate, HistoryRead
+from schemas import HistoryCreate
 from core.db import supabase
 from core.auth import verify_cookie
 
@@ -38,7 +38,7 @@ def history_search(title: str, user=Depends(verify_cookie)):
     return response.data[0]
 
 
-@router.get("/get_title") #grabs all titles for display
+@router.get("/get_title")
 def history_get_title(user=Depends(verify_cookie)):
     response = supabase.table("history").eq("user_id", user.id).select("title").execute()
     return response.data
@@ -80,7 +80,7 @@ def history_delete(history_id: int):
         )
     return {"deleted": True, "id": history_id}
 
-@router.get("") #gets everything
+@router.get("")
 def history_get(user=Depends(verify_cookie)):
     response = supabase.table("history").select("*").eq("user_id", user.id).execute()
     return response.data
