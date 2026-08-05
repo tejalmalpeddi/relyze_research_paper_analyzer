@@ -32,9 +32,9 @@ def login(payload: UserLogin, response: Response):
 
         response.set_cookie(
             key="access_token",
-            value=f"Bearer {access_token}", # 'Bearer ' prefix makes parsing in dependencies easier
+            value=f"Bearer {access_token}",
             httponly=True,                 
-            secure=False,                    # set true over https; currently false for testing
+            secure=False,
             samesite="lax",                
             max_age=COOKIE_MAX_AGE,
             path="/"                       
@@ -55,7 +55,7 @@ def logout(response: Response, user=Depends(verify_cookie)):
             key="access_token",
             path="/",
             samesite="lax",
-            secure=False  # set true over https; currently false for testing
+            secure=False
         )
         return {"message": "Logged out successfully"}
     except Exception as e:
@@ -65,6 +65,10 @@ def logout(response: Response, user=Depends(verify_cookie)):
 def edit_user(payload: UserEdit, user=Depends(verify_cookie)):
     try:
         update_data = payload.model_dump(exclude_unset=True)
+        user_metadata = update_data.pop("raw_user_meta_data", None)
+
+        if user_metadata is not None:
+            update_data["user_metadata"] = user_metadata
 
         if not update_data:
             raise HTTPException(
@@ -88,12 +92,11 @@ def edit_user(payload: UserEdit, user=Depends(verify_cookie)):
 def delete_user(response: Response, user=Depends(verify_cookie)):
     try:
         supabase.auth.admin.delete_user(user.id)
-         # clear cookie
         response.delete_cookie(
             key="access_token",
             path="/",
             samesite="lax",
-            secure=False  # set true over https; currently false for testing
+            secure=False
         )
         return {"message": "User deleted successfully"}
     except Exception as e:
@@ -102,7 +105,7 @@ def delete_user(response: Response, user=Depends(verify_cookie)):
 @router.get("/get-user-details")
 def get_user_details(user=Depends(verify_cookie)):
     try:
-        return {"user": user}
+        return user
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to fetch user: {str(e)}")
     
@@ -113,9 +116,9 @@ def login_anonymous(response: Response):
         res = auth_client.auth.sign_in_anonymously()
         response.set_cookie(
             key="access_token",
-            value=f"Bearer {res.session.access_token}", # 'Bearer ' prefix makes parsing in dependencies easier
+            value=f"Bearer {res.session.access_token}",
             httponly=True,                 
-            secure=False,                    # set true over https; currently false for testing
+            secure=False,
             samesite="lax",                
             max_age=COOKIE_MAX_AGE,
             path="/"                       

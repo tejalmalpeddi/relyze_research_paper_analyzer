@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends, status
-from schemas import HistoryCreate, HistoryRead
+from schemas import HistoryCreate
 from core.db import supabase
 from core.auth import verify_cookie
 
@@ -7,7 +7,7 @@ router = APIRouter(prefix="/history", tags=["history"])
 
 @router.post("/create", status_code=status.HTTP_201_CREATED)
 def history_create(payload: HistoryCreate, user=Depends(verify_cookie)):
-    history_dump = payload.model_dump()
+    history_dump = payload.model_dump(mode="json")
     response = (
         supabase.table("history")
         .insert(
@@ -38,13 +38,13 @@ def history_search(title: str, user=Depends(verify_cookie)):
     return response.data[0]
 
 
-@router.get("/get_title") #grabs all titles for display
+@router.get("/get_title")
 def history_get_title(user=Depends(verify_cookie)):
     response = supabase.table("history").select("title").eq("user_id", user.id).execute()
     return response.data
 
 
-@router.get("") #gets everything
+@router.get("")
 def history_get(user=Depends(verify_cookie)):
     response = supabase.table("history").select("*").eq("user_id", user.id).execute()
     return response.data

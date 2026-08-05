@@ -5,6 +5,7 @@ from supabase import create_client, Client
 load_dotenv()
 
 supabase: Client = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
+
 #current supabase key is secret key; allows for admin behavior like deleting and editing user information
 #bypasses row level security
 #
@@ -25,6 +26,4 @@ def new_auth_client() -> Client:
     # one per request instead of reusing a shared one.
     return create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
 
-
 SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
-

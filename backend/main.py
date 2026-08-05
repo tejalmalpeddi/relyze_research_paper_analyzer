@@ -1,9 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routes import history, auth
+from app.routers.subcategories import router as subcategories_router
 
 app = FastAPI(title="Relyze API")
 
+
+# Register subcategories router (POST /api/subcategories/generate)
+app.include_router(subcategories_router)
 
 app.add_middleware(
     CORSMiddleware,
