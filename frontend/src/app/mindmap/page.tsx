@@ -23,7 +23,6 @@ import { useEffect, useState } from "react"; //react hooks. state: to remember a
 import dynamic from "next/dynamic"; //next.js package component. react flow can't be rendered on server, needs browser 
 //but next.js tries to render all pages server side to this dynamic keyword tells don't try to build this component on server
 import { useSearchParams } from "next/navigation"; //reading + changing url //curly braces: fixed syntactic name
-import NavBarFull from "@/components/navbar/NavBarFull"; //path alias prefix: @/ so it resolves to real file. no need recalc relative paths with ../ just use @/..
 import { fetchHistoryById, fetchLatestHistory } from "@/lib/api";
 import { HistoryEntry } from "@/lib/types";
 
@@ -145,8 +144,6 @@ export default function MindMapPage() {
   //this is JSX, looks like HTML but converted to plain JS 
   return (
     <div className="flex h-screen flex-col"> {/* This is a JSX comment */}
-      <NavBarFull />
-
       <div className="flex-1 bg-[#17181a]">
 
         {/* {someCondition && <div>...</div>} becomes a clean idiom: "render this JSX if the 

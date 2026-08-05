@@ -19,12 +19,8 @@
 // remembers it. Refs are most commonly used to get a direct handle on a
 // real, physical DOM element (like the hidden <input> below), so you can
 // call real browser methods on it (like .click()) from your own code.
-import { useRef, useState } from "react";
 import UploadPDF from "@/components/home/uploadpdf";
 import VisualizeBlurb from "@/components/home/visualizeblurb";
-import PreviousPapers from "@/components/home/previouspapers";
-import UploadPopup from "@/components/home/uploadpopup";
-import NavBarFull from "@/components/navbar/NavBarFull";
 import PreviousPapersSection from "@/components/History";
 
 export default function Home() {
@@ -44,7 +40,7 @@ export default function Home() {
 
 
       {/* Previous Papers Section */}
-      <PreviousPapers/>
+      <PreviousPapersSection/>
       
 
       {/* Drawer Background */}

@@ -450,7 +450,7 @@ export default function PreviousPapersSection() {
           ? "bg-[#2a2117] px-8 pt-8 pb-72"
           : "bg-[#2a2117] px-8 py-8"
       }
-      style={{ backgroundImage: "url(/background/drawer.png)", backgroundSize: "cover" }}
+      style={{ background: "rgba(0,0,0,0)" }}
     >
       {/* This inner wrapper is what actually shifts the section to the
           right: a fixed max width plus ml-auto (an "automatic" left
