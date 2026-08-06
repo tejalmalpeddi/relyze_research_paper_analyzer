@@ -70,6 +70,8 @@ relyze/
 
 ## Development Setup
 
+The frontend and backend are two separate servers — both need to be running at the same time, in two separate terminal tabs/windows, for the app to work locally.
+
 ### Prerequisites
 
 * Node.js
@@ -92,6 +94,16 @@ http://localhost:3000
 ```
 
 ### Backend
+
+Create a `backend/.env` file (git-ignored, not included in the repo) with:
+
+```text
+SUPABASE_URL=...
+SUPABASE_KEY=...
+SUPABASE_JWT_SECRET=...
+```
+
+Ask a teammate for these values — they're not committed to git.
 
 ```bash
 cd backend

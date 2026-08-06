@@ -1,20 +1,21 @@
 from schemas import UserCreate, UserLogin, UserEdit
-from core.db import supabase
+from core.db import supabase, new_auth_client
 from fastapi import APIRouter, HTTPException, Depends, status, Response
 from core.auth import verify_cookie
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-COOKIE_MAX_AGE = 7 * 24 * 60 * 60 
+COOKIE_MAX_AGE = 7 * 24 * 60 * 60
 
 @router.post("/signup", status_code=status.HTTP_201_CREATED)
 def sign_up(payload: UserCreate):
     try:
-        response = supabase.auth.sign_up(
-            {
-                "email": payload.email,
-                "password": payload.password,
-                "options": {"data": payload.raw_user_meta_data or {}},
-            }
+        # A fresh client, not the shared one -- sign_up persists a session
+        # onto whatever client runs it, and the shared client is used by
+        # every other request on this server. See core/db.py's comment on
+        # new_auth_client for why.
+        auth_client = new_auth_client()
+        response = auth_client.auth.sign_up(
+            {"email": payload.email, "password": payload.password, "options": {payload.raw_user_meta_data}}
         )
         return {"message": "User created successfully", "user": response.user}
     except Exception as e:
@@ -23,7 +24,8 @@ def sign_up(payload: UserCreate):
 @router.post("/login")
 def login(payload: UserLogin, response: Response):
     try:
-        res = supabase.auth.sign_in_with_password(
+        auth_client = new_auth_client()
+        res = auth_client.auth.sign_in_with_password(
             {"email": payload.email, "password": payload.password}
         )
         access_token = res.session.access_token
@@ -46,8 +48,9 @@ def login(payload: UserLogin, response: Response):
 @router.post("/logout")
 def logout(response: Response, user=Depends(verify_cookie)):
     try:
-        supabase.auth.sign_out(options={"scope": "local"})
-        
+        new_auth_client().auth.sign_out(options={"scope": "local"})
+
+        # clear cookie
         response.delete_cookie(
             key="access_token",
             path="/",
@@ -109,7 +112,8 @@ def get_user_details(user=Depends(verify_cookie)):
 @router.post("/login-anonymous")
 def login_anonymous(response: Response):
     try:
-        res = supabase.auth.sign_in_anonymously()
+        auth_client = new_auth_client()
+        res = auth_client.auth.sign_in_anonymously()
         response.set_cookie(
             key="access_token",
             value=f"Bearer {res.session.access_token}",

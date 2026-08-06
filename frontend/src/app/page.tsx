@@ -1,7 +1,6 @@
 // app/page.tsx
 //
 // The actual homepage -- shown at "/". Three pieces, stacked vertically:
-//   1. Navbar (components/Navbar.tsx) -- shared with the Mind Map page.
 //   2. The "hero" area -- the wood-desk background, the "Visualize your
 //      research, your way" card, and the leather upload tray.
 //   3. PreviousPapersSection (components/History.tsx) -- the whole
@@ -21,7 +20,6 @@
 // call real browser methods on it (like .click()) from your own code.
 import { useRef, useState } from "react";
 import Image from "next/image";
-import Navbar from "@/components/Navbar";
 import PreviousPapersSection from "@/components/History";
 
 export default function HomePage() {
@@ -76,11 +74,9 @@ export default function HomePage() {
   // Everything below is JSX -- describes what should appear on screen,
   // re-run every time this component re-renders (e.g. after
   // setSelectedFileName runs). Same "flex h-screen flex-col" full-page
-  // layout trick as the Mind Map page: Navbar takes a fixed strip at the
-  // top, everything else stretches to fill the rest.
+  // layout trick as the Mind Map page
   return (
-    <div className="flex h-screen flex-col">
-      <Navbar />
+    <div className="flex min-h-screen flex-col">
 
       {/* The main wood-desk hero area. */}
       <div
@@ -168,9 +164,7 @@ export default function HomePage() {
       </div>
 
       {/* The "Previous Papers" section -- entirely built and data-fetched
-          inside History.tsx. This page just drops it in, exactly like
-          <Navbar /> above -- a whole separate component's output getting
-          inserted here, with zero knowledge of it required by this file. */}
+          inside History.tsx.*/}
       <PreviousPapersSection />
     </div>
   );
