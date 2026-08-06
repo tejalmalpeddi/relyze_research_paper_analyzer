@@ -33,6 +33,16 @@ class ParserOutput(BaseModel):
     page_count: int
     pages: list[PageItem]
 
+class PrerequisiteLevels(BaseModel):
+    beginner:     list[str] = []
+    intermediate: list[str] = []
+    advanced:     list[str] = []
+
+class ContentLevels(BaseModel):
+    beginner:     str
+    intermediate: str
+    advanced:     str
+
 # --- Response (what goes OUT) ---
 
 class ContentLevels(BaseModel):
@@ -52,11 +62,19 @@ class SubcategoryItem(BaseModel):
     id: str
     name: str
     category: CategoryLiteral
+<<<<<<< HEAD
     content: ContentLevels
     sourcePage: int
     sourceSnippet: str
     relatedTerms: list[str]
     prerequisites: PrerequisiteLevels
+=======
+    content:          ContentLevels
+    sourcePage: int
+    sourceSnippet: str
+    relatedTerms: list[str]
+    prerequisites:    PrerequisiteLevels
+>>>>>>> 52c31bc (minor stuff)
     importance: int = Field(..., ge=1, le=5)  # must be 1–5
 
 class SubcategoryResponse(BaseModel):

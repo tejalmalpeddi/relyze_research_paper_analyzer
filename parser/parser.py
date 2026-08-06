@@ -19,8 +19,6 @@ MARKDOWN_FILE = PARSER_DIRECTORY / "output_paper.md"
 IMAGE_OUTPUT_DIRECTORY = PARSER_DIRECTORY / "assets"
 
 
-
-
 def extract_raw_text_from_pdf(pdf_path):
     pdf_document = pymupdf.open(pdf_path)
 
