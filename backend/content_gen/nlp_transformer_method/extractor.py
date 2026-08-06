@@ -5,10 +5,17 @@ pulls entities, key terms, and params from each chunk.
 import re
 import spacy
 
-try:
-    _nlp = spacy.load("en_core_web_sm")
-except OSError:
-    raise OSError("Run: python -m spacy download en_core_web_sm")
+_nlp = None
+
+
+def _get_nlp():
+    global _nlp
+    if _nlp is None:
+        try:
+            _nlp = spacy.load("en_core_web_sm")
+        except OSError as exc:
+            raise RuntimeError("Run: python -m spacy download en_core_web_sm") from exc
+    return _nlp
 
 PARAM_PATTERNS = [
     r"(\d+(?:\.\d+)?)\s*(°C|°F|ms|sec|min|hours?|days?|weeks?|"
@@ -28,7 +35,7 @@ GAP_SIGNALS = [
 
 
 def extract_entities(text: str) -> list[dict]:
-    doc = _nlp(text)
+    doc = _get_nlp()(text)
     seen = set()
     entities = []
     for ent in doc.ents:
@@ -43,7 +50,7 @@ def extract_entities(text: str) -> list[dict]:
 
 
 def extract_key_terms(text: str, top_n: int = 5) -> list[str]:
-    doc = _nlp(text)
+    doc = _get_nlp()(text)
     candidates = []
     for chunk in doc.noun_chunks:
         if (

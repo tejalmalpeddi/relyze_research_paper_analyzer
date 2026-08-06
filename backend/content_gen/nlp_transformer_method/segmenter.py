@@ -5,15 +5,25 @@ splits raw text into labeled chunks.
 import re
 import nltk
 
-try:
-    nltk.data.find("tokenizers/punkt_tab")
-except LookupError:
-    nltk.download("punkt_tab", quiet=True)
+_nltk_ready = False
 
-try:
-    nltk.data.find("tokenizers/punkt")
-except LookupError:
-    nltk.download("punkt", quiet=True)
+
+def _ensure_nltk_tokenizers() -> None:
+    global _nltk_ready
+    if _nltk_ready:
+        return
+
+    try:
+        nltk.data.find("tokenizers/punkt_tab")
+    except LookupError:
+        nltk.download("punkt_tab", quiet=True)
+
+    try:
+        nltk.data.find("tokenizers/punkt")
+    except LookupError:
+        nltk.download("punkt", quiet=True)
+
+    _nltk_ready = True
 
 DISCOURSE_MARKERS = re.compile(
     r"^(however|furthermore|in contrast|additionally|on the other hand|"
@@ -71,6 +81,8 @@ def _is_header(text: str) -> bool:
 def segment(text: str) -> list[dict]:
     if not text or not text.strip():
         return []
+
+    _ensure_nltk_tokenizers()
 
     text = re.sub(r"\r\n|\r", "\n", text)
     text = re.sub(r"\t", " ", text)

@@ -5,10 +5,17 @@ assigns semantic role to each chunk.
 
 from transformers import pipeline as hf_pipeline
 
-_classifier = hf_pipeline(
-    "zero-shot-classification",
-    model="cross-encoder/nli-MiniLM2-L6-H768",
-)
+_classifier = None
+
+
+def _get_classifier():
+    global _classifier
+    if _classifier is None:
+        _classifier = hf_pipeline(
+            "zero-shot-classification",
+            model="cross-encoder/nli-MiniLM2-L6-H768",
+        )
+    return _classifier
 
 SEMANTIC_ROLES = [
     "claim or assertion",
@@ -44,7 +51,7 @@ def classify_chunk(text: str) -> tuple[str, float]:
     if not text or len(text.strip()) < 20:
         return "background", 0.5
 
-    result = _classifier(text[:512], SEMANTIC_ROLES, multi_label=False)
+    result = _get_classifier()(text[:512], SEMANTIC_ROLES, multi_label=False)
     top_label = result["labels"][0]
     top_score = result["scores"][0]
     role = LABEL_MAP.get(top_label, "background")

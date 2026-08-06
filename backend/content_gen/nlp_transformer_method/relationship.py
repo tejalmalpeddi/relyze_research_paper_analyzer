@@ -5,7 +5,14 @@ builds edges between nodes.
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
-_embedder = SentenceTransformer("all-MiniLM-L6-v2")
+_embedder = None
+
+
+def _get_embedder():
+    global _embedder
+    if _embedder is None:
+        _embedder = SentenceTransformer("all-MiniLM-L6-v2")
+    return _embedder
 
 SEQUENTIAL_ROLES = {"step", "method"}
 
@@ -47,7 +54,7 @@ def build_edges(nodes: list[dict]) -> list[dict]:
 
     if len(nodes) > 1:
         texts      = [n["content"] for n in nodes]
-        embeddings = _embedder.encode(texts)
+        embeddings = _get_embedder().encode(texts)
         sim_matrix = cosine_similarity(embeddings)
 
         for i in range(len(nodes)):
