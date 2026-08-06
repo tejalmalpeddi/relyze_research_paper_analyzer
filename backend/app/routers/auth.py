@@ -1,7 +1,7 @@
-from schemas import UserCreate, UserLogin, UserEdit
-from core.db import supabase, new_auth_client
+from app.schemas.schemas import UserCreate, UserLogin, UserEdit
+from app.core.db import supabase, new_auth_client
 from fastapi import APIRouter, HTTPException, Depends, status, Response
-from core.auth import verify_cookie
+from app.core.auth import verify_cookie
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 COOKIE_MAX_AGE = 7 * 24 * 60 * 60
@@ -15,7 +15,7 @@ def sign_up(payload: UserCreate):
         # new_auth_client for why.
         auth_client = new_auth_client()
         response = auth_client.auth.sign_up(
-            {"email": payload.email, "password": payload.password, "options": {payload.raw_user_meta_data}}
+            {"email": payload.email, "password": payload.password}
         )
         return {"message": "User created successfully", "user": response.user}
     except Exception as e:

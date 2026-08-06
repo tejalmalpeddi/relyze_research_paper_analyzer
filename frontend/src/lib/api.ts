@@ -179,19 +179,18 @@ export async function fetchStickyNotes(documentId: string | number) {
         method: "GET",
         credentials: "include",
     });
-    if (!res.ok) throw new Error("Failed to fetch sticky notes");
+    if (!res.ok) return {};
     return res.json();
 }
 
-export async function createStickyNotes(payload: {
-    document_id: string | number;
+export async function createStickyNotes(documentId: string | number, payload: {
     color: string;
     content: string;
     position_x: number;
     position_y: number;
     created_at: string;
 }) {
-    const res = await fetch(`${API_URL}/sticky_notes/create`, {
+    const res = await fetch(`${API_URL}/sticky_notes/create/${documentId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

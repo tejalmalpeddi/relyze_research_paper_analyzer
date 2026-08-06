@@ -13,15 +13,15 @@ export function StickyToolbar({ onSelectColor, activeColor }: StickyToolbarProps
     const [isOpen, setIsOpen] = useState(false);
 
     return (
-        <div className="relative flex items-center gap-2 bg-[#212327] border border-stone-700 p-1.5 rounded-full shadow-lg">
+        <div className="relative flex items-center gap-2 bg-[#212327] border border-stone-700 p-1.5 rounded-md shadow-lg">
             {/* add sticky note */}
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-200 text-stone-900 hover:bg-amber-300 font-bold"
+                className="flex h-9 w-9 items-center justify-center bg-white rounded-md text-stone-900 hover:bg-stone-400 font-bold"
                 title="Add Sticky Note"
             >
-                📄
+                +
             </button>
 
             {/* color palette */}

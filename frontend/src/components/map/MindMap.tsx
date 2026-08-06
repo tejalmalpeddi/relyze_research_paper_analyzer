@@ -483,34 +483,87 @@ function MapCanvas({ entry }: MapCanvasProps) {
         return visited;
     }, [rootIds, children, expandedIds]);
 
-    useEffect(() => {
-        async function loadStickyNotes() {
-            if (!entry?.id) return;
-            try {
-                const data = await fetchStickyNotes(entry.id);
-                if (Array.isArray(data)) {
-                    const loadedNotes: Node<StickyNoteData>[] = data.map((item: any) => ({
-                        id: `sticky-${item.id || Math.random()}`,
-                        type: "stickyNote",
-                        position: { x: item.position_x ?? 0, y: item.position_y ?? 0 },
-                        data: {
-                            content: item.content ?? "",
-                            color: item.color ?? "#4281a4",
-                            isEditing: false,
-                        },
-                    }));
-                    setNodes((prevNodes) => [
-                        ...prevNodes.filter((n) => n.type !== "stickyNote"),
-                        ...loadedNotes,
-                    ]);
-                }
-            } catch (error) {
-                console.error("Failed to load sticky notes:", error);
+    const { layoutedMindMapNodes, visibleEdge } = useMemo(() => {
+        const unpositionedNodes: Node<PaperNodeData>[] = [];
+
+        for (const node of rawNodes) {
+            if (visibleIds.has(node.id) === false) continue;
+
+            const depth = depths.get(node.id) ?? 0;
+            const childIds = children.get(node.id);
+            const childCount = childIds !== undefined ? childIds.length : 0;
+
+            unpositionedNodes.push({
+                id: node.id,
+                type: "paper",
+                position: { x: 0, y: 0 },
+                data: {
+                    title: node.data.title,
+                    bullets: node.data.bullets,
+                    depth: depth,
+                    isExpanded: expandedIds.has(node.id),
+                    childCount: childCount,
+                    handleColor: depth > 0 ? colorForDepth(depth - 1) : undefined,
+                    expandColor: colorForDepth(depth),
+                    onToggleChildren: () => toggleExpand(node.id),
+                },
+            });
+        }
+
+        const filteredEdges: Edge[] = [];
+        for (const edge of edges) {
+            if (visibleIds.has(edge.source) === true && visibleIds.has(edge.target) === true) {
+                const sourceDepth = depths.get(edge.source) ?? 0;
+                filteredEdges.push({
+                    ...edge,
+                    type: "straight",
+                    style: {
+                        stroke: colorForDepth(sourceDepth),
+                        strokeWidth: 5,
+                        strokeLinecap: "round",
+                    },
+                });
             }
         }
 
-        loadStickyNotes();
-    }, [entry?.id, setNodes]);
+        const layoutedNodes = layoutNodesWithDagre(unpositionedNodes, filteredEdges);
+        return { layoutedMindMapNodes: layoutedNodes, visibleEdge: filteredEdges };
+    }, [rawNodes, edges, visibleIds, depths, children, expandedIds]);
+
+    useEffect(() => {
+        async function loadAndSyncNodes() {
+            let fetchedStickyNodes: Node<StickyNoteData>[] = [];
+            
+            if (entry?.id) {
+                try {
+                    const data = await fetchStickyNotes(entry.id);
+                    if (Array.isArray(data)) {
+                        fetchedStickyNodes = data.map((item: any) => ({
+                            id: `sticky-${item.id || Math.random()}`,
+                            type: "stickyNote",
+                            position: { x: item.position_x ?? 0, y: item.position_y ?? 0 },
+                            data: {
+                                content: item.content ?? "",
+                                color: item.color ?? "#4281a4",
+                                isEditing: false,
+                            },
+                        }));
+                    }
+                } catch (error) {
+                    console.error("Failed to load sticky notes:", error);
+                }
+            }
+
+            // Merge sticky notes and mind map nodes so both always appear
+            setNodes([...fetchedStickyNodes, ...layoutedMindMapNodes]);
+        }
+
+        loadAndSyncNodes();
+    }, [entry?.id, layoutedMindMapNodes, setNodes]);
+
+   useEffect(() => {
+        setEdges(visibleEdge);
+    }, [visibleEdge, setEdges]);
 
     const handleMouseMove = (e: React.MouseEvent) => {
         if (!placingColor) return;
@@ -524,8 +577,7 @@ function MapCanvas({ entry }: MapCanvasProps) {
         const createdAt = new Date().toISOString();
 
         try {
-            await createStickyNotes({
-                document_id: entry.id,
+            await createStickyNotes(entry.id, {
                 color: placingColor,
                 content: "",
                 position_x: canvasPos.x,
@@ -594,12 +646,14 @@ function MapCanvas({ entry }: MapCanvasProps) {
             >
                 <Panel position="bottom-left" className="!z-[9999] pointer-events-auto">
                     <div className="flex items-center gap-4 bg-[#212327]/90 p-2 rounded-full border border-stone-700 backdrop-blur-md shadow-2xl">
+                        <br />
                         <DifficultyToggle selectedLevel={selectedLevel} onSelectLevel={setSelectedLevel} />
-                        <ZoomControls />
                         <StickyToolbar
                             activeColor={placingColor}
                             onSelectColor={(color) => setPlacingColor(color)}
                         />
+                        <ZoomControls />
+                        <br />
                     </div>
                 </Panel>
             </ReactFlow>

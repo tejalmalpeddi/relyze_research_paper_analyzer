@@ -26,7 +26,7 @@ export default function AuthTest() {
     };
 
     return (
-        <div style={{ maxWidth: '400px', margin: '40px auto', fontFamily: 'sans-serif' }}>
+        <div style={{ maxWidth: '400px', margin: '40px auto', fontFamily: 'sans-serif' , alignItems: 'center', paddingTop: '140px'}}>
             {msg && <p style={{ color: msg.startsWith('Error') ? 'red' : 'green' }}>{msg}</p>}
 
             {!isAuthenticated ? (

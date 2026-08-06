@@ -1,9 +1,10 @@
 from fastapi import APIRouter, HTTPException, Depends, status
-from schemas import HistoryCreate
-from core.db import supabase
-from core.auth import verify_cookie
+from app.schemas.schemas import HistoryCreate
+from app.core.db import supabase
+from app.core.auth import verify_cookie
 
 router = APIRouter(prefix="/history", tags=["history"])
+
 
 @router.post("/create", status_code=status.HTTP_201_CREATED)
 def history_create(payload: HistoryCreate, user=Depends(verify_cookie)):
@@ -16,7 +17,7 @@ def history_create(payload: HistoryCreate, user=Depends(verify_cookie)):
                 "title": history_dump["title"],
                 "map_json": history_dump["map_json"],
                 "filters": history_dump["filters"],
-                "user_id": user.id
+                "user_id": user.id,
             }
         )
         .execute()
@@ -30,7 +31,13 @@ def history_create(payload: HistoryCreate, user=Depends(verify_cookie)):
 
 @router.get("/search")
 def history_search(title: str, user=Depends(verify_cookie)):
-    response = supabase.table("history").select("*").eq("user_id", user.id).eq("title", title).execute()
+    response = (
+        supabase.table("history")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("title", title)
+        .execute()
+    )
     if not response.data:
         raise HTTPException(
             status_code=400, detail=f"History item with title '{title}' not found."
@@ -40,8 +47,11 @@ def history_search(title: str, user=Depends(verify_cookie)):
 
 @router.get("/get_title")
 def history_get_title(user=Depends(verify_cookie)):
-    response = supabase.table("history").select("title").eq("user_id", user.id).execute()
+    response = (
+        supabase.table("history").select("title").eq("user_id", user.id).execute()
+    )
     return response.data
+
 
 # Added so the Mind Map page can ask the database directly for whichever
 # saved paper is newest, instead of downloading every row and comparing
@@ -50,10 +60,11 @@ def history_get_title(user=Depends(verify_cookie)):
 # "latest" as that route's numeric history_id and reject it before ever
 # reaching this route.
 @router.get("/latest")
-def history_get_latest():
+def history_get_latest(user=Depends(verify_cookie)):
     response = (
         supabase.table("history")
         .select("*")
+        .eq("user_id", user.id)
         .order("created_at", desc=True)
         .limit(1)
         .execute()
@@ -61,6 +72,7 @@ def history_get_latest():
     if not response.data:
         raise HTTPException(status_code=404, detail="No saved papers exist yet.")
     return response.data[0]
+
 
 @router.get("/{history_id}")
 def history_get_by_id(history_id: int):
@@ -71,6 +83,7 @@ def history_get_by_id(history_id: int):
         )
     return response.data[0]
 
+
 @router.delete("/{history_id}", status_code=status.HTTP_200_OK)
 def history_delete(history_id: int):
     response = supabase.table("history").delete().eq("id", history_id).execute()
@@ -79,6 +92,7 @@ def history_delete(history_id: int):
             status_code=404, detail=f"History item with id '{history_id}' not found."
         )
     return {"deleted": True, "id": history_id}
+
 
 @router.get("")
 def history_get(user=Depends(verify_cookie)):

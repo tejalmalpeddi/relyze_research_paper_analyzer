@@ -20,7 +20,6 @@ class HistoryRead(BaseModel):
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
-    raw_user_meta_data: Optional[dict[str, Any]] = None
     
 class UserLogin(BaseModel):
     email: EmailStr
@@ -29,8 +28,6 @@ class UserLogin(BaseModel):
 class UserEdit(BaseModel):
     email: Optional[EmailStr] = None
     password: Optional[str] = None
-    raw_user_meta_data: Optional[dict[str, Any]] = None
-<<<<<<< HEAD
     
 class StickyNotesCreate(BaseModel):
     color: str
@@ -38,6 +35,3 @@ class StickyNotesCreate(BaseModel):
     position_x: float
     position_y: float
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    document_id: UUID
-=======
->>>>>>> origin/main
