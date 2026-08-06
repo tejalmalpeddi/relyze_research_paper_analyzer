@@ -19,11 +19,20 @@ Return a JSON array of objects. Each object must have exactly these fields:
 - category       : one of exactly: "Problem", "Background", "Method",
                    "Architecture", "Dataset", "Experiment", "Result",
                    "Limitation", "Future Work", "Key Term"
-- shortExplanation : string, 1–2 sentence description
+- content           : object with exactly three keys:
+    - beginner      : 1-2 sentence explanation using simple language, 
+                      no jargon, analogies welcome
+    - intermediate  : 2-3 sentence explanation assuming general literacy
+                      but not domain expertise  
+    - advanced      : 2-3 sentence precise technical explanation using
+                      domain terminology and specifics
 - sourcePage     : integer, page number where this concept appears
 - sourceSnippet  : string, brief verbatim or near-verbatim excerpt (≤150 chars)
 - relatedTerms   : array of 2–4 related technical term strings
-- prerequisites  : array of 0–3 prerequisite concept strings
+- prerequisites     : object with exactly three keys:
+    - beginner      : array of 0-2 basic prerequisite concepts
+    - intermediate  : array of 0-3 prerequisite concepts
+    - advanced      : array of 0-4 prerequisite concepts
 - importance     : integer 1–5 (5 = most central to the paper)
 
 Return 8–15 subcategories that best represent the paper's concept map.
