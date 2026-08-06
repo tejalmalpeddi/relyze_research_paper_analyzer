@@ -21,7 +21,7 @@
 // call real browser methods on it (like .click()) from your own code.
 import UploadPDF from "@/components/home/uploadpdf";
 import VisualizeBlurb from "@/components/home/visualizeblurb";
-import PreviousPapersSection from "@/components/History";
+import PreviousPapers from "@/components/home/previouspapers";
 
 export default function Home() {
 
@@ -40,7 +40,7 @@ export default function Home() {
 
 
       {/* Previous Papers Section */}
-      <PreviousPapersSection/>
+      <PreviousPapers/>
       
 
       {/* Drawer Background */}

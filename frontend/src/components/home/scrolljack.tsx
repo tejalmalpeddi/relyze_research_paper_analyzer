@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 
-export default function useScrollSync() {
+export default function useScrollJack() {
   const listRef = useRef<HTMLUListElement | null>(null);
 
   useEffect(() => {
