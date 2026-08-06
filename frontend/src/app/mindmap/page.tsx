@@ -19,7 +19,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react"; //react hooks. state: to remember a value across renders. effect: run code in response to something changing. never runs in server, browser dependent fully
+import { Suspense, useEffect, useState } from "react"; //react hooks. state: to remember a value across renders. effect: run code in response to something changing. never runs in server, browser dependent fully
 import dynamic from "next/dynamic"; //next.js package component. react flow can't be rendered on server, needs browser 
 //but next.js tries to render all pages server side to this dynamic keyword tells don't try to build this component on server
 import { useSearchParams } from "next/navigation"; //reading + changing url //curly braces: fixed syntactic name
@@ -38,6 +38,12 @@ const MindMapView = dynamic(
   { ssr: false } //don't render on server 
 );
 
+interface MindMapLoadState {
+  requestKey: string | null | undefined;
+  matchedEntry: HistoryEntry | null;
+  loadErrorMessage: string | null;
+}
+
 //page.tsx will be default render for /mindmap route
 //function MindMapPage() { ... } is just a blueprint — like a recipe written on paper. 
 // The recipe itself doesn't "hold" any ingredients; it only becomes a real thing when 
@@ -47,6 +53,20 @@ const MindMapView = dynamic(
 // recipe/blueprint sitting in the file.
 
 export default function MindMapPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-screen items-center justify-center bg-[#17181a] font-serif text-stone-400">
+          Loading...
+        </div>
+      }
+    >
+      <MindMapPageContent />
+    </Suspense>
+  );
+}
+
+function MindMapPageContent() {
   // useSearchParams() reads whatever comes after the "?" in the current
   // URL. For a URL like "/mindmap?id=42", searchParams.get("id") gives
   // back the string "42". For a plain "/mindmap" with no "?" at all, it
@@ -64,14 +84,18 @@ export default function MindMapPage() {
   // and (2) a function you can call to change that value. 
   //setMatchedEntry function is called later in code and over there, it is handed a diff value
   //calling setMatchedEntry function updates the stored value and tells react to rerender component with new value 
-  const [matchedEntry, setMatchedEntry] = useState<HistoryEntry | null>(null);
+  const [loadState, setLoadState] = useState<MindMapLoadState>({
+    requestKey: undefined,
+    matchedEntry: null,
+    loadErrorMessage: null,
+  });
+  const matchedEntry = loadState.matchedEntry;
   //matchedEntry is either a HistoryEntry object or null
   //argument passed in parenthesis: null: is initial value at first ever render. 
   //matchedEntry's current value is stored in React's memory and calling function
-  
-  const [isLoading, setIsLoading] = useState(true);
+  const isLoading = loadState.requestKey !== requestedIdText;
   //type by default is boolean <>
-  const [loadErrorMessage, setLoadErrorMessage] = useState<string | null>(null);
+  const loadErrorMessage = loadState.loadErrorMessage;
 
   //Whether state survives depends on whether you ever actually left the /mindmap route. 
   // Bouncing between different ?id= values while staying on /mindmap keeps the same instance 
@@ -82,7 +106,7 @@ export default function MindMapPage() {
   // time you land back on /, rather than remembering it from a previous visit.
 
   useEffect(() => {
-    setIsLoading(true);
+    let isCurrentRequest = true;
 
     if (requestedIdText !== null) {
       // Reached via a specific paper's "redirect" button -- ask the
@@ -93,15 +117,22 @@ export default function MindMapPage() {
       const requestedIdNumber = Number(requestedIdText); //convert query text to number
       fetchHistoryById(requestedIdNumber) //api.ts route, parameter new 
         .then((fetchedEntry) => { //fetchedEntry is the HistoryEntry object 
-          setMatchedEntry(fetchedEntry); //stored as a paper to display 
-          setLoadErrorMessage(null); //clear out previous attempt 
+          if (isCurrentRequest === true) {
+            setLoadState({
+              requestKey: requestedIdText,
+              matchedEntry: fetchedEntry,
+              loadErrorMessage: null,
+            }); //stored as a paper to display 
+          }
         })
         .catch(() => {
-          setMatchedEntry(null);
-          setLoadErrorMessage(null);
-        })
-        .finally(() => {
-          setIsLoading(false);
+          if (isCurrentRequest === true) {
+            setLoadState({
+              requestKey: requestedIdText,
+              matchedEntry: null,
+              loadErrorMessage: null,
+            });
+          }
         });
     } else {
       // Reached via the plain "Mind Map" navbar tab, with no specific
@@ -109,17 +140,28 @@ export default function MindMapPage() {
       // was saved most recently (GET /history/latest). 
       fetchLatestHistory()
         .then((fetchedEntry) => {
-          setMatchedEntry(fetchedEntry);
-          setLoadErrorMessage(null);
+          if (isCurrentRequest === true) {
+            setLoadState({
+              requestKey: requestedIdText,
+              matchedEntry: fetchedEntry,
+              loadErrorMessage: null,
+            });
+          }
         })
         .catch(() => {
-          setMatchedEntry(null);
-          setLoadErrorMessage(null);
-        })
-        .finally(() => {
-          setIsLoading(false);
+          if (isCurrentRequest === true) {
+            setLoadState({
+              requestKey: requestedIdText,
+              matchedEntry: null,
+              loadErrorMessage: null,
+            });
+          }
         });
     }
+
+    return () => {
+      isCurrentRequest = false;
+    };
   }, [requestedIdText]);
 
   //^^ is the second argument to the useEffect, dependency array. 
