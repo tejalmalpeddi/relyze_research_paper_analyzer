@@ -1,9 +1,11 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers.history import router as history_router
 from app.routers.auth import router as auth_router
 from app.routers.stickynotes import router as sticky_router
 from app.routers.subcategories import router as subcategories_router
+from pydantic import BaseModel
+from content_gen.nlp_transformer_method.pipeline import run_pipeline
 
 app = FastAPI(title="Relyze API")
 
@@ -18,8 +20,6 @@ app.add_middleware(
 app.include_router(history_router)
 app.include_router(auth_router)
 app.include_router(sticky_router)
-
-# Register subcategories router (POST /api/subcategories/generate)
 app.include_router(subcategories_router)
 
 
@@ -31,3 +31,17 @@ def read_root():
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
+
+
+class GenerateMapRequest(BaseModel):
+    document_id: str
+
+@app.post("/generate-map")
+async def generate_map_endpoint(request: GenerateMapRequest):
+    try:
+        result = run_pipeline(document_id=request.document_id)
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

@@ -9,7 +9,7 @@ import uuid
 from pathlib import Path
 import re
 
-from app.schemas.subcategories import SubcategoryItem, SubcategoryResponse
+from app.schemas.subcategories import SubcategoryItem, SubcategoryResponse, ContentLevels, PrerequisiteLevels
 
 logger = logging.getLogger(__name__)
 
@@ -30,11 +30,15 @@ def _fallback_placeholder(pages: list[dict]) -> list[SubcategoryItem]:
             id="sub_1",
             name="Document Overview",
             category="Background",
-            shortExplanation="Add a GROQ_API_KEY to your .env to generate AI-powered concept map nodes.",
+            content=ContentLevels(
+                beginner="Add a GROQ_API_KEY to your .env to generate AI-powered concept map nodes.",
+                intermediate="Add a GROQ_API_KEY to your .env to generate AI-powered concept map nodes.",
+                advanced="Add a GROQ_API_KEY to your .env to generate AI-powered concept map nodes.",
+            ),
             sourcePage=1,
             sourceSnippet=snippet,
             relatedTerms=[],
-            prerequisites=[],
+            prerequisites=PrerequisiteLevels(),
             importance=3,
         )
     ]

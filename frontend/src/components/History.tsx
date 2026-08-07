@@ -456,11 +456,11 @@ export default function PreviousPapersSection() {
           right: a fixed max width plus ml-auto (an "automatic" left
           margin) makes the block hug the right edge of the outer div
           instead of stretching across the whole page. */}
-      <div className="ml-auto w-full max-w-400">
+      <div className="w-full px-10">
         <div className="mb-6 flex items-center justify-between pt-5">
           <h2 className="font-serif text-xl font-bold text-stone-100">Previous Papers</h2>
 
-          <div className="relative mr-10">
+          <div className="relative">
             <button
               type="button"
               onClick={handleFiltersButtonClick}
