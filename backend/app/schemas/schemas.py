@@ -35,3 +35,10 @@ class StickyNotesCreate(BaseModel):
     position_x: float
     position_y: float
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    
+class StickyNotesUpdate(BaseModel):
+    id: UUID
+    color: str | None = None
+    content: str | None = None
+    position_x: float | None = None
+    position_y: float | None = None

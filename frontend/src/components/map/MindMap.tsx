@@ -22,7 +22,7 @@ import "@xyflow/react/dist/style.css";
 import { HistoryEntry, MapNode } from "@/lib/types";
 import { StickyNoteNode, StickyNoteData } from "./StickyNote";
 import { StickyToolbar } from "./StickyNoteToolbar";
-import { fetchStickyNotes, createStickyNotes } from "@/lib/api";
+import { fetchStickyNotes, createStickyNotes, editStickyNotes } from "@/lib/api";
 
 const ebGaramond = EB_Garamond({
     weight: ["400"],
@@ -533,7 +533,7 @@ function MapCanvas({ entry }: MapCanvasProps) {
     useEffect(() => {
         async function loadAndSyncNodes() {
             let fetchedStickyNodes: Node<StickyNoteData>[] = [];
-            
+
             if (entry?.id) {
                 try {
                     const data = await fetchStickyNotes(entry.id);
@@ -546,6 +546,7 @@ function MapCanvas({ entry }: MapCanvasProps) {
                                 content: item.content ?? "",
                                 color: item.color ?? "#4281a4",
                                 isEditing: false,
+                                documentId: entry.id,
                             },
                         }));
                     }
@@ -554,14 +555,13 @@ function MapCanvas({ entry }: MapCanvasProps) {
                 }
             }
 
-            // Merge sticky notes and mind map nodes so both always appear
             setNodes([...fetchedStickyNodes, ...layoutedMindMapNodes]);
         }
 
         loadAndSyncNodes();
     }, [entry?.id, layoutedMindMapNodes, setNodes]);
 
-   useEffect(() => {
+    useEffect(() => {
         setEdges(visibleEdge);
     }, [visibleEdge, setEdges]);
 
@@ -604,6 +604,20 @@ function MapCanvas({ entry }: MapCanvasProps) {
         setPlacingColor(null);
     };
 
+    const handleNodeDragStop = async (_event: any, node: Node) => {
+        if (!node.id.startsWith("sticky-")) return;
+
+        try {
+            await editStickyNotes(entry.id, {
+                id: node.id.replace("sticky-", ""),
+                position_x: node.position.x,
+                position_y: node.position.y,
+            });
+        } catch (error) {
+            console.error("Failed to update sticky note position:", error);
+        }
+    };
+
     useEffect(() => {
         fitView({ duration: 250 });
     }, [expandedIds, fitView]);
@@ -635,6 +649,7 @@ function MapCanvas({ entry }: MapCanvasProps) {
                 edges={visibleEdges}
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
+                onNodeDragStop={handleNodeDragStop}
                 nodeTypes={nodeTypes}
                 nodesDraggable={true}
                 nodesConnectable={false}

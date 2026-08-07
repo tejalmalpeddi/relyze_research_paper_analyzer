@@ -17,7 +17,7 @@
 // build a URL matching one specific backend route, send the request, 
 // hand the raw response through handleResponse for parsing/error-checking. 
 
-import { HistoryCreatePayload, HistoryEntry } from "./types";
+import { HistoryCreatePayload, HistoryEntry, StickyNotePayload, StickyNoteEdit } from "./types";
 //generic type ^^ later comes in to play 
 
 // Where the backend actually lives. NEXT_PUBLIC_API_URL can be set in a
@@ -183,13 +183,7 @@ export async function fetchStickyNotes(documentId: string | number) {
     return res.json();
 }
 
-export async function createStickyNotes(documentId: string | number, payload: {
-    color: string;
-    content: string;
-    position_x: number;
-    position_y: number;
-    created_at: string;
-}) {
+export async function createStickyNotes(documentId: string | number, payload: StickyNotePayload) {
     const res = await fetch(`${API_URL}/sticky_notes/create/${documentId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -206,5 +200,16 @@ export async function clearStickyNotes(documentId: string | number) {
         credentials: "include",
     });
     if (!res.ok) throw new Error("Failed to clear sticky notes");
+    return res.json();
+}
+
+export async function editStickyNotes(documentId: string | number, payload: StickyNoteEdit) {
+    const res = await fetch(`${API_URL}/sticky_notes/edit/${documentId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error("Failed to edit sticky notes");
     return res.json();
 }

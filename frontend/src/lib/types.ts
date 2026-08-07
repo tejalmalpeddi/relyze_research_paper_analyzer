@@ -102,8 +102,16 @@ export interface StickyNotePayload {
   color: string;
   content: string;
   position_x: number;
-  position_: number;
+  position_y: number;
   created_at?: string;
+}
+
+export interface StickyNoteEdit {
+  id: string;
+  color?: string;
+  content?: string;
+  position_x?: number;
+  position_y?: number;
 }
 
 export interface StickyNoteEntry {

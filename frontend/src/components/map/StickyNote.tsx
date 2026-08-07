@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { NodeProps, Node, useReactFlow } from "@xyflow/react";
+import { editStickyNotes } from "@/lib/api";
 
 export interface StickyNoteData extends Record<string, unknown> {
     content: string;
@@ -46,11 +47,23 @@ export function StickyNoteNode({ id, data, selected }: NodeProps<StickyFlowNode>
         );
     };
 
+    const saveChanges = async () => {
+        try {
+            await editStickyNotes(data.documentId as string | number, {
+                id: id.replace("sticky-", ""),
+                content: data.content,
+            });
+        } catch (error) {
+            console.error("Failed to update sticky note content:", error);
+        }
+    };
+
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if ((e.key === "Enter" && !e.shiftKey) || e.key === "Escape") {
             e.preventDefault();
             setIsEditing(false);
         }
+        saveChanges();
     };
 
     return (
@@ -71,12 +84,12 @@ export function StickyNoteNode({ id, data, selected }: NodeProps<StickyFlowNode>
                     onChange={handleTextChange}
                     onKeyDown={handleKeyDown}
                     onBlur={() => setIsEditing(false)}
-                    placeholder="Type anything"
+                    placeholder="Type anything and enter to save"
                     className="w-full h-full bg-transparent resize-none focus:outline-none text-stone-900 font-sans text-sm nodrag nopan"
                 />
             ) : (
                 <div className="w-full h-full text-stone-900 font-sans text-sm whitespace-pre-wrap overflow-auto">
-                    {data.content || <span className="text-stone-600 italic">Type anything</span>}
+                    {data.content || <span className="text-stone-600 italic">Type anything and enter to save</span>}
                 </div>
             )}
         </div>
