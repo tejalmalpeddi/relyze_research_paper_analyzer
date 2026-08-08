@@ -91,7 +91,7 @@ def sticky_notes_edit(documents_id: int, payload: StickyNotesUpdate, user=Depend
     if not history_check.data:
         raise HTTPException(status_code=404, detail="Wrong user.")
     
-    update_data = {k: v for k, v in payload.model_dump(mode="json").items() if v is not None and k is not "id"}
+    update_data = {k: v for k, v in payload.model_dump(mode="json").items() if v is not None and k != "id"}
     response = (
         supabase.table("sticky_notes")
         .update(update_data)
