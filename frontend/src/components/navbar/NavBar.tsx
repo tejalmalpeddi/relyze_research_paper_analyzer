@@ -159,7 +159,7 @@ export default function NavBar({
                   alt="Profile"
                   width={50}
                   height={50}
-                  src="/icons/profile.png"
+                  src="/icons/profile-placeholder.svg"
                   className={styles.profileImage}
                 />
               )}

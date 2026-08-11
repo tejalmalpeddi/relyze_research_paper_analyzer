@@ -281,7 +281,7 @@ export default function ProfileFolder({
                 {profileSrc ? (
                   <Image alt="Profile picture" fill src={profileSrc} className={styles.imgCover} />
                 ) : (
-                  <Image alt="Profile picture" fill src="/icons/profile.png" className={styles.profileCardPlaceholder} />
+                  <Image alt="Profile picture" fill src="/icons/profile-placeholder.svg" className={styles.profileCardPlaceholder} />
                 )}
               </div>
             </div>

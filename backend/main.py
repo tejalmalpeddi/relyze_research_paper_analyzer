@@ -1,14 +1,13 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from routes import history, auth
+from app.routers.history import router as history_router
+from app.routers.auth import router as auth_router
+from app.routers.stickynotes import router as sticky_router
 from app.routers.subcategories import router as subcategories_router
 from pydantic import BaseModel
 from content_gen.nlp_transformer_method.pipeline import run_pipeline
 
 app = FastAPI(title="Relyze API")
-
-
-app.include_router(subcategories_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -18,8 +17,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(history.router)
-app.include_router(auth.router)
+app.include_router(history_router)
+app.include_router(auth_router)
+app.include_router(sticky_router)
+app.include_router(subcategories_router)
 
 
 @app.get("/")
