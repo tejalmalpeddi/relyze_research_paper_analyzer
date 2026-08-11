@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { AuthMessageResponse, UserLogin, UserProfile, UserEdit, AuthContextType } from './auth-types';
