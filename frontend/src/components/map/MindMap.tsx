@@ -577,7 +577,7 @@ function MapCanvas({ entry }: MapCanvasProps) {
         const createdAt = new Date().toISOString();
 
         try {
-            await createStickyNotes(entry.id, {
+            const createdStickyNote = await createStickyNotes(entry.id, {
                 color: placingColor,
                 content: "",
                 position_x: canvasPos.x,
@@ -586,13 +586,14 @@ function MapCanvas({ entry }: MapCanvasProps) {
             });
 
             const newStickyNode: Node<StickyNoteData> = {
-                id: `sticky-${Date.now()}`,
+                id: `sticky-${createdStickyNote.id}`,
                 type: "stickyNote",
                 position: canvasPos,
                 data: {
                     content: "",
                     color: placingColor,
                     isEditing: true,
+                    documentId: entry.id,
                 },
             };
 
