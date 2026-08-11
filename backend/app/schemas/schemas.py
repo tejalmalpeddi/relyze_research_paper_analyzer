@@ -38,7 +38,7 @@ class StickyNotesCreate(BaseModel):
     
 class StickyNotesUpdate(BaseModel):
     id: UUID
-    color: str | None = None
-    content: str | None = None
-    position_x: float | None = None
-    position_y: float | None = None
+    color: Optional[str] = None
+    content: Optional[str] = None
+    position_x: Optional[float] = None
+    position_y: Optional[float] = None

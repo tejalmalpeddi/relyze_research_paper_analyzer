@@ -189,6 +189,24 @@ def extract_images_from_pdf(
     print(f"Done. {saved_count} image file(s) saved to {output_path}")
 
 
+def parse_and_save_pdf(pdf_path):
+    pdf_path = Path(pdf_path)
+
+    raw_text_data = extract_raw_text_from_pdf(pdf_path)
+    markdown_document, structured_document = extract_structured_document(pdf_path)
+
+    supabase = connect_to_supabase()
+    response = save_document(
+        supabase,
+        pdf_path.name,
+        raw_text_data,
+        structured_document,
+        markdown_document,
+    )
+
+    return response.data[0]
+
+
 if __name__ == "__main__":
     # Extract plain text using PyMuPDF
     raw_text_data = extract_raw_text_from_pdf(PDF_INPUT_FILE)

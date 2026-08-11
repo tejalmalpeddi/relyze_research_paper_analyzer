@@ -13,8 +13,9 @@ export interface StickyNoteData extends Record<string, unknown> {
 export type StickyFlowNode = Node<StickyNoteData, "stickyNote">;
 
 export function StickyNoteNode({ id, data, selected }: NodeProps<StickyFlowNode>) {
-    const { setNodes, deleteElements } = useReactFlow();
+    const { setNodes } = useReactFlow();
     const [isEditing, setIsEditing] = useState<boolean>(!!data.isEditing);
+    const [content, setContent] = useState<string>(data.content);
     const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
     // cursor placed + text highlighted
@@ -25,19 +26,9 @@ export function StickyNoteNode({ id, data, selected }: NodeProps<StickyFlowNode>
         }
     }, [isEditing]);
 
-    // backspace deletion whe selected
-    useEffect(() => {
-        function handleKeyDown(e: KeyboardEvent) {
-            if (selected && !isEditing && (e.key === "Backspace" || e.key === "Delete")) {
-                deleteElements({ nodes: [{ id }] });
-            }
-        }
-        window.addEventListener("keydown", handleKeyDown);
-        return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [selected, isEditing, id, deleteElements]);
-
     const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         const newContent = e.target.value;
+        setContent(newContent);
         setNodes((nds) =>
             nds.map((node) =>
                 node.id === id
@@ -47,11 +38,11 @@ export function StickyNoteNode({ id, data, selected }: NodeProps<StickyFlowNode>
         );
     };
 
-    const saveChanges = async () => {
+    const saveChanges = async (nextContent: string) => {
         try {
             await editStickyNotes(data.documentId as string | number, {
                 id: id.replace("sticky-", ""),
-                content: data.content,
+                content: nextContent,
             });
         } catch (error) {
             console.error("Failed to update sticky note content:", error);
@@ -61,9 +52,9 @@ export function StickyNoteNode({ id, data, selected }: NodeProps<StickyFlowNode>
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if ((e.key === "Enter" && !e.shiftKey) || e.key === "Escape") {
             e.preventDefault();
+            saveChanges(content);
             setIsEditing(false);
         }
-        saveChanges();
     };
 
     return (
@@ -80,16 +71,19 @@ export function StickyNoteNode({ id, data, selected }: NodeProps<StickyFlowNode>
             {isEditing ? (
                 <textarea
                     ref={textAreaRef}
-                    value={data.content}
+                    value={content}
                     onChange={handleTextChange}
                     onKeyDown={handleKeyDown}
-                    onBlur={() => setIsEditing(false)}
+                    onBlur={() => {
+                        saveChanges(content);
+                        setIsEditing(false);
+                    }}
                     placeholder="Type anything and enter to save"
                     className="w-full h-full bg-transparent resize-none focus:outline-none text-stone-900 font-sans text-sm nodrag nopan"
                 />
             ) : (
                 <div className="w-full h-full text-stone-900 font-sans text-sm whitespace-pre-wrap overflow-auto">
-                    {data.content || <span className="text-stone-600 italic">Type anything and enter to save</span>}
+                    {content || <span className="text-stone-600 italic">Type anything and enter to save</span>}
                 </div>
             )}
         </div>

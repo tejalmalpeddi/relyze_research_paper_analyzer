@@ -174,6 +174,19 @@ export async function deleteHistory(id: number): Promise<{ deleted: boolean; id:
   return handleResponse<{ deleted: boolean; id: number }>(response);
 }
 
+export async function importPdf(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(`${API_URL}/documents/import`, {
+    method: "POST",
+    credentials: "include",
+    body: formData,
+  });
+
+  return handleResponse(response);
+}
+
 export async function fetchStickyNotes(documentId: string | number) {
     const res = await fetch(`${API_URL}/sticky_notes/get/${documentId}`, {
         method: "GET",
