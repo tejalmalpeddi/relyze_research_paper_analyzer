@@ -189,7 +189,7 @@ def extract_images_from_pdf(
     print(f"Done. {saved_count} image file(s) saved to {output_path}")
 
 
-def parse_and_save_pdf(pdf_path):
+def parse_and_save_pdf(pdf_path, user_id=None):
     pdf_path = Path(pdf_path)
 
     raw_text_data = extract_raw_text_from_pdf(pdf_path)
@@ -202,6 +202,7 @@ def parse_and_save_pdf(pdf_path):
         raw_text_data,
         structured_document,
         markdown_document,
+        user_id,
     )
 
     return response.data[0]

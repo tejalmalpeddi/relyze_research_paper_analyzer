@@ -57,12 +57,12 @@ def save_results(
     file_name: str,
     map_json: dict,
     structured_data: dict,
-) -> None:
+) -> dict:
     """
     Writes map_json to history table.
     Updates structured_data + status on documents table.
     """
-    _supabase.table("history").insert({
+    history_response = _supabase.table("history").insert({
         "user_id":  user_id,
         "title":    file_name,
         "map_json": map_json,
@@ -71,8 +71,10 @@ def save_results(
 
     _supabase.table("documents").update({
         "structured_data": structured_data,
-        "status":          "complete",
+        "status":          "completed",
     }).eq("id", document_id).execute()
+
+    return history_response.data[0]
 
 
 def update_status(document_id: str, status: str) -> None:
@@ -143,7 +145,14 @@ def build_map_json(
     Assembles the final map.json from LLM subcategories + NLP enrichment.
     
     """
-    nodes = []
+    nodes = [{
+        "id": "root",
+        "type": "root",
+        "data": {
+            "title": file_name.replace(".pdf", "").replace("-", " ").title(),
+            "bullets": [domain],
+        },
+    }]
     node_id = 0
 
     root = {
@@ -165,6 +174,10 @@ def build_map_json(
                 "id":      cat_id,
                 "label":   cat,
                 "type":    _category_to_type(cat),
+                "data": {
+                    "title": cat,
+                    "bullets": [],
+                },
                 "content": {
                     "beginner":     cat,
                     "intermediate": cat,
@@ -213,6 +226,10 @@ def build_map_json(
             "id":      sub_node_id,
             "label":   sub.name,
             "type":    _category_to_type(sub.category),
+            "data": {
+                "title": sub.name,
+                "bullets": [content_dict["intermediate"]],
+            },
             "content": content_dict,
             "parent":  categories_seen[cat],
             "depth":   2,
@@ -232,8 +249,19 @@ def build_map_json(
         {"id": n["id"], "type": n["type"],
          "content": n["content"]["intermediate"], "parent": n["parent"]}
         for n in nodes
+        if n["id"] != "root"
     ]
     edges = build_edges(node_dicts)
+    edge_id = len(edges)
+    for node in nodes:
+        if node.get("parent") == "root":
+            edges.append({
+                "id": f"e-root-{edge_id}",
+                "source": "root",
+                "target": node["id"],
+                "type": "has_child",
+            })
+            edge_id += 1
 
     return {"root": root, "nodes": nodes, "edges": edges}
 
@@ -304,7 +332,7 @@ def run_pipeline(document_id: str) -> dict:
         }
 
         print("[pipeline] Saving to Supabase")
-        save_results(
+        history_row = save_results(
             document_id     = document_id,
             user_id         = doc["user_id"],
             file_name       = doc["file_name"],
@@ -313,7 +341,7 @@ def run_pipeline(document_id: str) -> dict:
         )
 
         print("[pipeline] Done")
-        return map_json
+        return {"map_json": map_json, "history": history_row}
 
     except Exception as e:
         print(f"[pipeline] ERROR: {e}")
