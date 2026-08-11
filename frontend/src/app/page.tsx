@@ -21,6 +21,7 @@
 import { useRef, useState } from "react";
 import Image from "next/image";
 import PreviousPapersSection from "@/components/History";
+import { importPdf } from "@/lib/api";
 
 export default function HomePage() {
   // useRef<HTMLInputElement>(null) -- the <HTMLInputElement> generic says
@@ -35,8 +36,7 @@ export default function HomePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Just remembers which file name to show as feedback after picking
-  // one. IMPORTANT: this does NOT send the file anywhere. There is no
-  // backend route yet that accepts an uploaded PDF. purely the visual "you picked a file" feedback.
+  // one.
   // useState: the moment a file is picked,the screen needs to actually update to show the file name text.
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
 
@@ -51,7 +51,7 @@ export default function HomePage() {
   // Runs automatically whenever the browser's real file picker closes
   // with a file chosen (wired up below via onChange={handleFileInputChange}
   // on the actual <input>).
-  function handleFileInputChange(event: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileInputChange(event: React.ChangeEvent<HTMLInputElement>) {
     // collection of every file the user selected (could be more than one
     // if the input allowed it, though this one only expects a single PDF).
     const chosenFiles = event.target.files;
@@ -60,10 +60,14 @@ export default function HomePage() {
     // cancelled), and even if it exists it could be empty -- both checked
     // here before trying to read anything out of it.
     if (chosenFiles !== null && chosenFiles.length > 0) {
-      // chosenFiles[0] -- grab the first (and, in practice here, only)
-      // selected file. .name is that file's real filename, e.g.
-      // "physicspaper1.pdf" -- exactly what gets displayed on screen.
-      setSelectedFileName(chosenFiles[0].name);
+      const file = chosenFiles[0];
+      setSelectedFileName(file.name);
+
+      try {
+        await importPdf(file);
+      } catch (error) {
+        console.error("Failed to import PDF:", error);
+      }
     } else {
       // Nothing was actually selected -- clear out any previously shown
       // filename instead of leaving stale text on screen.
