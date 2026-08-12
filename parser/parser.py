@@ -2,6 +2,7 @@ import json
 import time
 from pathlib import Path
 
+import sys
 import pymupdf
 from docling.document_converter import DocumentConverter
 
@@ -204,47 +205,46 @@ def extract_images_from_pdf(
     return extracted_images
 
 
-if __name__ == "__main__":
+def process_pdf(pdf_path):
+
+    pdf_path = Path(pdf_path).resolve()
+
+    if not pdf_path.exists():
+        raise FileNotFoundError(f"PDF not found: {pdf_path}")
+
+    if pdf_path.suffix.lower() != ".pdf":
+        raise ValueError("Selected file must be a PDF.")
+
     total_start = time.perf_counter()
 
     # Extract plain text using PyMuPDF
-    text_start = time.perf_counter()
+    raw_text_start = time.perf_counter()
 
-    raw_text_data = extract_raw_text_from_pdf(PDF_INPUT_FILE)
+    raw_text_data = extract_raw_text_from_pdf(pdf_path)
 
-    with open(RAW_TEXT_JSON, "w", encoding="utf-8") as f:
-        json.dump(raw_text_data, f, indent=2, ensure_ascii=False)
-
-    print(f"Raw text extraction time: {time.perf_counter() - text_start:.2f} seconds")
+    raw_text_time = time.perf_counter() - raw_text_start
+    print(f"Raw text extraction time: {raw_text_time:.2f} seconds")
 
     # Extract structured document using Docling
     structured_start = time.perf_counter()
 
     markdown_document, structured_document = extract_structured_document(
-        PDF_INPUT_FILE
+        pdf_path
     )
 
-    with open(MARKDOWN_FILE, "w", encoding="utf-8") as f:
-        f.write(markdown_document)
-
-    with open(STRUCTURED_JSON, "w", encoding="utf-8") as f:
-        json.dump(structured_document, f, indent=2, ensure_ascii=False)
-
-    print(f"Structured document extraction time: {time.perf_counter() - structured_start:.2f} seconds")
+    structured_time = time.perf_counter() - structured_start
+    print(f"Structured document extraction time: {structured_time:.2f} seconds")
 
     # Extract images (raster + vector-drawn figures) into parser/assets
     image_start = time.perf_counter()
 
-    print(f"Saving images to: {IMAGE_OUTPUT_DIRECTORY}")
-
     extracted_images = extract_images_from_pdf(
-        PDF_INPUT_FILE,
+        pdf_path,
         IMAGE_OUTPUT_DIRECTORY
     )
 
-    print(extracted_images)
-
-    print(f"Image extraction time: {time.perf_counter() - image_start:.2f} seconds")
+    image_time = time.perf_counter() - image_start
+    print(f"Image extraction time: {image_time:.2f} seconds")
 
     # Save parsed document to Supabase
     database_start = time.perf_counter()
@@ -253,12 +253,12 @@ if __name__ == "__main__":
 
     storage_path = upload_pdf(
         supabase,
-        PDF_INPUT_FILE
+        pdf_path
     )
 
     response = save_document(
         supabase,
-        PDF_INPUT_FILE.name,
+        pdf_path.name,
         storage_path,
         raw_text_data,
         structured_document,
@@ -266,9 +266,22 @@ if __name__ == "__main__":
     )
 
     database_time = time.perf_counter() - database_start
-
-    print(response.data)
     print(f"Supabase save time: {database_time:.2f} seconds")
 
     total_time = time.perf_counter() - total_start
     print(f"Total processing time: {total_time:.2f} seconds")
+
+    return response, extracted_images
+
+
+# Use sys.argv (argument vector) to read arguments passed from the terminal.
+# Unlike *args or **kwargs, which pass arguments between Python functions,
+# sys.argv passes command-line arguments into the Python program itself.
+# argv[0] is the script name and argv[1] is the single PDF path provided at runtime.
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print("Error: Please provide exactly one PDF file.")
+        print("Usage: python parser.py <pdf_path>")
+        sys.exit(1)
+
+    process_pdf(sys.argv[1])
