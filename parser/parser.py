@@ -1,10 +1,11 @@
 import json
+import time
 from pathlib import Path
 
 import pymupdf
 from docling.document_converter import DocumentConverter
 
-from database import connect_to_supabase, save_document
+from database import connect_to_supabase, save_document, upload_pdf
 
 # Base directory (parser/)
 PARSER_DIRECTORY = Path(__file__).resolve().parent
@@ -111,6 +112,7 @@ def extract_images_from_pdf(
     pdf_document = pymupdf.open(pdf_path)
     extracted_xrefs = set()
     saved_count = 0
+    extracted_images = []
 
     for page_number, pdf_page in enumerate(pdf_document, start=1):
         page_raster_rects = []
@@ -143,6 +145,12 @@ def extract_images_from_pdf(
             with open(image_path, "wb") as image_file:
                 image_file.write(image_data["image"])
             saved_count += 1
+
+            extracted_images.append({
+                "page_number": page_number,
+                "image_type": "raster",
+                "file_name": image_filename
+            })
 
             # Track raster placement so we don't duplicate it as a "vector figure"
             for rect in pdf_page.get_image_rects(image_xref):
@@ -180,6 +188,12 @@ def extract_images_from_pdf(
                 pix.save(output_path / image_filename)
                 saved_count += 1
 
+                extracted_images.append({
+                    "page_number": page_number,
+                    "image_type": "vector",
+                    "file_name": image_filename
+                })
+
         print(
             f"Page {page_number}: {len(page_images)} raster image(s) found, "
             f"{vector_figures_saved} vector figure(s) extracted"
@@ -187,16 +201,25 @@ def extract_images_from_pdf(
 
     pdf_document.close()
     print(f"Done. {saved_count} image file(s) saved to {output_path}")
+    return extracted_images
 
 
 if __name__ == "__main__":
+    total_start = time.perf_counter()
+
     # Extract plain text using PyMuPDF
+    text_start = time.perf_counter()
+
     raw_text_data = extract_raw_text_from_pdf(PDF_INPUT_FILE)
 
     with open(RAW_TEXT_JSON, "w", encoding="utf-8") as f:
         json.dump(raw_text_data, f, indent=2, ensure_ascii=False)
 
+    print(f"Raw text extraction time: {time.perf_counter() - text_start:.2f} seconds")
+
     # Extract structured document using Docling
+    structured_start = time.perf_counter()
+
     markdown_document, structured_document = extract_structured_document(
         PDF_INPUT_FILE
     )
@@ -207,23 +230,45 @@ if __name__ == "__main__":
     with open(STRUCTURED_JSON, "w", encoding="utf-8") as f:
         json.dump(structured_document, f, indent=2, ensure_ascii=False)
 
+    print(f"Structured document extraction time: {time.perf_counter() - structured_start:.2f} seconds")
+
     # Extract images (raster + vector-drawn figures) into parser/assets
+    image_start = time.perf_counter()
+
     print(f"Saving images to: {IMAGE_OUTPUT_DIRECTORY}")
 
-    extract_images_from_pdf(
+    extracted_images = extract_images_from_pdf(
         PDF_INPUT_FILE,
         IMAGE_OUTPUT_DIRECTORY
     )
 
+    print(extracted_images)
+
+    print(f"Image extraction time: {time.perf_counter() - image_start:.2f} seconds")
+
     # Save parsed document to Supabase
+    database_start = time.perf_counter()
+
     supabase = connect_to_supabase()
+
+    storage_path = upload_pdf(
+        supabase,
+        PDF_INPUT_FILE
+    )
 
     response = save_document(
         supabase,
         PDF_INPUT_FILE.name,
+        storage_path,
         raw_text_data,
         structured_document,
         markdown_document
     )
 
+    database_time = time.perf_counter() - database_start
+
     print(response.data)
+    print(f"Supabase save time: {database_time:.2f} seconds")
+
+    total_time = time.perf_counter() - total_start
+    print(f"Total processing time: {total_time:.2f} seconds")
