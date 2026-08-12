@@ -6,7 +6,7 @@ import sys
 import pymupdf
 from docling.document_converter import DocumentConverter
 
-from database import connect_to_supabase, save_document, upload_pdf
+from database import connect_to_supabase, save_document, upload_pdf, upload_images, update_document_images
 
 # Base directory (parser/)
 PARSER_DIRECTORY = Path(__file__).resolve().parent
@@ -267,6 +267,21 @@ def process_pdf(pdf_path):
         raw_text_data,
         structured_document,
         markdown_document
+    )
+
+    document_id = response.data[0]["id"]
+
+    uploaded_images = upload_images(
+        supabase,
+        paper_image_directory,
+        pdf_path.stem,
+        extracted_images
+    )
+
+    update_document_images(
+        supabase,
+        document_id,
+        uploaded_images
     )
 
     database_time = time.perf_counter() - database_start
