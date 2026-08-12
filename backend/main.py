@@ -3,12 +3,13 @@ import sys
 import tempfile
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers.history import router as history_router
 from app.routers.auth import router as auth_router
 from app.routers.stickynotes import router as sticky_router
 from app.routers.subcategories import router as subcategories_router
+from app.core.auth import verify_cookie
 from pydantic import BaseModel
 from content_gen.nlp_transformer_method.pipeline import run_pipeline
 
@@ -44,18 +45,21 @@ def health_check():
 
 
 @app.post("/documents/import")
-async def import_document(file: UploadFile = File(...)):
-    if file.content_type != "application/pdf":
-        raise HTTPException(status_code=400, detail="Only PDF files are supported.")
+async def import_document(file: UploadFile = File(...), user=Depends(verify_cookie)):
+    filename = file.filename or ""
+    suffix = Path(filename).suffix or ".pdf"
 
-    suffix = Path(file.filename or "").suffix or ".pdf"
+    if file.content_type != "application/pdf" and suffix.lower() != ".pdf":
+        raise HTTPException(status_code=400, detail="Only PDF files are supported.")
 
     with tempfile.NamedTemporaryFile(delete=True, suffix=suffix) as temp_file:
         shutil.copyfileobj(file.file, temp_file)
         temp_file.flush()
 
         try:
-            return parse_and_save_pdf(temp_file.name)
+            document = parse_and_save_pdf(temp_file.name, user.id)
+            result = run_pipeline(document_id=document["id"])
+            return {"document": document, **result}
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 

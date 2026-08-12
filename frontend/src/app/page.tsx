@@ -20,6 +20,7 @@
 // call real browser methods on it (like .click()) from your own code.
 import { useRef, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import PreviousPapersSection from "@/components/History";
 import { importPdf } from "@/lib/api";
 
@@ -34,11 +35,14 @@ export default function HomePage() {
   // you get a custom-looking "upload" button while still using the
   // browser's real, built-in file picker underneath.
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
 
   // Just remembers which file name to show as feedback after picking
   // one.
   // useState: the moment a file is picked,the screen needs to actually update to show the file name text.
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
 
   // Runs when you click the big leather-pad tray (the visible "button").
   // fileInputRef.current is where React actually stores the real <input>
@@ -62,11 +66,17 @@ export default function HomePage() {
     if (chosenFiles !== null && chosenFiles.length > 0) {
       const file = chosenFiles[0];
       setSelectedFileName(file.name);
+      setImportError(null);
+      setIsImporting(true);
 
       try {
-        await importPdf(file);
+        const imported = await importPdf(file);
+        router.push(`/mindmap?id=${imported.history.id}`);
       } catch (error) {
+        setImportError("Import failed. Check the backend logs.");
         console.error("Failed to import PDF:", error);
+      } finally {
+        setIsImporting(false);
       }
     } else {
       // Nothing was actually selected -- clear out any previously shown
@@ -120,6 +130,7 @@ export default function HomePage() {
         <button
           type="button"
           onClick={handleUploadTrayClick}
+          disabled={isImporting}
           className="relative h-96 w-96 shrink-0"
         >
           <Image
@@ -130,7 +141,9 @@ export default function HomePage() {
             className="h-full w-full object-contain"
           />
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-            <span className="font-serif text-lg text-white">Upload PDF</span>
+            <span className="font-serif text-lg text-white">
+              {isImporting ? "Importing PDF..." : "Upload PDF"}
+            </span>
             <Image src="/icons/upload.svg" alt="" width={50} height={52} />
             {/* Same {condition && (...)} idiom from the Mind Map page:
                 only show the filename text once something has actually
@@ -138,6 +151,11 @@ export default function HomePage() {
             {selectedFileName !== null && (
               <span className="mt-2 max-w-55 truncate font-serif text-xs text-stone-200">
                 {selectedFileName}
+              </span>
+            )}
+            {importError !== null && (
+              <span className="mt-2 max-w-60 text-center font-serif text-xs text-red-200">
+                {importError}
               </span>
             )}
           </div>

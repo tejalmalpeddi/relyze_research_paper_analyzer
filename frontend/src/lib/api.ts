@@ -174,7 +174,7 @@ export async function deleteHistory(id: number): Promise<{ deleted: boolean; id:
   return handleResponse<{ deleted: boolean; id: number }>(response);
 }
 
-export async function importPdf(file: File) {
+export async function importPdf(file: File): Promise<{ history: { id: number } }> {
   const formData = new FormData();
   formData.append("file", file);
 
@@ -184,7 +184,7 @@ export async function importPdf(file: File) {
     body: formData,
   });
 
-  return handleResponse(response);
+  return handleResponse<{ history: { id: number } }>(response);
 }
 
 export async function fetchStickyNotes(documentId: string | number) {
