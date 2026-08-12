@@ -235,12 +235,16 @@ def process_pdf(pdf_path):
     structured_time = time.perf_counter() - structured_start
     print(f"Structured document extraction time: {structured_time:.2f} seconds")
 
-    # Extract images (raster + vector-drawn figures) into parser/assets
+    # Extract images (raster + vector-drawn figures) into a folder for each paper
+    paper_image_directory = IMAGE_OUTPUT_DIRECTORY / pdf_path.stem
+
+    print(f"Saving images to: {paper_image_directory}")
+
     image_start = time.perf_counter()
 
     extracted_images = extract_images_from_pdf(
         pdf_path,
-        IMAGE_OUTPUT_DIRECTORY
+        paper_image_directory
     )
 
     image_time = time.perf_counter() - image_start
