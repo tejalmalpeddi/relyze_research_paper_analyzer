@@ -59,22 +59,20 @@ def save_results(
     structured_data: dict,
 ) -> dict:
     """
-    Writes map_json to history table.
-    Updates structured_data + status on documents table.
+    Writes generated map data back to the documents table.
     """
-    history_response = _supabase.table("history").insert({
-        "user_id":  user_id,
-        "title":    file_name,
-        "map_json": map_json,
-        "filters":  [],
-    }).execute()
-
-    _supabase.table("documents").update({
+    response = _supabase.table("documents").update({
+        "title":           file_name,
+        "map_json":        map_json,
+        "filters":         [],
         "structured_data": structured_data,
         "status":          "completed",
     }).eq("id", document_id).execute()
 
-    return history_response.data[0]
+    if not response.data:
+        raise ValueError(f"Document {document_id} could not be updated")
+
+    return response.data[0]
 
 
 def update_status(document_id: str, status: str) -> None:

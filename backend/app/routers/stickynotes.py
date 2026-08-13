@@ -1,22 +1,32 @@
-from fastapi import APIRouter, HTTPException, Depends, status
-from app.schemas.schemas import StickyNotesCreate, StickyNotesUpdate
-from app.core.db import supabase
+from fastapi import APIRouter, Depends, HTTPException, status
+
 from app.core.auth import verify_cookie
+from app.core.db import supabase
+from app.schemas.schemas import StickyNotesCreate, StickyNotesUpdate
 
 router = APIRouter(prefix="/sticky_notes", tags=["sticky_notes"])
 
-@router.post("/create/{documents_id}", status_code=status.HTTP_201_CREATED)
-def sticky_notes_create(documents_id: int, payload: StickyNotesCreate, user=Depends(verify_cookie)):
-    history_check = (
-        supabase.table("history")
+
+def _verify_document_owner(document_id: str, user_id: str):
+    document_check = (
+        supabase.table("documents")
         .select("id")
-        .eq("id", documents_id)
-        .eq("user_id", user.id)
+        .eq("id", document_id)
+        .eq("user_id", user_id)
         .execute()
     )
-    if not history_check.data:
-        raise HTTPException(status_code=404, detail="Wrong user.")
-    
+    if not document_check.data:
+        raise HTTPException(status_code=404, detail="Document not found.")
+
+
+@router.post("/create/{document_id}", status_code=status.HTTP_201_CREATED)
+def sticky_notes_create(
+    document_id: str,
+    payload: StickyNotesCreate,
+    user=Depends(verify_cookie),
+):
+    _verify_document_owner(document_id, user.id)
+
     sticky_notes_dump = payload.model_dump(mode="json")
     response = (
         supabase.table("sticky_notes")
@@ -27,82 +37,62 @@ def sticky_notes_create(documents_id: int, payload: StickyNotesCreate, user=Depe
                 "position_x": sticky_notes_dump["position_x"],
                 "position_y": sticky_notes_dump["position_y"],
                 "created_at": sticky_notes_dump["created_at"],
-                "history_id": documents_id
+                "document_id": document_id,
             }
         )
         .execute()
     )
 
     if not response.data:
-        raise HTTPException(status_code=400, detail="Failed to save documents.")
+        raise HTTPException(status_code=400, detail="Failed to save sticky note.")
 
     return response.data[0]
 
-@router.get("/get/{documents_id}")
-def sticky_notes_get(documents_id: int, user=Depends(verify_cookie)):
-    history_check = (
-        supabase.table("history")
-        .select("id")
-        .eq("id", documents_id)
-        .eq("user_id", user.id)
-        .execute()
-    )
-    if not history_check.data:
-        raise HTTPException(status_code=404, detail="Wrong user.")
-    
+
+@router.get("/get/{document_id}")
+def sticky_notes_get(document_id: str, user=Depends(verify_cookie)):
+    _verify_document_owner(document_id, user.id)
+
     response = (
         supabase.table("sticky_notes")
         .select("*")
-        .eq("history_id", documents_id)
+        .eq("document_id", document_id)
         .execute()
     )
     return response.data
 
-@router.post("/clear/{documents_id}", status_code=status.HTTP_200_OK)
-def sticky_notes_clear(documents_id: int, user=Depends(verify_cookie)):
-    history_check = (
-        supabase.table("history")
-        .select("id")
-        .eq("id", documents_id)
-        .eq("user_id", user.id)
-        .execute()
-    )
-    if not history_check.data:
-        raise HTTPException(status_code=404, detail="Wrong user.")
-    
-    response = (
-        supabase.table("sticky_notes")
-        .delete()
-        .eq("history_id", documents_id)
-        .execute()
-    )
 
-    return {"deleted": True, "id": documents_id}
+@router.post("/clear/{document_id}", status_code=status.HTTP_200_OK)
+def sticky_notes_clear(document_id: str, user=Depends(verify_cookie)):
+    _verify_document_owner(document_id, user.id)
 
-@router.put("/edit/{documents_id}", status_code=status.HTTP_200_OK)
-def sticky_notes_edit(documents_id: int, payload: StickyNotesUpdate, user=Depends(verify_cookie)):
-    history_check = (
-        supabase.table("history")
-        .select("id")
-        .eq("id", documents_id)
-        .eq("user_id", user.id)
-        .execute()
-    )
-    if not history_check.data:
-        raise HTTPException(status_code=404, detail="Wrong user.")
-    
-    update_data = {k: v for k, v in payload.model_dump(mode="json").items() if v is not None and k != "id"}
+    supabase.table("sticky_notes").delete().eq("document_id", document_id).execute()
+
+    return {"deleted": True, "id": document_id}
+
+
+@router.put("/edit/{document_id}", status_code=status.HTTP_200_OK)
+def sticky_notes_edit(
+    document_id: str,
+    payload: StickyNotesUpdate,
+    user=Depends(verify_cookie),
+):
+    _verify_document_owner(document_id, user.id)
+
+    update_data = {
+        key: value
+        for key, value in payload.model_dump(mode="json").items()
+        if value is not None and key != "id"
+    }
     response = (
         supabase.table("sticky_notes")
         .update(update_data)
-        .eq("history_id", documents_id)
+        .eq("document_id", document_id)
         .eq("id", payload.id)
         .execute()
     )
 
     if not response.data:
-        raise HTTPException(status_code=400, detail="Failed to save documents.")
+        raise HTTPException(status_code=400, detail="Failed to save sticky note.")
 
     return response.data[0]
-    
-    

@@ -114,8 +114,7 @@ function MindMapPageContent() {
       // id (a 404 from the backend) is treated the same way it always
       // was here: matchedEntry just stays null, and notFoundMessage
       // below explains why -- not shown as a loud error.
-      const requestedIdNumber = Number(requestedIdText); //convert query text to number
-      fetchHistoryById(requestedIdNumber) //api.ts route, parameter new 
+      fetchHistoryById(requestedIdText) //api.ts route, parameter new 
         .then((fetchedEntry) => { //fetchedEntry is the HistoryEntry object 
           if (isCurrentRequest === true) {
             setLoadState({
