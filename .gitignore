@@ -21,15 +21,7 @@ venv/
 .vscode/
 .idea/
 
-# Parser generated files
 parser/output_raw.json
 parser/output_structured.json
 parser/output_paper.md
-parser/output.json
-parser/output2.json
 parser/assets/
-
-# Parser test/input files
-parser/input.pdf
-parser/physicspaper1.pdf
-physicspaper1.pdf
