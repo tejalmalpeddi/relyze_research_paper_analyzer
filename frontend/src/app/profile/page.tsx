@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import ProfileFolder, { Difficulty, ProfilePreference } from '@/components/profile/ProfileFolder';
 import styles from './page.module.css';
-import { AuthProvider, useAuth } from '../auth/auth-query';
+import { useAuth } from '@/app/auth/auth-query';
 
 const DESIGN_VIEWPORT_WIDTH = 1440;
 const FOLDER_DESKTOP_LEFT = 421;
@@ -66,7 +66,7 @@ function getProfileImage(metadata: Record<string, unknown> | undefined) {
 function ProfilePageContent() {
   const [folderLeft, setFolderLeft] = useState(421);
   const [paperTitles, setPaperTitles] = useState<string[]>([]);
-  const { user, editUser, logout, deleteUser } = useAuth();
+  const { user, isAuthenticated, editUser, logout, deleteUser } = useAuth();
   const metadata = useMemo(() => user?.raw_user_meta_data ?? {}, [user?.raw_user_meta_data]);
   const preferences = useMemo(() => getProfilePreferences(metadata, paperTitles), [metadata, paperTitles]);
 
@@ -137,8 +137,8 @@ function ProfilePageContent() {
           <div className={styles.folderRotate}>
             <div className={styles.folderSize}>
               <ProfileFolder
-                key={user?.id ?? 'guest'}
-                email={user?.email ?? ''}
+                key={isAuthenticated ? (user?.id || "Guest") : ""}
+                email={isAuthenticated ? (user?.email || "Guest (Anonymous)") : ""}
                 profileSrc={getProfileImage(metadata)}
                 preferences={user ? preferences : []}
                 onDeleteAccount={async () => {
@@ -161,8 +161,6 @@ function ProfilePageContent() {
 
 export default function ProfilePage() {
   return (
-    <AuthProvider>
       <ProfilePageContent />
-    </AuthProvider>
   );
 }

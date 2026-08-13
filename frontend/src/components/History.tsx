@@ -24,6 +24,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { HistoryEntry } from "@/lib/types";
 import { fetchHistoryList, deleteHistory, ApiError } from "@/lib/api";
+import { useAuth } from '@/app/auth/auth-query';
 
 // ---------------------------------------------------------------------
 // MaskedIcon
@@ -342,9 +343,9 @@ export default function PreviousPapersSection() {
   // from GET /history, which now always filters by whoever's cookie sent
   // the request). Kept separate from loadErrorMessage so the UI can show
   // a friendly "please log in" prompt instead of a scary error message.
-  const [isLoggedOut, setIsLoggedOut] = useState(false);
   const [selectedFilterTags, setSelectedFilterTags] = useState<Set<string>>(new Set());
   const [isFiltersPanelOpen, setIsFiltersPanelOpen] = useState(false);
+  const { isAuthenticated } = useAuth();
 
   //useEffect: run the first argument (the function) after this component (previous papers page)
   //renders, and only re-run it again later if something in the dependency array has changed since 
@@ -364,13 +365,11 @@ export default function PreviousPapersSection() {
       .then((fetchedEntries) => {
         setEntries(fetchedEntries);
         setLoadErrorMessage(null);
-        setIsLoggedOut(false);
       })
       .catch((error) => {
         if (error instanceof ApiError && error.status === 401) {
           // Nobody's logged in -- this isn't really a failure, so it
           // doesn't go into loadErrorMessage at all.
-          setIsLoggedOut(true);
         } else if (error instanceof Error) {
           setLoadErrorMessage(error.message);
         } else {
@@ -501,15 +500,30 @@ export default function PreviousPapersSection() {
           <p className="font-serif text-stone-300">Loading your papers...</p>
         )}
 
-        {isLoading === false && isLoggedOut === false && loadErrorMessage !== null && (
+        {isLoading === false && loadErrorMessage !== null && (
           <p className="font-serif text-[#c1666b]">
             Couldn&apos;t load your papers: {loadErrorMessage}
           </p>
         )}
 
+         {isLoading === false &&
+            (isAuthenticated === true && visibleEntries.length === 0) && (
+               <div className="flex w-full flex-col items-center gap-4 py-10 text-center">
+              <p className="font-serif text-stone-300">
+                No saved papers yet. Upload a PDF to see it here.
+              </p>
+            </div>
+            )
+          }
+
+        {/* Covers two cases with the same message: an explicit 401 from
+            the backend (isLoggedOut), and a plain empty list with no
+            error. Both currently mean the same thing in practice, since
+            nobody being logged in shows up as an empty list rather than
+            a 401 right now -- see the note on PreviousPapersSection. */}
         {isLoading === false &&
           loadErrorMessage === null &&
-          isLoggedOut === true && (
+          (isAuthenticated === false ) && (
             <div className="flex w-full flex-col items-center gap-4 py-10 text-center">
               <p className="font-serif text-stone-300">
                 You are currently logged out, nothing to display!
@@ -524,18 +538,7 @@ export default function PreviousPapersSection() {
             </div>
           )}
 
-        {isLoading === false &&
-          isLoggedOut === false &&
-          loadErrorMessage === null &&
-          visibleEntries.length === 0 && (
-            <div className="flex w-full flex-col items-center gap-4 py-10 text-center">
-              <p className="font-serif text-stone-300">
-                No saved papers yet. Upload a PDF to see it here.
-              </p>
-            </div>
-          )}
-
-        {isLoading === false && isLoggedOut === false && loadErrorMessage === null && visibleEntries.length > 0 && (
+        {isLoading === false && isAuthenticated === true && loadErrorMessage === null && visibleEntries.length > 0 && (
           <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-6">
             {visibleEntries.map((entry) => (
               <PaperCard key={entry.id} entry={entry} onDeleted={handlePaperDeleted} />
