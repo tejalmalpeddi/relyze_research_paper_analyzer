@@ -65,10 +65,8 @@ export interface MapJson {
 // GET /history and GET /history/search hand back, and exactly what gets
 // passed around the app once a paper has been fetched.
 export interface HistoryEntry {
-  // A whole-number id, auto-assigned by Postgres when the row was first
-  // created. NOT a string -- this bit us once already (see the very
-  // first conversation about this codebase), so it's worth remembering.
-  id: number;
+  // A UUID string from the documents table.
+  id: string;
 
   // An ISO-formatted date-time string, e.g. "2026-07-08T15:06:30+00:00".
   created_at: string;

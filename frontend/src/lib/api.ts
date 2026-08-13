@@ -124,7 +124,7 @@ export async function fetchHistoryByTitle(title: string): Promise<HistoryEntry> 
 // the Mind Map page when it's reached via a specific paper's "redirect"
 // button, so it can ask the backend for exactly that one row instead of
 // downloading every saved paper and searching through them here.
-export async function fetchHistoryById(id: number): Promise<HistoryEntry> {
+export async function fetchHistoryById(id: string): Promise<HistoryEntry> {
   const response = await fetch(`${API_URL}/history/${id}`, { credentials: "include" });
   return handleResponse<HistoryEntry>(response);
 }
@@ -166,15 +166,15 @@ export async function createHistory(
 
 // DELETE /history/{id} -- permanently remove one saved paper. Used by the
 // "Delete" confirmation button on the homepage's paper-card options menu.
-export async function deleteHistory(id: number): Promise<{ deleted: boolean; id: number }> {
+export async function deleteHistory(id: string): Promise<{ deleted: boolean; id: string }> {
   const response = await fetch(`${API_URL}/history/${id}`, {
     method: "DELETE",
     credentials: "include",
   });
-  return handleResponse<{ deleted: boolean; id: number }>(response);
+  return handleResponse<{ deleted: boolean; id: string }>(response);
 }
 
-export async function importPdf(file: File): Promise<{ history: { id: number } }> {
+export async function importPdf(file: File): Promise<{ history: { id: string } }> {
   const formData = new FormData();
   formData.append("file", file);
 
@@ -184,7 +184,7 @@ export async function importPdf(file: File): Promise<{ history: { id: number } }
     body: formData,
   });
 
-  return handleResponse<{ history: { id: number } }>(response);
+  return handleResponse<{ history: { id: string } }>(response);
 }
 
 export async function fetchStickyNotes(documentId: string | number) {

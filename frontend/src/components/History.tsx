@@ -201,7 +201,7 @@ function DeleteConfirmModal({
 // now" independently.
 interface PaperCardProps {
   entry: HistoryEntry;
-  onDeleted: (deletedId: number) => void;
+  onDeleted: (deletedId: string) => void;
 }
 
 function PaperCard({ entry, onDeleted }: PaperCardProps) {
@@ -359,7 +359,8 @@ export default function PreviousPapersSection() {
     // const parsedData = await response.json(); takes that raw text and turns it into a real, 
     // usable JavaScript array/object. parsed from JSON is what enters as input "fetchedEntries"
   //then, catch, finally is promise chaining for error handling instead of nested ifs and callbacks
-  useEffect(() => {
+  function loadHistory() {
+    setIsLoading(true);
     fetchHistoryList() //async function from api.ts that needs .then to complete once succeeds
       .then((fetchedEntries) => {
         setEntries(fetchedEntries);
@@ -378,12 +379,25 @@ export default function PreviousPapersSection() {
       .finally(() => {
         setIsLoading(false);
       });
+  }
+
+  useEffect(() => {
+    loadHistory();
+
+    function handleWindowFocus() {
+      loadHistory();
+    }
+
+    window.addEventListener("focus", handleWindowFocus);
+    return () => {
+      window.removeEventListener("focus", handleWindowFocus);
+    };
   }, []);
 
   // Called by a PaperCard after it successfully deletes itself on the
   // backend -- removes that same entry from THIS list, so the grid
   // updates immediately without needing to re-fetch everything.
-  function handlePaperDeleted(deletedId: number) {
+  function handlePaperDeleted(deletedId: string) {
     setEntries((previousEntries) =>
       previousEntries.filter((entry) => entry.id !== deletedId)
     );
@@ -496,7 +510,7 @@ export default function PreviousPapersSection() {
             (isAuthenticated === true && visibleEntries.length === 0) && (
                <div className="flex w-full flex-col items-center gap-4 py-10 text-center">
               <p className="font-serif text-stone-300">
-                You are currently logged in, but you have no history! Upload a pdf to get started.
+                No saved papers yet. Upload a PDF to see it here.
               </p>
             </div>
             )
