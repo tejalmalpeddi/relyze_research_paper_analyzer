@@ -16,13 +16,14 @@ import {
     Handle,
     Position,
     NodeProps,
-    useStore
+    useStore,
+    OnNodesDelete,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { HistoryEntry, MapNode } from "@/lib/types";
 import { StickyNoteNode, StickyNoteData } from "./StickyNote";
 import { StickyToolbar } from "./StickyNoteToolbar";
-import { fetchStickyNotes, createStickyNotes, editStickyNotes } from "@/lib/api";
+import { fetchStickyNotes, createStickyNotes, editStickyNotes, clearStickyNotes } from "@/lib/api";
 
 const ebGaramond = EB_Garamond({
     weight: ["400"],
@@ -619,6 +620,17 @@ function MapCanvas({ entry }: MapCanvasProps) {
         }
     };
 
+    const handleNodeDelete: OnNodesDelete = async (deletedNodes) => {
+        for (const node of deletedNodes) {
+            if (!node.id.startsWith("sticky-")) return;
+            try {
+                await clearStickyNotes(entry.id, node.id.replace("sticky-", ""));
+            } catch (error) {
+                console.error("Failed to delete sticky note:", error);
+            }
+        }
+    };
+
     useEffect(() => {
         fitView({ duration: 250 });
     }, [expandedIds, fitView]);
@@ -651,6 +663,7 @@ function MapCanvas({ entry }: MapCanvasProps) {
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
                 onNodeDragStop={handleNodeDragStop}
+                onNodesDelete={handleNodeDelete}
                 nodeTypes={nodeTypes}
                 nodesDraggable={true}
                 nodesConnectable={false}

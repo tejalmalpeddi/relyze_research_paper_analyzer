@@ -125,7 +125,7 @@ export async function fetchHistoryByTitle(title: string): Promise<HistoryEntry> 
 // button, so it can ask the backend for exactly that one row instead of
 // downloading every saved paper and searching through them here.
 export async function fetchHistoryById(id: string): Promise<HistoryEntry> {
-  const response = await fetch(`${API_URL}/history/${id}`, { credentials: "include" });
+  const response = await fetch(`${API_URL}/history/${id}`, { credentials: "include", cache: 'no-store' });
   return handleResponse<HistoryEntry>(response);
 }
 
@@ -135,7 +135,7 @@ export async function fetchHistoryById(id: string): Promise<HistoryEntry> {
 // and pick the newest row directly instead of downloading every saved
 // paper and comparing created_at timestamps here.
 export async function fetchLatestHistory(): Promise<HistoryEntry> {
-  const response = await fetch(`${API_URL}/history/latest`, { credentials: "include" });
+  const response = await fetch(`${API_URL}/history/latest`, { credentials: "include" , cache: 'no-store'});
   return handleResponse<HistoryEntry>(response);
 }
 
@@ -143,7 +143,7 @@ export async function fetchLatestHistory(): Promise<HistoryEntry> {
 // map_json attached. Meant for a future autocomplete/search box; not used
 // anywhere in the app yet.
 export async function fetchHistoryTitles(): Promise<{ title: string }[]> {
-  const response = await fetch(`${API_URL}/history/get_title`, { credentials: "include" });
+  const response = await fetch(`${API_URL}/history/get_title`, { credentials: "include", cache: 'no-store' });
   return handleResponse<{ title: string }[]>(response);
 }
 
@@ -172,6 +172,17 @@ export async function deleteHistory(id: string): Promise<{ deleted: boolean; id:
     credentials: "include",
   });
   return handleResponse<{ deleted: boolean; id: string }>(response);
+}
+
+export async function renameHistory(documentId: string | number, payload: string) {
+    const res = await fetch(`${API_URL}/history/rename/${documentId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ title: payload }),
+    });
+    if (!res.ok) throw new Error("Failed to rename history");
+    return res.json();
 }
 
 export async function importPdf(file: File): Promise<{ history: { id: string } }> {
@@ -207,8 +218,8 @@ export async function createStickyNotes(documentId: string | number, payload: St
     return res.json();
 }
 
-export async function clearStickyNotes(documentId: string | number) {
-    const res = await fetch(`${API_URL}/sticky_notes/clear/${documentId}`, {
+export async function clearStickyNotes(documentId: string | number, sticky_note_id: string | number) {
+    const res = await fetch(`${API_URL}/sticky_notes/clear/${documentId}/${sticky_note_id}`, {
         method: "POST",
         credentials: "include",
     });

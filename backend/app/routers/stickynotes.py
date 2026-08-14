@@ -19,7 +19,7 @@ def _verify_document_owner(document_id: str, user_id: str):
         raise HTTPException(status_code=404, detail="Document not found.")
 
 
-@router.post("/create/{document_id}", status_code=status.HTTP_201_CREATED)
+@router.post("/{document_id}", status_code=status.HTTP_201_CREATED)
 def sticky_notes_create(
     document_id: str,
     payload: StickyNotesCreate,
@@ -62,13 +62,12 @@ def sticky_notes_get(document_id: str, user=Depends(verify_cookie)):
     return response.data
 
 
-@router.post("/clear/{document_id}", status_code=status.HTTP_200_OK)
-def sticky_notes_clear(document_id: str, user=Depends(verify_cookie)):
+@router.post("/clear/{document_id}/{sticky_notes_id}", status_code=status.HTTP_200_OK)
+def sticky_notes_clear(sticky_notes_id: str, document_id: str, user=Depends(verify_cookie)):
     _verify_document_owner(document_id, user.id)
+    supabase.table("sticky_notes").delete().eq("id", sticky_notes_id).execute()
 
-    supabase.table("sticky_notes").delete().eq("document_id", document_id).execute()
-
-    return {"deleted": True, "id": document_id}
+    return {"deleted": True, "id": sticky_notes_id}
 
 
 @router.put("/edit/{document_id}", status_code=status.HTTP_200_OK)
