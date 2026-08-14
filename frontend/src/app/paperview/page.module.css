@@ -7,16 +7,78 @@
   background: #fff;
 }
 
+/* Navbar's own lowest visual point sits at ~94px on screen (NavBar.module.css:
+   .root is "top:-65px", its wood-texture ::before band is "top:65px,
+   height:80px" relative to that -- i.e. screen y=0 to 80 -- plus the tab
+   buttons themselves sitting a little lower). PAPER_SELECTOR_HEIGHT below
+   must match .paperSelector's own "height" -- kept as one number here so
+   both this and .content stay in sync if the bar's height ever changes. */
 .content {
   position: absolute;
   left: 0;
   right: 0;
-  top: 110px;
+  top: 146px; /* 94px navbar clearance + 52px .paperSelector height */
   bottom: 0;
   display: grid;
   grid-template-columns: 1fr 1fr;
   min-height: 0;
   z-index: 1;
+}
+
+/* The paper-picker bubble row -- sits flush under the navbar (no gap),
+   directly above .content. */
+.paperSelector {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 94px;
+  height: 52px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0 51px;
+  background: #fff;
+  border-bottom: 1px solid #e5e0d8;
+}
+
+.paperSelectorMessage {
+  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
+  font-size: 13px;
+  color: #6b6459;
+}
+
+.paperBubble {
+  flex: 0 0 auto;
+  max-width: 200px;
+  padding: 6px 16px;
+  border-radius: 999px;
+  background: #d9d9d9;
+  color: #22333b;
+  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-decoration: none;
+}
+
+.paperBubble[data-active='true'] {
+  background: #22333b;
+  color: #fff;
+}
+
+/* Used by the "Loading..." / error / "not found" messages -- occupies
+   the exact same box .content would, so those sit below the bubble row
+   instead of overlapping or hiding it. */
+.messageArea {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 146px;
+  bottom: 0;
 }
 
 .paperPanel {
@@ -40,51 +102,144 @@
   padding: 30px 51px 50px;
 }
 
-.paperPage {
+/* Replaces the old fixed-595x842-aspect-ratio "one box per PDF page"
+   layout -- markdown_content is one continuous string with no page
+   boundaries, so this is one continuous sheet instead, growing to fit
+   whatever length the paper actually is. Width stays pinned to the same
+   box-width convention the old per-page boxes used (so line length/
+   typography still reads like a printed page); height is unbounded. */
+.paperSheet {
   position: relative;
   width: min(595px, calc(100% - 24px));
-  aspect-ratio: 595 / 842;
-  flex: 0 0 auto;
-  overflow: hidden;
+  margin: 0 auto;
   background: #fff;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
 }
 
-.paperText {
-  position: absolute;
-  left: 12.8%;
-  top: 7.7%;
-  width: 74.5%;
+.paperContent {
+  position: relative;
+  padding: 64px 76px 80px;
   color: #0a0908;
   font-family: var(--font-eb-garamond), 'EB Garamond', serif;
   font-weight: 400;
-}
-
-.paperText h2 {
-  margin: 0 0 22px;
-  font-size: 20px;
-  line-height: 1.25;
-  font-weight: 400;
-}
-
-.paperText p {
-  margin: 0 0 16px;
   font-size: 16px;
-  line-height: 1.35;
+  line-height: 1.5;
 }
 
-.pageNumber {
-  position: absolute;
-  right: 40px;
-  bottom: 28px;
-  color: #777;
-  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
+.paperContent h1,
+.paperContent h2,
+.paperContent h3,
+.paperContent h4,
+.paperContent h5,
+.paperContent h6 {
+  margin: 28px 0 14px;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.paperContent h1 {
+  font-size: 26px;
+}
+
+.paperContent h2 {
+  font-size: 21px;
+}
+
+.paperContent h3 {
+  font-size: 18px;
+}
+
+.paperContent h4,
+.paperContent h5,
+.paperContent h6 {
+  font-size: 16px;
+}
+
+.paperContent p {
+  margin: 0 0 16px;
+}
+
+.paperContent ul,
+.paperContent ol {
+  margin: 0 0 16px;
+  padding-left: 28px;
+}
+
+.paperContent li {
+  margin: 0 0 6px;
+}
+
+.paperContent blockquote {
+  margin: 0 0 16px;
+  padding-left: 16px;
+  border-left: 3px solid #d9d9d9;
+  color: #4a453f;
+  font-style: italic;
+}
+
+.paperContent code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: #f0ece3;
+  font-family: ui-monospace, monospace;
   font-size: 14px;
+}
+
+.paperContent pre {
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  overflow-x: auto;
+  border-radius: 6px;
+  background: #f0ece3;
+}
+
+.paperContent pre code {
+  padding: 0;
+  background: transparent;
+}
+
+.paperContent table {
+  width: 100%;
+  margin: 0 0 16px;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.paperContent th,
+.paperContent td {
+  padding: 6px 10px;
+  border: 1px solid #d9d9d9;
+  text-align: left;
+}
+
+.paperContent mark {
+  border-radius: 2px;
+}
+
+.paperContent a {
+  color: #4281a4;
+}
+
+/* Sits above .paperContent (a sibling, both inside .paperSheet), sized
+   to cover the WHOLE sheet including its padding via "inset:0" against
+   .paperSheet -- the JS side (svgPointFromEvent in page.tsx) measures
+   points against this same element's own bounding box, so strokes stay
+   correctly aligned as long as both sides agree on which box "0-100%"
+   means, regardless of which box that technically is. pointer-events
+   toggled on only while the pencil or eraser tool is armed (inline
+   style in page.tsx) -- otherwise clicks/drags pass straight through to
+   normal text selection/scrolling underneath. */
+.drawLayer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
 
 .corkPanel {
   position: relative;
-  top: -110px;
-  height: calc(100% + 110px);
+  top: -146px;
+  height: calc(100% + 146px);
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -122,6 +277,16 @@
   border: 0;
   background: transparent;
   cursor: pointer;
+  transform: translateX(0);
+  transition: transform 180ms ease;
+}
+
+/* Armed tool "slides out" further onto the page -- like pulling it out
+   of a holder clipped to the paper's edge, so it's obvious at a glance
+   which tool (if any) is currently active. */
+.toolButton[data-active='true'],
+.eraserButton[data-active='true'] {
+  transform: translateX(28px);
 }
 
 .highlighterButton {
@@ -378,7 +543,7 @@
 
 @media (max-width: 1439px) {
   .content {
-    top: 110px;
+    top: 146px;
   }
 
   .paperScroll {
@@ -395,7 +560,7 @@
 
   .content {
     position: relative;
-    top: 110px;
+    top: 146px;
     display: block;
   }
 

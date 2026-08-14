@@ -9,6 +9,7 @@ from app.routers.history import router as history_router
 from app.routers.auth import router as auth_router
 from app.routers.stickynotes import router as sticky_router
 from app.routers.subcategories import router as subcategories_router
+from app.routers.documents import router as documents_router
 from app.core.auth import verify_cookie
 from pydantic import BaseModel
 from content_gen.nlp_transformer_method.pipeline import run_pipeline
@@ -32,6 +33,7 @@ app.include_router(history_router)
 app.include_router(auth_router)
 app.include_router(sticky_router)
 app.include_router(subcategories_router)
+app.include_router(documents_router)
 
 
 @app.get("/")
@@ -57,7 +59,7 @@ async def import_document(file: UploadFile = File(...), user=Depends(verify_cook
         temp_file.flush()
 
         try:
-            document = parse_and_save_pdf(temp_file.name, user.id)
+            document = parse_and_save_pdf(temp_file.name, user.id, file_name=filename)
             result = run_pipeline(document_id=document["id"])
             return {"document": document, **result}
         except Exception as e:

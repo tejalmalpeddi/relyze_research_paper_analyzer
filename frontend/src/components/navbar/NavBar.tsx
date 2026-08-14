@@ -108,7 +108,9 @@ export default function NavBar({
 
   return (
     <header className={styles.root} data-name="Nav Bar">
-      <h1 className={styles.logo}>Relyze</h1>
+      <button type="button" className={styles.logo} onClick={() => handleNavClick('/')}>
+        Relyze
+      </button>
 
       <nav className="full" data-name="Nav Bar (Full)">
         <ul className={styles.tabList}>

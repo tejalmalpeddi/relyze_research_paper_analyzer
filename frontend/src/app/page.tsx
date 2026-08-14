@@ -90,7 +90,7 @@ export default function HomePage() {
   // setSelectedFileName runs). Same "flex h-screen flex-col" full-page
   // layout trick as the Mind Map page
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-dvh flex-col">
 
       {/* The main wood-desk hero area. */}
       <div

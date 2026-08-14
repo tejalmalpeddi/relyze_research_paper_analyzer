@@ -42,3 +42,21 @@ class StickyNotesUpdate(BaseModel):
     content: Optional[str] = None
     position_x: Optional[float] = None
     position_y: Optional[float] = None
+
+class HighlightCreate(BaseModel):
+    block_index: int
+    start_offset: int
+    end_offset: int
+    quote: str
+    color: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class StrokePoint(BaseModel):
+    x: float
+    y: float
+
+class StrokeCreate(BaseModel):
+    points: list[StrokePoint]
+    color: str
+    stroke_width: float
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

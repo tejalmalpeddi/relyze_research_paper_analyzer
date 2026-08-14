@@ -189,7 +189,7 @@ def extract_images_from_pdf(
     print(f"Done. {saved_count} image file(s) saved to {output_path}")
 
 
-def parse_and_save_pdf(pdf_path, user_id=None):
+def parse_and_save_pdf(pdf_path, user_id=None, file_name=None):
     pdf_path = Path(pdf_path)
 
     raw_text_data = extract_raw_text_from_pdf(pdf_path)
@@ -198,7 +198,14 @@ def parse_and_save_pdf(pdf_path, user_id=None):
     supabase = connect_to_supabase()
     response = save_document(
         supabase,
-        pdf_path.name,
+        # file_name is the ORIGINAL uploaded filename (e.g.
+        # "physicspaper1.pdf"), passed in by whatever called this
+        # function. pdf_path.name is only a fallback for when nobody
+        # supplies one -- callers that first copy the upload into a
+        # temporary file (main.py's /documents/import does exactly this)
+        # would otherwise end up saving that temp file's own throwaway
+        # name (e.g. "tmpzmtkvnn0.pdf") instead of anything meaningful.
+        file_name or pdf_path.name,
         raw_text_data,
         structured_document,
         markdown_document,
