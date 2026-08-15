@@ -19,7 +19,7 @@ def _verify_document_owner(document_id: str, user_id: str):
         raise HTTPException(status_code=404, detail="Document not found.")
 
 
-@router.post("/{document_id}", status_code=status.HTTP_201_CREATED)
+@router.post("/create/{document_id}", status_code=status.HTTP_201_CREATED)
 def sticky_notes_create(
     document_id: str,
     payload: StickyNotesCreate,
