@@ -73,6 +73,34 @@ function MaskedIcon({ iconPath, colorHex, sizePixels }: MaskedIconProps) {
 }
 
 // ---------------------------------------------------------------------
+// tagColorFor
+// ---------------------------------------------------------------------
+//
+// Picks a background/text color pair for a filter tag chip, out of a
+// small hand-picked palette that fits the parchment/torn-paper look
+// used everywhere else in this file (muted, not neon). The same tag
+// string always maps to the same color -- across every card on the
+// page -- by hashing the string into an index instead of assigning
+// colors in the order tags happen to be encountered.
+const TAG_COLOR_PALETTE: { background: string; text: string }[] = [
+  { background: "#EADCF8", text: "#6B21A8" }, // violet
+  { background: "#F3D9DC", text: "#9B3D44" }, // dusty rose
+  { background: "#E4E8D9", text: "#556B2F" }, // sage
+  { background: "#DCEAF3", text: "#2B5D77" }, // dusty blue
+  { background: "#F5E6C8", text: "#8A6D1D" }, // mustard
+  { background: "#E6DED3", text: "#5B4636" }, // brown
+];
+
+function tagColorFor(tag: string): { background: string; text: string } {
+  let hash = 0;
+  for (let i = 0; i < tag.length; i++) {
+    hash = (hash * 31 + tag.charCodeAt(i)) | 0;
+  }
+  const index = Math.abs(hash) % TAG_COLOR_PALETTE.length;
+  return TAG_COLOR_PALETTE[index];
+}
+
+// ---------------------------------------------------------------------
 // FiltersPanel
 // ---------------------------------------------------------------------
 //
@@ -324,6 +352,23 @@ function PaperCard({ entry, onDeleted, onRenamed }: PaperCardProps) {
           <Image src="/icons/options.svg" alt=""width={16} height={16} />
         </button>
       </div>
+
+      {entry.filters.length > 0 && (
+        <div className="flex flex-wrap gap-1 bg-stone-200 px-3 pb-2">
+          {entry.filters.map((tag) => {
+            const color = tagColorFor(tag);
+            return (
+              <span
+                key={tag}
+                className="rounded-full px-2 py-0.5 font-serif text-[9px] leading-tight"
+                style={{ backgroundColor: color.background, color: color.text }}
+              >
+                {tag}
+              </span>
+            );
+          })}
+        </div>
+      )}
 
       {
         isOptionsRowOpen === true && (

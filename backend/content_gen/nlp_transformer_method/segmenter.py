@@ -67,6 +67,119 @@ def detect_domain(text: str) -> str:
     return max(scores, key=scores.get)
 
 
+# A fixed, broad taxonomy of subject-matter topics. 
+TOPIC_SIGNALS: dict[str, list[str]] = {
+    "Machine Learning": [
+        "machine learning", "neural network", "training data", "supervised learning",
+        "unsupervised learning", "gradient descent", "classifier", "deep learning",
+    ],
+    "Natural Language Processing": [
+        "natural language", "language model", "transformer", "tokenization",
+        "text classification", "sentiment analysis", "named entity",
+    ],
+    "Computer Vision": [
+        "image classification", "object detection", "convolutional",
+        "image recognition", "computer vision", "segmentation",
+    ],
+    "Robotics": [
+        "robot", "robotic", "actuator", "sensor fusion", "autonomous vehicle",
+        "manipulator", "motion planning",
+    ],
+    "Cybersecurity": [
+        "encryption", "cyberattack", "vulnerability", "malware", "firewall",
+        "authentication", "intrusion detection", "security breach",
+    ],
+    "Software Engineering": [
+        "software architecture", "codebase", "version control", "unit test",
+        "continuous integration", "microservice", "api design",
+    ],
+    "Data Science": [
+        "data analysis", "data pipeline", "statistical model", "regression",
+        "data visualization", "big data",
+    ],
+    "Biology": [
+        "organism", "species", "ecosystem", "cell biology", "biological",
+        "evolution", "biodiversity",
+    ],
+    "Genetics": [
+        "gene expression", "dna", "genome", "mutation", "genetic",
+        "chromosome", "crispr",
+    ],
+    "Neuroscience": [
+        "neuron", "brain", "cognitive", "synaptic", "neural activity",
+        "cortex", "neuroscience",
+    ],
+    "Medicine": [
+        "patient", "clinical trial", "diagnosis", "treatment", "disease",
+        "therapy", "medical",
+    ],
+    "Public Health": [
+        "public health", "epidemiology", "vaccination", "healthcare policy",
+        "disease outbreak", "population health",
+    ],
+    "Chemistry": [
+        "chemical reaction", "molecule", "compound", "catalyst",
+        "chemical bond", "synthesis",
+    ],
+    "Physics": [
+        "quantum", "particle", "electromagnetic", "thermodynamic",
+        "relativity", "physics",
+    ],
+    "Environmental Science": [
+        "climate change", "carbon emission", "renewable energy",
+        "sustainability", "environmental impact",
+    ],
+    "Mathematics": [
+        "theorem", "proof", "equation", "algebraic", "mathematical model",
+        "differential",
+    ],
+    "Economics": [
+        "market equilibrium", "supply and demand", "gdp", "inflation",
+        "economic growth", "monetary policy",
+    ],
+    "Finance": [
+        "investment", "portfolio", "stock market", "interest rate",
+        "financial risk", "asset",
+    ],
+    "Business Strategy": [
+        "business model", "competitive advantage", "stakeholder",
+        "market share", "corporate strategy",
+    ],
+    "Law": [
+        "plaintiff", "defendant", "statute", "jurisdiction", "court ruling",
+        "legal precedent", "contract",
+    ],
+    "Psychology": [
+        "behavioral", "cognitive bias", "psychological", "mental health",
+        "emotion regulation", "personality",
+    ],
+    "Education": [
+        "curriculum", "pedagogy", "student learning", "classroom",
+        "educational outcomes",
+    ],
+}
+
+
+def detect_topics(text: str, top_n: int = 3) -> list[str]:
+    """
+    Scores the whole document against TOPIC_SIGNALS and returns the
+    top_n topics with the strongest signal, most-relevant first. Unlike
+    detect_domain(), this is multi-label -- a paper can (and often will)
+    match more than one topic -- and only returns topics that actually
+    matched at least one signal word, so it can return fewer than top_n
+    (or none) for an off-taxonomy document.
+    """
+    text_lower = text.lower()
+    scores: dict[str, int] = {}
+    for topic, signals in TOPIC_SIGNALS.items():
+        score = sum(text_lower.count(w) for w in signals)
+        if score > 0:
+            scores[topic] = score
+
+    ranked = sorted(scores.items(), key=lambda item: item[1], reverse=True)
+    return [topic for topic, _ in ranked[:top_n]]
+
+
 def _is_header(text: str) -> bool:
     t = text.strip()
     return (
