@@ -119,6 +119,13 @@ def _cluster_rects(rects, pad=15):
     return clusters
 
 
+def _rect_area(rect) -> float:
+    get_area = getattr(rect, "get_area", None)
+    if callable(get_area):
+        return get_area()
+    return max(0, rect.x1 - rect.x0) * max(0, rect.y1 - rect.y0)
+
+
 def extract_images_from_pdf(
     pdf_path,
     output_directory,
@@ -194,11 +201,11 @@ def extract_images_from_pdf(
         vector_figures_saved = 0
 
         if drawings:
-            drawing_rects = [d["rect"] for d in drawings if d["rect"].get_area() > 0]
+            drawing_rects = [d["rect"] for d in drawings if _rect_area(d["rect"]) > 0]
             clusters = _cluster_rects(drawing_rects, pad=15)
 
             for cluster in clusters:
-                if cluster.get_area() < min_area:
+                if _rect_area(cluster) < min_area:
                     continue
 
                 paths_in_cluster = sum(1 for r in drawing_rects if cluster.contains(r))
@@ -207,7 +214,7 @@ def extract_images_from_pdf(
 
                 if any(
                     cluster.intersects(r)
-                    and (cluster & r).get_area() > 0.8 * cluster.get_area()
+                    and _rect_area(cluster & r) > 0.8 * _rect_area(cluster)
                     for r in page_raster_rects
                 ):
                     continue
