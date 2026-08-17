@@ -388,21 +388,13 @@ function PaperContentView({ document: paperDocument }: PaperContentViewProps) {
 
   // Stamps every top-level rendered block with a stable data-block-index,
   // in document order -- this is the anchor highlights are saved against.
-  // The counter resets synchronously right before each render pass
-  // (below, NOT here) so indices stay identical across re-renders of the
-  // same content: react-markdown walks the same parsed structure in the
-  // same order every time, so a reset-and-recount produces the exact
-  // same numbers each pass. Memoized (empty deps) so react-markdown
-  // always sees the same function references -- otherwise React would
-  // treat every block as a "new" component on each re-render and remount
-  // its DOM, wiping out the manually-inserted highlight <mark> elements
-  // above.
   const markdownComponents: Components = useMemo(() => {
     function nextIndex(): number {
       const index = blockIndexRef.current;
       blockIndexRef.current += 1;
       return index;
     }
+
     return {
       p: ({ node: _node, ...props }) => <p data-block-index={nextIndex()} {...props} />,
       h1: ({ node: _node, ...props }) => <h1 data-block-index={nextIndex()} {...props} />,
@@ -414,11 +406,9 @@ function PaperContentView({ document: paperDocument }: PaperContentViewProps) {
       li: ({ node: _node, ...props }) => <li data-block-index={nextIndex()} {...props} />,
       blockquote: ({ node: _node, ...props }) => <blockquote data-block-index={nextIndex()} {...props} />,
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Reset happens here, synchronously, right before ReactMarkdown (below)
-  // walks the document and calls the stamped block components in order.
+  // eslint-disable-next-line react-hooks/refs
   blockIndexRef.current = 0;
 
   function handleTextSelection() {

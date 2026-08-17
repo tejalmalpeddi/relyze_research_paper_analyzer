@@ -16,13 +16,14 @@ import {
     Handle,
     Position,
     NodeProps,
-    useStore
+    useStore,
+    OnNodesDelete,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { HistoryEntry, MapNode } from "@/lib/types";
 import { StickyNoteNode, StickyNoteData } from "./StickyNote";
 import { StickyToolbar } from "./StickyNoteToolbar";
-import { fetchStickyNotes, createStickyNotes, editStickyNotes } from "@/lib/api";
+import { fetchStickyNotes, createStickyNotes, editStickyNotes, clearStickyNotes } from "@/lib/api";
 
 const ebGaramond = EB_Garamond({
     weight: ["400"],
@@ -54,6 +55,14 @@ function getCssFilterForColor(color: string): string {
 }
 
 const NODE_WIDTH = 320;
+
+interface StickyNoteRecord {
+    id?: string | number;
+    content?: string;
+    color?: string;
+    position_x?: number;
+    position_y?: number;
+}
 
 function layoutNodesWithDagre(
     nodesToLayout: Node<PaperNodeData>[],
@@ -538,7 +547,7 @@ function MapCanvas({ entry }: MapCanvasProps) {
                 try {
                     const data = await fetchStickyNotes(entry.id);
                     if (Array.isArray(data)) {
-                        fetchedStickyNodes = data.map((item: any) => ({
+                        fetchedStickyNodes = data.map((item: StickyNoteRecord) => ({
                             id: `sticky-${item.id || Math.random()}`,
                             type: "stickyNote",
                             position: { x: item.position_x ?? 0, y: item.position_y ?? 0 },
@@ -605,7 +614,7 @@ function MapCanvas({ entry }: MapCanvasProps) {
         setPlacingColor(null);
     };
 
-    const handleNodeDragStop = async (_event: any, node: Node) => {
+    const handleNodeDragStop = async (_event: MouseEvent | TouchEvent, node: Node) => {
         if (!node.id.startsWith("sticky-")) return;
 
         try {
@@ -616,6 +625,17 @@ function MapCanvas({ entry }: MapCanvasProps) {
             });
         } catch (error) {
             console.error("Failed to update sticky note position:", error);
+        }
+    };
+
+    const handleNodeDelete: OnNodesDelete = async (deletedNodes) => {
+        for (const node of deletedNodes) {
+            if (!node.id.startsWith("sticky-")) continue;
+            try {
+                await clearStickyNotes(entry.id, node.id.replace("sticky-", ""));
+            } catch (error) {
+                console.error("Failed to delete sticky note:", error);
+            }
         }
     };
 
@@ -651,6 +671,7 @@ function MapCanvas({ entry }: MapCanvasProps) {
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
                 onNodeDragStop={handleNodeDragStop}
+                onNodesDelete={handleNodeDelete}
                 nodeTypes={nodeTypes}
                 nodesDraggable={true}
                 nodesConnectable={false}

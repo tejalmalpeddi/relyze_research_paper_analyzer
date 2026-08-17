@@ -95,7 +95,7 @@ export default function HomePage() {
       {/* The main wood-desk hero area. */}
       <div
         className="relative flex flex-1 items-center justify-center gap-16 px-16"
-        style={{ backgroundImage: "url(/background/wood.png)", backgroundSize: "cover" }}
+        style={{ paddingTop: '100px', backgroundImage: "url(/background/wood.png)", backgroundSize: "cover" }}
       >
         {/* The "Visualize your research, your way" card.*/}
         <div className="relative w-96 bg-stone-50 pb-9 shadow-lg">

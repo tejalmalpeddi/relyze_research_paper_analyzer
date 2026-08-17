@@ -13,6 +13,9 @@ from app.routers.documents import router as documents_router
 from app.core.auth import verify_cookie
 from pydantic import BaseModel
 from content_gen.nlp_transformer_method.pipeline import run_pipeline
+import torch._dynamo
+
+torch._dynamo.config.suppress_errors = True
 
 ROOT_DIRECTORY = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT_DIRECTORY / "parser"))

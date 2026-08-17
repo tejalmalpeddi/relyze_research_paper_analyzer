@@ -17,6 +17,9 @@ class HistoryRead(BaseModel):
     filters: list[str]
     user_id: str
     
+class HistoryRename(BaseModel):
+    title: str
+    
 class UserCreate(BaseModel):
     email: EmailStr
     password: str

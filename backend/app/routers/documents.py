@@ -135,7 +135,7 @@ def documents_get_by_id(document_id: str, user=Depends(verify_cookie)):
 
 ANNOTATIONS_TABLE = "pdf_annotations"
 HIGHLIGHT_TYPE = "highlight"
-STROKE_TYPE = "stroke"
+STROKE_TYPE = "highlight"
 
 
 def _normalize_highlight_row(row: dict) -> dict:
@@ -162,6 +162,15 @@ def _normalize_stroke_row(row: dict) -> dict:
         "stroke_width": coordinates.get("stroke_width"),
         "created_at": row.get("created_at"),
     }
+
+
+def _is_stroke_row(row: dict) -> bool:
+    coordinates = row.get("coordinates") or {}
+    return isinstance(coordinates.get("points"), list)
+
+
+def _is_highlight_row(row: dict) -> bool:
+    return not _is_stroke_row(row)
 
 
 # ---------------------------------------------------------------------------
@@ -215,7 +224,11 @@ def highlights_get(document_id: str, user=Depends(verify_cookie)):
         .eq("annotation_type", HIGHLIGHT_TYPE)
         .execute()
     )
-    return [_normalize_highlight_row(row) for row in response.data]
+    return [
+        _normalize_highlight_row(row)
+        for row in response.data
+        if _is_highlight_row(row)
+    ]
 
 
 @router.delete("/highlights/{document_id}/{highlight_id}", status_code=status.HTTP_200_OK)
@@ -285,7 +298,11 @@ def strokes_get(document_id: str, user=Depends(verify_cookie)):
         .eq("annotation_type", STROKE_TYPE)
         .execute()
     )
-    return [_normalize_stroke_row(row) for row in response.data]
+    return [
+        _normalize_stroke_row(row)
+        for row in response.data
+        if _is_stroke_row(row)
+    ]
 
 
 @router.delete("/strokes/{document_id}/{stroke_id}", status_code=status.HTTP_200_OK)
