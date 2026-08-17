@@ -28,7 +28,7 @@ def fetch_document(document_id: str) -> dict:
     """
     response = (
         _supabase.table("documents")
-        .select("id, file_name, raw_text, status, user_id")
+        .select("id, file_name, title, raw_text, status, user_id")
         .eq("id", document_id)
         .single()
         .execute()
@@ -55,7 +55,7 @@ def fetch_document(document_id: str) -> dict:
 def save_results(
     document_id: str,
     user_id: str,
-    file_name: str,
+    title: str,
     map_json: dict,
     structured_data: dict,
     filters: list[str],
@@ -64,7 +64,7 @@ def save_results(
     Writes generated map data back to the documents table.
     """
     response = _supabase.table("documents").update({
-        "title":           file_name,
+        "title":           title,
         "map_json":        map_json,
         "filters":         filters,
         "structured_data": structured_data,
@@ -165,20 +165,20 @@ def generate_paper_tags(nlp_data: dict) -> list[str]:
 
 
 def build_map_json(
-    file_name: str,
+    title: str,
     domain: str,
-    subcategories: list,       
+    subcategories: list,
     nlp_data: dict,
 ) -> dict:
     """
     Assembles the final map.json from LLM subcategories + NLP enrichment.
-    
+
     """
     nodes = [{
         "id": "root",
         "type": "root",
         "data": {
-            "title": file_name.replace(".pdf", "").replace("-", " ").title(),
+            "title": title,
             "bullets": [domain],
         },
     }]
@@ -186,7 +186,7 @@ def build_map_json(
 
     root = {
         "id":     "root",
-        "label":  file_name.replace(".pdf", "").replace("-", " ").title(),
+        "label":  title,
         "type":   "root",
         "domain": domain,
     }
@@ -344,9 +344,11 @@ def run_pipeline(document_id: str) -> dict:
         subcategory_response = generate_subcategories(parser_output)
         subcategories = subcategory_response.subcategories
 
+        title = doc["title"] or doc["file_name"].replace(".pdf", "").replace("-", " ").title()
+
         print(f"[pipeline] Assembling map from {len(subcategories)} subcategories")
         map_json = build_map_json(
-            file_name     = doc["file_name"],
+            title         = title,
             domain        = nlp_data["domain"],
             subcategories = subcategories,
             nlp_data      = nlp_data,
@@ -366,7 +368,7 @@ def run_pipeline(document_id: str) -> dict:
         history_row = save_results(
             document_id     = document_id,
             user_id         = doc["user_id"],
-            file_name       = doc["file_name"],
+            title           = title,
             map_json        = map_json,
             structured_data = structured_data,
             filters         = filters,

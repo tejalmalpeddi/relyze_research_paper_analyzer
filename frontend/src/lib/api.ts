@@ -22,6 +22,7 @@ import {
   HistoryEntry,
   StickyNotePayload,
   StickyNoteEdit,
+  StickyNoteEntry,
   DocumentEntry,
   HighlightEntry,
   HighlightPayload,
@@ -208,12 +209,12 @@ export async function importPdf(file: File): Promise<{ history: { id: string } }
   return handleResponse<{ history: { id: string } }>(response);
 }
 
-export async function fetchStickyNotes(documentId: string | number) {
+export async function fetchStickyNotes(documentId: string | number): Promise<StickyNoteEntry[]> {
     const res = await fetch(`${API_URL}/sticky_notes/get/${documentId}`, {
         method: "GET",
         credentials: "include",
     });
-    if (!res.ok) return {};
+    if (!res.ok) return [];
     return res.json();
 }
 

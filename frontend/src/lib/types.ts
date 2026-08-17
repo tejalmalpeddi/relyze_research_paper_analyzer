@@ -34,8 +34,32 @@ export interface MapNode {
     // Optional list of short strings shown in the card's description
     // panel when the user clicks its bottom chevron to expand it. Marked
     // optional (the "?") because older or incomplete map_json might not
-    // include it at all.
+    // include it at all. This is a fallback for nodes with no `content`
+    // below (currently just the root node) -- everything else prefers
+    // `content[level]` so the description can change with the difficulty
+    // toggle.
     bullets?: string[];
+  };
+
+  // The same explanation written at three difficulty levels, produced by
+  // the subcategory-generation pipeline (see backend/app/schemas/subcategories.py's
+  // ContentLevels). Optional because the root node doesn't have one --
+  // only `data.bullets` above. This is what the Beginner/Intermediate/
+  // Advanced toggle in MindMap.tsx switches between.
+  content?: {
+    beginner: string;
+    intermediate: string;
+    advanced: string;
+  };
+
+  // Extra per-node facts from the NLP/LLM pipeline (see pipeline.py's
+  // build_map_json). Optional because the root node doesn't have one.
+  // Only the fields actually used on the frontend are declared here --
+  // the real object also carries source_text, source_page, importance,
+  // prerequisites, params, and confidence, which nothing reads yet.
+  metadata?: {
+    related_terms?: string[];
+    tags?: string[];
   };
 }
 
@@ -113,10 +137,11 @@ export interface StickyNoteEdit {
 }
 
 export interface StickyNoteEntry {
+  id: string | number;
   color: string;
   content: string;
   position_x: number;
-  position_: number;
+  position_y: number;
 }
 
 // One page's worth of plain text, as PyMuPDF extracted it -- part of

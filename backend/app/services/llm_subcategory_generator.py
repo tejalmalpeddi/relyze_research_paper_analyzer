@@ -1,6 +1,6 @@
 """
 Handles LLM API communication via Groq.
-Only called when GROQ_API_KEY is set. Requires: pip install openai
+Only called when GROQ_API_KEY is set. Requires: pip install groq
 """
 
 import json
@@ -42,22 +42,22 @@ Return ONLY valid JSON (the array itself), no markdown fences, no commentary.
 
 def _get_groq_client():
     """
-    Returns a Groq client using the openai package (Groq's API is compatible).
+    Returns a Groq client using the groq package (already in requirements.txt).
     Imported lazily so the server starts even if the package isn't installed.
     """
     try:
-        from openai import OpenAI
+        from groq import Groq
     except ImportError:
         raise RuntimeError(
-            "The 'openai' package is not installed. "
-            "Run: pip install openai"
+            "The 'groq' package is not installed. "
+            "Run: pip install groq"
         )
 
     api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
         raise RuntimeError("GROQ_API_KEY environment variable is not set.")
 
-    return OpenAI(api_key=api_key, base_url="https://api.groq.com/openai/v1")
+    return Groq(api_key=api_key)
 
 
 def generate_with_llm(pages: list[dict]) -> list[dict]:

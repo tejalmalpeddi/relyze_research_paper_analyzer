@@ -20,7 +20,7 @@ import {
     OnNodesDelete,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { HistoryEntry, MapNode } from "@/lib/types";
+import { HistoryEntry, MapNode, StickyNoteEntry } from "@/lib/types";
 import { StickyNoteNode, StickyNoteData } from "./StickyNote";
 import { StickyToolbar } from "./StickyNoteToolbar";
 import { fetchStickyNotes, createStickyNotes, editStickyNotes, clearStickyNotes } from "@/lib/api";
@@ -55,14 +55,6 @@ function getCssFilterForColor(color: string): string {
 }
 
 const NODE_WIDTH = 320;
-
-interface StickyNoteRecord {
-    id?: string | number;
-    content?: string;
-    color?: string;
-    position_x?: number;
-    position_y?: number;
-}
 
 function layoutNodesWithDagre(
     nodesToLayout: Node<PaperNodeData>[],
@@ -103,7 +95,7 @@ function layoutNodesWithDagre(
     });
 }
 
-type RawNode = Node & { data: MapNode["data"] };
+type RawNode = Node & { data: MapNode["data"]; content?: MapNode["content"] };
 
 function buildChildrenMap(edges: Edge[]): Map<string, string[]> {
     const children = new Map<string, string[]>();
@@ -502,13 +494,15 @@ function MapCanvas({ entry }: MapCanvasProps) {
             const childIds = children.get(node.id);
             const childCount = childIds !== undefined ? childIds.length : 0;
 
+            const levelBullets = node.content ? [node.content[selectedLevel]] : node.data.bullets;
+
             unpositionedNodes.push({
                 id: node.id,
                 type: "paper",
                 position: { x: 0, y: 0 },
                 data: {
                     title: node.data.title,
-                    bullets: node.data.bullets,
+                    bullets: levelBullets,
                     depth: depth,
                     isExpanded: expandedIds.has(node.id),
                     childCount: childCount,
@@ -537,7 +531,7 @@ function MapCanvas({ entry }: MapCanvasProps) {
 
         const layoutedNodes = layoutNodesWithDagre(unpositionedNodes, filteredEdges);
         return { layoutedMindMapNodes: layoutedNodes, visibleEdge: filteredEdges };
-    }, [rawNodes, edges, visibleIds, depths, children, expandedIds]);
+    }, [rawNodes, edges, visibleIds, depths, children, expandedIds, selectedLevel]);
 
     useEffect(() => {
         async function loadAndSyncNodes() {
@@ -547,7 +541,7 @@ function MapCanvas({ entry }: MapCanvasProps) {
                 try {
                     const data = await fetchStickyNotes(entry.id);
                     if (Array.isArray(data)) {
-                        fetchedStickyNodes = data.map((item: StickyNoteRecord) => ({
+                        fetchedStickyNodes = data.map((item: StickyNoteEntry) => ({
                             id: `sticky-${item.id || Math.random()}`,
                             type: "stickyNote",
                             position: { x: item.position_x ?? 0, y: item.position_y ?? 0 },
