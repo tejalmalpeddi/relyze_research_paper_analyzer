@@ -347,7 +347,7 @@ function PaperCard({ entry, onDeleted, onRenamed }: PaperCardProps) {
           type="button"
           onClick={handleOptionsButtonClick}
           aria-label="Show options for this paper"
-          className="shrink-0 ml-2" 
+          className="shrink-0 ml-2"
         >
           <Image src="/icons/options.svg" alt=""width={16} height={16} />
         </button>
@@ -451,7 +451,7 @@ export default function PreviousPapersSection() {
 
   //fetchHistoryList() sends network request to GET/history 
   //Inside handleResponse (in lib/api.ts), the line 
-  // const parsedData = await response.json(); takes that raw text and turns it into a real, 
+  // const parsedData = await response.json(); takes that raw text and turns it into a real,
   // usable JavaScript array/object. parsed from JSON is what enters as input "fetchedEntries"
   //then, catch, finally is promise chaining for error handling instead of nested ifs and callbacks
   function loadHistory() {
@@ -642,7 +642,7 @@ export default function PreviousPapersSection() {
               </p>
               <button
                 type="button"
-                onClick={() => router.push("/auth")}
+                onClick={() => router.push("/profile")}
                 className="rounded-sm bg-[#5b4636] px-6 py-2 font-serif font-semibold text-white"
               >
                 Sign In

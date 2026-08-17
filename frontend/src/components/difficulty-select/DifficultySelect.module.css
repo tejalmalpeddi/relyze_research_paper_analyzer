@@ -1,0 +1,31 @@
+.pill {
+  position: relative;
+  height: 40px;
+  width: 294px;
+  background-color: #5e503f;
+  border-radius: 10px;
+}
+
+.indicator {
+  position: absolute;
+  background-color: #c6ac8f;
+  border-radius: 11px;
+  transition: inset 200ms;
+  z-index: 1;
+}
+
+.btn {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
+  font-size: 17px;
+  text-align: center;
+  white-space: nowrap;
+  line-height: 40px;
+  z-index: 2;
+}

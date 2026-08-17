@@ -67,7 +67,7 @@ def detect_domain(text: str) -> str:
     return max(scores, key=scores.get)
 
 
-# A fixed, broad taxonomy of subject-matter topics. 
+# A fixed, broad taxonomy of subject-matter topics.
 TOPIC_SIGNALS: dict[str, list[str]] = {
     "Machine Learning": [
         "machine learning", "neural network", "training data", "supervised learning",
