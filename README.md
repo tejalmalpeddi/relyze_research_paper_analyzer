@@ -110,8 +110,10 @@ cd backend
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-uvicorn main:app --reload
+TORCHDYNAMO_DISABLE=1 uvicorn main:app --reload
 ```
+
+`TORCHDYNAMO_DISABLE=1` is required on Apple Silicon Macs — without it, PDF uploads crash with `AssertionError: Device mps not supported`, since `docling` tries to JIT-compile its layout model against Apple's GPU backend, which isn't supported yet. This env var just makes PyTorch run the model normally instead, which is slightly slower but actually works.
 
 Backend runs at:
 

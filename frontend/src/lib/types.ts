@@ -118,3 +118,106 @@ export interface StickyNoteEntry {
   position_x: number;
   position_: number;
 }
+
+// One page's worth of plain text, as PyMuPDF extracted it -- part of
+// DocumentEntry.raw_text.pages below.
+export interface RawTextPage {
+  page_number: number;
+  text: string;
+}
+
+// The FULL row from the "documents" table, as GET /documents,
+// /documents/latest, and /documents/{id} hand back -- unlike
+// HistoryEntry above (which GET /history returns, deliberately trimmed
+// down to just the mind-map-relevant fields), this one carries the
+// paper's actual text. Used by the Interactive Paper page.
+export interface DocumentEntry {
+  id: string;
+  created_at: string;
+  user_id: string;
+  file_name: string;
+
+  // A nicer, human-formatted display name the backend derives from
+  // file_name (e.g. "Attention Is All You Need" instead of
+  // "attentionisallyouneed.pdf") -- prefer this for on-screen labels,
+  // falling back to file_name if it's ever empty.
+  title: string;
+
+  status: string;
+
+  // Page-by-page plain text (PyMuPDF). Kept on this type since the
+  // backend still returns it, but the Interactive Paper page renders
+  // markdown_content instead -- raw_text has no paragraph/heading
+  // structure, markdown_content does.
+  raw_text: {
+    file_name: string;
+    page_count: number;
+    pages: RawTextPage[];
+  };
+
+  // One continuous Markdown string for the whole paper (Docling). This
+  // is what the Interactive Paper page actually renders.
+  markdown_content: string;
+
+  structured_data: Record<string, unknown>;
+}
+
+// One saved highlight -- a run of text within one rendered Markdown
+// block, marked at creation time by block_index + character offsets.
+// Immutable once created (no "edit," only create/delete) -- see
+// createHighlight/deleteHighlight in lib/api.ts.
+export interface HighlightEntry {
+  id: string;
+  document_id: string;
+  block_index: number;
+  start_offset: number;
+  end_offset: number;
+  quote: string;
+  color: string;
+  created_at: string;
+}
+
+export interface HighlightPayload {
+  block_index: number;
+  start_offset: number;
+  end_offset: number;
+  quote: string;
+  color: string;
+  created_at?: string;
+}
+
+// One point along a freehand pencil stroke. x is a PERCENTAGE (0-100) of
+// the paper content's width; y is an absolute pixel offset from the top
+// of that same content -- see the comment on StrokeEntry.points for why
+// these two use different units.
+export interface StrokePoint {
+  x: number;
+  y: number;
+}
+
+// One saved pencil stroke. Never repositioned once drawn -- the eraser
+// deletes a whole stroke (deleteStroke in lib/api.ts), it doesn't move
+// or partially trim one.
+export interface StrokeEntry {
+  id: string;
+  document_id: string;
+
+  // x as a percentage keeps strokes correctly aligned regardless of how
+  // wide the browser window is (same idea as the paper page's own CSS
+  // already uses for text positioning); y as a plain pixel offset from
+  // the content's top is what lets a stroke scroll naturally along with
+  // the continuous Markdown content instead of needing to be re-anchored
+  // to a fixed "page" that no longer exists once pagination is dropped.
+  points: StrokePoint[];
+
+  color: string;
+  stroke_width: number;
+  created_at: string;
+}
+
+export interface StrokePayload {
+  points: StrokePoint[];
+  color: string;
+  stroke_width: number;
+  created_at?: string;
+}

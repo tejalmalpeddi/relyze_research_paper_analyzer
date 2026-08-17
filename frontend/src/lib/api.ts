@@ -17,7 +17,17 @@
 // build a URL matching one specific backend route, send the request, 
 // hand the raw response through handleResponse for parsing/error-checking. 
 
-import { HistoryCreatePayload, HistoryEntry, StickyNotePayload, StickyNoteEdit } from "./types";
+import {
+  HistoryCreatePayload,
+  HistoryEntry,
+  StickyNotePayload,
+  StickyNoteEdit,
+  DocumentEntry,
+  HighlightEntry,
+  HighlightPayload,
+  StrokeEntry,
+  StrokePayload,
+} from "./types";
 //generic type ^^ later comes in to play 
 
 // Where the backend actually lives. NEXT_PUBLIC_API_URL can be set in a
@@ -236,4 +246,90 @@ export async function editStickyNotes(documentId: string | number, payload: Stic
     });
     if (!res.ok) throw new Error("Failed to edit sticky notes");
     return res.json();
+}
+
+// GET /documents -- every paper the logged-in caller has uploaded, FULL
+// rows (including markdown_content) -- unlike fetchHistoryList above,
+// which deliberately returns the same table trimmed down to just the
+// mind-map fields. Used by the Interactive Paper page's paper-picker
+// bubbles.
+export async function fetchDocumentList(): Promise<DocumentEntry[]> {
+  const response = await fetch(`${API_URL}/documents`, { credentials: "include" });
+  return handleResponse<DocumentEntry[]>(response);
+}
+
+// GET /documents/latest -- whichever paper was uploaded most recently.
+// Used when the Interactive Paper page is reached with no "?id=" in the
+// URL, same role fetchLatestHistory plays for the Mind Map page.
+export async function fetchLatestDocument(): Promise<DocumentEntry> {
+  const response = await fetch(`${API_URL}/documents/latest`, { credentials: "include" });
+  return handleResponse<DocumentEntry>(response);
+}
+
+// GET /documents/{id} -- one paper, full row. Used when a specific
+// bubble is clicked.
+export async function fetchDocumentById(id: string): Promise<DocumentEntry> {
+  const response = await fetch(`${API_URL}/documents/${id}`, { credentials: "include" });
+  return handleResponse<DocumentEntry>(response);
+}
+
+// GET /highlights/get/{documentId} -- every highlight saved on this
+// paper. Fetched once when the paper's Markdown finishes rendering, then
+// each one is redrawn as a <mark> at its saved block_index/offsets.
+export async function fetchHighlights(documentId: string): Promise<HighlightEntry[]> {
+  const response = await fetch(`${API_URL}/highlights/get/${documentId}`, { credentials: "include" });
+  return handleResponse<HighlightEntry[]>(response);
+}
+
+// POST /highlights/create/{documentId} -- save a new highlight. Called
+// once, right when a text selection is made with the highlighter tool
+// armed -- there's no separate "edit" call anywhere, a highlight is
+// immutable once created.
+export async function createHighlight(documentId: string, payload: HighlightPayload): Promise<HighlightEntry> {
+  const response = await fetch(`${API_URL}/highlights/create/${documentId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<HighlightEntry>(response);
+}
+
+// DELETE /highlights/{documentId}/{highlightId} -- remove one highlight.
+export async function deleteHighlight(documentId: string, highlightId: string): Promise<{ deleted: boolean; id: string }> {
+  const response = await fetch(`${API_URL}/highlights/${documentId}/${highlightId}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  return handleResponse<{ deleted: boolean; id: string }>(response);
+}
+
+// GET /strokes/get/{documentId} -- every pencil stroke saved on this
+// paper.
+export async function fetchStrokes(documentId: string): Promise<StrokeEntry[]> {
+  const response = await fetch(`${API_URL}/strokes/get/${documentId}`, { credentials: "include" });
+  return handleResponse<StrokeEntry[]>(response);
+}
+
+// POST /strokes/create/{documentId} -- save a new pencil stroke. Called
+// once per stroke, when the pointer lifts after drawing it.
+export async function createStroke(documentId: string, payload: StrokePayload): Promise<StrokeEntry> {
+  const response = await fetch(`${API_URL}/strokes/create/${documentId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<StrokeEntry>(response);
+}
+
+// DELETE /strokes/{documentId}/{strokeId} -- remove one stroke. This IS
+// the eraser tool -- clicking a stroke with the eraser armed calls this,
+// there's no separate "erase part of a stroke" capability.
+export async function deleteStroke(documentId: string, strokeId: string): Promise<{ deleted: boolean; id: string }> {
+  const response = await fetch(`${API_URL}/strokes/${documentId}/${strokeId}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  return handleResponse<{ deleted: boolean; id: string }>(response);
 }
