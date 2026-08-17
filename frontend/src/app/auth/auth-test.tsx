@@ -90,10 +90,15 @@ export default function AuthTest() {
                     <button onClick={() => handleAction(() => logout(), 'Logged out successfully!')}>
                         Sign Out
                     </button>
-
+                    <input
+                        type="password"
+                        placeholder="Password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                    />
                     <button
                         style={{ backgroundColor: 'red', color: 'white' }}
-                        onClick={() => handleAction(() => deleteUser(), 'Account deleted!')}
+                        onClick={() => handleAction(() => deleteUser({email: user?.email || "", password: password}), 'Account deleted!')}
                     >
                         Delete Account
                     </button>

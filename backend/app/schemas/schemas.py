@@ -16,14 +16,14 @@ class HistoryRead(BaseModel):
     map_json: dict[str , Any]
     filters: list[str]
     user_id: str
-    
+
 class HistoryRename(BaseModel):
     title: str
-    
+
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
-    
+
 class UserLogin(BaseModel):
     email: EmailStr
     password: str

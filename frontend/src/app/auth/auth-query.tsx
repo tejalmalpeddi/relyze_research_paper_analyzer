@@ -99,10 +99,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return res;
   };
 
-  const deleteUser = async () => {
+  const deleteUser = async (logincredentials: UserLogin) => {
+    await requestWrapper<AuthMessageResponse, UserLogin>('/auth/login', 'POST', logincredentials);
     const res = await requestWrapper<AuthMessageResponse>('/auth/delete-user', 'POST');
     setUser(null);
     return res;
+  };
+
+  const requestPasswordReset = async (email: string) => {
+    void email;
+    return { message: "If that email is registered, it will reset." };
   };
 
   return (
@@ -118,6 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout,
         editUser,
         deleteUser,
+        requestPasswordReset,
       }}
     >
       {children}

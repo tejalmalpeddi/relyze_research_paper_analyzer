@@ -31,5 +31,6 @@ export interface AuthContextType {
   loginAnonymously: () => Promise<AuthMessageResponse>;
   logout: () => Promise<AuthMessageResponse>;
   editUser: (updateData: UserEdit) => Promise<AuthMessageResponse>;
-  deleteUser: () => Promise<AuthMessageResponse>;
+  deleteUser: (credentials: UserLogin) => Promise<AuthMessageResponse>;
+  requestPasswordReset: (email: string) => Promise<AuthMessageResponse>;
 }

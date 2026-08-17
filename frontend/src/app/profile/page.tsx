@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import ProfileFolder, { Difficulty, ProfilePreference } from '@/components/profile/ProfileFolder';
+import Popup from '@/components/popups/popup';
 import styles from './page.module.css';
 import { useAuth } from '@/app/auth/auth-query';
 
@@ -15,6 +16,11 @@ const API_BASE_URL = 'http://localhost:8000';
 interface HistoryTitle {
   title: string;
 }
+
+// Which of the manually-triggered popups (if any) is currently open. The
+// login popup isn't tracked here -- it's shown automatically whenever the
+// user isn't authenticated, independent of anything the user clicked.
+type ActivePopup = 'signOutConfirm' | 'deleteAccountConfirm' | 'confirmPassword' | null;
 
 function WoodBackground() {
   return (
@@ -66,9 +72,33 @@ function getProfileImage(metadata: Record<string, unknown> | undefined) {
 function ProfilePageContent() {
   const [folderLeft, setFolderLeft] = useState(421);
   const [paperTitles, setPaperTitles] = useState<string[]>([]);
-  const { user, isAuthenticated, editUser, logout, deleteUser } = useAuth();
+  const { user, isLoading, isAuthenticated, editUser, logout, deleteUser } = useAuth();
   const metadata = useMemo(() => user?.raw_user_meta_data ?? {}, [user?.raw_user_meta_data]);
   const preferences = useMemo(() => getProfilePreferences(metadata, paperTitles), [metadata, paperTitles]);
+
+  // Which popup (if any) the user manually opened via a button.
+  const [activePopup, setActivePopup] = useState<ActivePopup>(null);
+  // Tracks whether the user dismissed the login popup themselves (clicking
+  // outside it) -- without this, it would just reopen every re-render while
+  // still unauthenticated.
+  const [loginDismissed, setLoginDismissed] = useState(false);
+
+  // Being logged out always takes priority: the login popup shows itself
+  // (no button needed to open it) whenever there's no authenticated user
+  // and it hasn't been dismissed, and it "should already be centered on
+  // the page" because PopupShell renders its own fixed, full-screen,
+  // centered backdrop -- no extra wrapper needed here.
+  //
+  // Requiring activePopup === null here is what fixes the delete-account
+  // bug: without it, the instant deleteUser() succeeds, isAuthenticated
+  // flips false, showLogin flips true, and the deleteAccountConfirm popup
+  // gets yanked away (unmounted, losing its own "done" stage) in favor of
+  // the login popup -- before the user ever sees "Account Deleted." Now
+  // the login popup only auto-shows once no other popup is already open;
+  // the delete-success screen's own "Log In to Another Account" button
+  // calls onClose(), which clears activePopup and lets this take over
+  // naturally on the next render.
+  const showLogin = !isLoading && !isAuthenticated && !loginDismissed && activePopup === null;
 
   useEffect(() => {
     function updateFolderLeft() {
@@ -107,28 +137,6 @@ function ProfilePageContent() {
     };
   }, [user]);
 
-  async function handleEmailSave(email: string) {
-    if (!user || email === user.email) return;
-    await editUser({ email });
-  }
-
-  async function handlePasswordSave(password: string) {
-    if (!user) return;
-    await editUser({ password });
-  }
-
-  async function handlePreferenceDifficultyChange(index: number, difficulty: Difficulty) {
-    if (!user) return;
-
-    const nextPreferences = preferences.map((pref, i) => (i === index ? { ...pref, difficulty } : pref));
-    await editUser({
-      raw_user_meta_data: {
-        ...metadata,
-        preferences: nextPreferences,
-      },
-    });
-  }
-
   return (
     <div className={styles.page}>
       <div className={styles.stage}>
@@ -142,19 +150,40 @@ function ProfilePageContent() {
                 profileSrc={getProfileImage(metadata)}
                 preferences={user ? preferences : []}
                 onDeleteAccount={async () => {
-                  await deleteUser();
+                  // Opens the confirm/delete popup instead of deleting
+                  // directly -- it collects and verifies the password
+                  // itself, then calls the real deleteUser().
+                  setActivePopup('deleteAccountConfirm');
                 }}
-                onEmailSave={handleEmailSave}
-                onPasswordSave={handlePasswordSave}
-                onPreferenceDifficultyChange={handlePreferenceDifficultyChange}
+                onPasswordEditClick={() => {
+                  // Opens Confirm Password, which (on success) leads to New
+                  // Password and saves the real new password itself via
+                  // useAuth's editUser(). ProfileFolder no longer collects
+                  // or displays the real password at all.
+                  setActivePopup('confirmPassword');
+                }}
                 onSignOut={async () => {
-                  await logout();
+                  setActivePopup('signOutConfirm');
                 }}
               />
             </div>
           </div>
         </div>
       </div>
+
+      {showLogin && <Popup type="login" onClose={() => setActivePopup(null)} />}
+
+      {activePopup === 'signOutConfirm' && (
+        <Popup type="signOutConfirm" onClose={() => setActivePopup(null)} />
+      )}
+
+      {activePopup === 'deleteAccountConfirm' && (
+        <Popup type="deleteAccountConfirm" onClose={() => setActivePopup(null)} />
+      )}
+
+      {activePopup === 'confirmPassword' && (
+        <Popup type="confirmPassword" onClose={() => setActivePopup(null)} />
+      )}
     </div>
   );
 }
