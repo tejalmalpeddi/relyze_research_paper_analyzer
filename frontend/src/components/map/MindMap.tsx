@@ -56,6 +56,14 @@ function getCssFilterForColor(color: string): string {
 
 const NODE_WIDTH = 320;
 
+interface StickyNoteRecord {
+    id?: string | number;
+    content?: string;
+    color?: string;
+    position_x?: number;
+    position_y?: number;
+}
+
 function layoutNodesWithDagre(
     nodesToLayout: Node<PaperNodeData>[],
     edgesToLayout: Edge[]
@@ -539,7 +547,7 @@ function MapCanvas({ entry }: MapCanvasProps) {
                 try {
                     const data = await fetchStickyNotes(entry.id);
                     if (Array.isArray(data)) {
-                        fetchedStickyNodes = data.map((item: any) => ({
+                        fetchedStickyNodes = data.map((item: StickyNoteRecord) => ({
                             id: `sticky-${item.id || Math.random()}`,
                             type: "stickyNote",
                             position: { x: item.position_x ?? 0, y: item.position_y ?? 0 },
@@ -606,7 +614,7 @@ function MapCanvas({ entry }: MapCanvasProps) {
         setPlacingColor(null);
     };
 
-    const handleNodeDragStop = async (_event: any, node: Node) => {
+    const handleNodeDragStop = async (_event: MouseEvent | TouchEvent, node: Node) => {
         if (!node.id.startsWith("sticky-")) return;
 
         try {
@@ -622,7 +630,7 @@ function MapCanvas({ entry }: MapCanvasProps) {
 
     const handleNodeDelete: OnNodesDelete = async (deletedNodes) => {
         for (const node of deletedNodes) {
-            if (!node.id.startsWith("sticky-")) return;
+            if (!node.id.startsWith("sticky-")) continue;
             try {
                 await clearStickyNotes(entry.id, node.id.replace("sticky-", ""));
             } catch (error) {

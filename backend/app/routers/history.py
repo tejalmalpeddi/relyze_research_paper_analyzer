@@ -49,7 +49,7 @@ def history_create(payload: HistoryCreate, user=Depends(verify_cookie)):
     return _normalize_history_row(response.data[0])
 
 
-@router.get("/search/{title}")
+@router.get("/search")
 def history_search(title: str, user=Depends(verify_cookie)):
     response = (
         _history_query()
@@ -120,10 +120,14 @@ def history_get_by_id(history_id: str, user=Depends(verify_cookie)):
 
 
 @router.put("/rename/{history_id}", status_code=status.HTTP_200_OK)
-def history_rename(history_id: str, payload:HistoryRename, user=Depends(verify_cookie)):
+def history_rename(history_id: str, payload: HistoryRename, user=Depends(verify_cookie)):
+    next_title = payload.title.strip()
+    if not next_title:
+        raise HTTPException(status_code=400, detail="Title cannot be empty.")
+
     response = (
         supabase.table("documents")
-        .update({"title": payload.title})
+        .update({"title": next_title})
         .eq("id", history_id)
         .eq("user_id", user.id)
         .execute()

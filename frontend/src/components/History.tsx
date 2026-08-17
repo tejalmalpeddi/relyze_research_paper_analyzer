@@ -252,11 +252,26 @@ function PaperCard({ entry, onDeleted, onRenamed }: PaperCardProps) {
   };
 
   const saveChanges = async (nextContent: string) => {
+    const nextTitle = nextContent.trim();
+
+    if (!nextTitle) {
+      setContent(entry.title);
+      setIsEditing(false);
+      return;
+    }
+
     try {
-      await renameHistory(entry.id, nextContent);
+      await renameHistory(entry.id, nextTitle);
       onRenamed();
     } catch (error) {
-      console.error("Failed to rename history title:", error);
+      setContent(entry.title);
+      if (error instanceof Error) {
+        setDeleteErrorMessage(error.message);
+      } else {
+        setDeleteErrorMessage("Failed to rename history title.");
+      }
+    } finally {
+      setIsEditing(false);
     }
   };
 
@@ -292,7 +307,6 @@ function PaperCard({ entry, onDeleted, onRenamed }: PaperCardProps) {
           onChange={handleTextChange}
           onBlur={() => {
             saveChanges(content);
-            setIsEditing(false);
           }}
           placeholder={content}
           className="font-serif text-sm font-semibold text-stone-900 flex-1 min-w-0 bg-white"
@@ -418,7 +432,24 @@ export default function PreviousPapersSection() {
   }
 
   useEffect(() => {
-    loadHistory();
+    fetchHistoryList()
+      .then((fetchedEntries) => {
+        setEntries(fetchedEntries);
+        setLoadErrorMessage(null);
+      })
+      .catch((error) => {
+        if (error instanceof ApiError && error.status === 401) {
+          // Nobody's logged in -- this isn't really a failure, so it
+          // doesn't go into loadErrorMessage at all.
+        } else if (error instanceof Error) {
+          setLoadErrorMessage(error.message);
+        } else {
+          setLoadErrorMessage("Something went wrong while loading your papers.");
+        }
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
 
     // function handleWindowFocus() {
     //   loadHistory();
