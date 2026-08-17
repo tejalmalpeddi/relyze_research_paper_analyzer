@@ -85,6 +85,35 @@ export interface MapJson {
   edges: MapEdge[];
 }
 
+export interface KeywordSummary {
+  term: string;
+  summary: string;
+}
+
+export interface RelatedInfoSummary {
+  title: string;
+  summary: string;
+}
+
+export interface BackgroundContent {
+  title?: string;
+  keywords?: KeywordSummary[];
+  key_terms?: string[];
+  related_info?: RelatedInfoSummary[];
+  related_information?: RelatedInfoSummary[];
+  images?: DocumentImage[];
+  source_pages?: number[];
+}
+
+export interface DocumentImage {
+  page_number?: number;
+  image_type?: string;
+  file_name?: string;
+  storage_path?: string;
+  content_type?: string;
+  summary?: string;
+}
+
 // One full row as it comes back from the backend -- this is exactly what
 // GET /history and GET /history/search hand back, and exactly what gets
 // passed around the app once a paper has been fetched.
@@ -104,6 +133,11 @@ export interface HistoryEntry {
   // Short text tags used by the Filters panel on the homepage, e.g.
   // ["nlp", "transformers"].
   filters: string[];
+
+  keywords?: string[];
+  related_info?: string | null;
+  images?: DocumentImage[];
+  background?: BackgroundContent | null;
 }
 
 // The shape needed to CREATE a new history row (used by createHistory in

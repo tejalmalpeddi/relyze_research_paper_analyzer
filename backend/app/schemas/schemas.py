@@ -8,6 +8,9 @@ class HistoryCreate(BaseModel):
     title: str
     map_json: dict[str , Any]
     filters: list[str]
+
+class HistoryRename(BaseModel):
+    title: str
     
 class HistoryRead(BaseModel):
     id: int
@@ -16,9 +19,10 @@ class HistoryRead(BaseModel):
     map_json: dict[str , Any]
     filters: list[str]
     user_id: str
-
-class HistoryRename(BaseModel):
-    title: str
+    keywords: list[str] = Field(default_factory=list)
+    related_info: Optional[str] = None
+    images: list[dict[str, Any]] = Field(default_factory=list)
+    background: Optional[dict[str, Any]] = None
 
 class UserCreate(BaseModel):
     email: EmailStr

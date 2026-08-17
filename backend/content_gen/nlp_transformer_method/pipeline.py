@@ -7,6 +7,7 @@ import json
 import os
 from supabase import create_client, Client
 
+from app.services.background_generator import generate_background_content
 from .segmenter   import segment, detect_domain, detect_topics
 from .extractor   import extract_all
 from .relationship import build_edges
@@ -28,7 +29,7 @@ def fetch_document(document_id: str) -> dict:
     """
     response = (
         _supabase.table("documents")
-        .select("id, file_name, title, raw_text, status, user_id")
+        .select("id, file_name, title, raw_text, status, user_id, images")
         .eq("id", document_id)
         .single()
         .execute()
@@ -48,6 +49,7 @@ def fetch_document(document_id: str) -> dict:
         "title":     response.data.get("title"),
         "user_id":   response.data.get("user_id"),
         "pages":     raw.get("pages", []),
+        "images":    response.data.get("images") or [],
     }
 
 
@@ -59,14 +61,26 @@ def save_results(
     map_json: dict,
     structured_data: dict,
     filters: list[str],
+    background_content: dict,
 ) -> dict:
     """
     Writes generated map data back to the documents table.
     """
+    keyword_terms = []
+    for keyword in background_content.get("keywords", []):
+        if isinstance(keyword, dict):
+            term = keyword.get("term") or keyword.get("title") or keyword.get("name")
+        else:
+            term = keyword
+        if isinstance(term, str) and term.strip():
+            keyword_terms.append(term.strip())
+
     response = _supabase.table("documents").update({
         "title":           title,
         "map_json":        map_json,
         "filters":         filters,
+        "keywords":        keyword_terms,
+        "related_info":    json.dumps(background_content, indent=2),
         "structured_data": structured_data,
         "status":          "completed",
     }).eq("id", document_id).execute()
@@ -363,6 +377,14 @@ def run_pipeline(document_id: str) -> dict:
         }
 
         filters = generate_paper_tags(nlp_data)
+        print("[pipeline] Generating background content")
+        background_content = generate_background_content(
+            file_name=doc["file_name"],
+            pages=pages,
+            subcategories=subcategories,
+            nlp_data=nlp_data,
+            images=doc["images"],
+        )
 
         print("[pipeline] Saving to Supabase")
         history_row = save_results(
@@ -372,10 +394,15 @@ def run_pipeline(document_id: str) -> dict:
             map_json        = map_json,
             structured_data = structured_data,
             filters         = filters,
+            background_content = background_content,
         )
 
         print("[pipeline] Done")
-        return {"map_json": map_json, "history": history_row}
+        return {
+            "map_json": map_json,
+            "history": history_row,
+            "background": background_content,
+        }
 
     except Exception as e:
         print(f"[pipeline] ERROR: {e}")

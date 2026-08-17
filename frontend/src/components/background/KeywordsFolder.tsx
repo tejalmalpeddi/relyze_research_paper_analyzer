@@ -2,15 +2,21 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { HistoryEntry } from "@/lib/types";
+import {
+  DocumentImage,
+  HistoryEntry,
+  KeywordSummary,
+  RelatedInfoSummary,
+} from "@/lib/types";
+import { backendAssetUrl } from "@/lib/api";
 
 interface KeywordsFolderProps {
   entry: HistoryEntry;
 }
 
-function collectKeywords(entry: HistoryEntry): string[] {
+function collectFallbackKeywords(entry: HistoryEntry): KeywordSummary[] {
   const seenLowercase = new Set<string>();
-  const keywords: string[] = [];
+  const keywords: KeywordSummary[] = [];
 
   for (const node of entry.map_json.nodes) {
     const terms = [...(node.metadata?.related_terms ?? []), ...(node.metadata?.tags ?? [])];
@@ -23,15 +29,34 @@ function collectKeywords(entry: HistoryEntry): string[] {
       if (seenLowercase.has(key)) continue;
 
       seenLowercase.add(key);
-      keywords.push(trimmed);
+      keywords.push({ term: trimmed, summary: "" });
     }
   }
 
-  return keywords.sort((a, b) => a.localeCompare(b));
+  return keywords.sort((a, b) => a.term.localeCompare(b.term));
 }
 
+function collectKeywords(entry: HistoryEntry): KeywordSummary[] {
+  const generatedKeywords = entry.background?.keywords ?? [];
+  if (generatedKeywords.length > 0) {
+    return [...generatedKeywords].sort((a, b) => a.term.localeCompare(b.term));
+  }
 
-function VocabularyCard({ term }: { term: string }) {
+  const supabaseKeywords = entry.keywords ?? [];
+  if (supabaseKeywords.length > 0) {
+    return [...supabaseKeywords]
+      .sort((a, b) => a.localeCompare(b))
+      .map((term) => ({ term, summary: "" }));
+  }
+
+  return collectFallbackKeywords(entry);
+}
+
+function collectRelatedInfo(entry: HistoryEntry): RelatedInfoSummary[] {
+  return entry.background?.related_info ?? entry.background?.related_information ?? [];
+}
+
+function VocabularyCard({ item }: { item: KeywordSummary }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
@@ -42,7 +67,7 @@ function VocabularyCard({ term }: { term: string }) {
         aria-expanded={isExpanded}
         className="flex w-full cursor-pointer items-center justify-between gap-3 px-4 py-3 text-left font-serif text-[20px] font-normal leading-[26px] text-black"
       >
-        <span>{term}</span>
+        <span>{item.term}</span>
         <svg
           width="23"
           height="7"
@@ -56,15 +81,9 @@ function VocabularyCard({ term }: { term: string }) {
       </button>
 
       {isExpanded === true && (
-        <div className="space-y-1 px-4 pb-4">
-          <p className="font-serif text-xs text-black">
-            <span className="italic">part of speech</span> — not available yet
-          </p>
-          <p className="font-serif text-xs text-black">
-            <span className="italic">pronunciation</span> — not available yet
-          </p>
+        <div className="px-4 pb-4">
           <p className="font-serif text-[16px] leading-[21px] text-black">
-            Definition not available yet.
+            {item.summary || "No generated summary was saved for this keyword yet."}
           </p>
         </div>
       )}
@@ -72,11 +91,54 @@ function VocabularyCard({ term }: { term: string }) {
   );
 }
 
-function groupByFirstLetter(keywords: string[]): [string, string[]][] {
-  const groups = new Map<string, string[]>();
+function RelatedInfoCard({ item }: { item: RelatedInfoSummary }) {
+  return (
+    <div className="mb-2 border border-[#5e503f] bg-[#d9d9d9] px-4 py-3">
+      <h3 className="font-serif text-[20px] font-normal leading-[26px] text-black">
+        {item.title}
+      </h3>
+      <p className="mt-2 font-serif text-[16px] leading-[21px] text-black">
+        {item.summary || "No generated summary was saved for this related item yet."}
+      </p>
+    </div>
+  );
+}
+
+function ImageCard({ image, index }: { image: DocumentImage; index: number }) {
+  const imageTitle = image.file_name ?? `Image ${index + 1}`;
+  const imageUrl = backendAssetUrl(image.storage_path);
+
+  return (
+    <div className="mb-2 border border-[#5e503f] bg-[#d9d9d9] p-3">
+      {imageUrl !== null && (
+        <img
+          src={imageUrl}
+          alt={imageTitle}
+          className="mb-3 max-h-48 w-full object-contain"
+        />
+      )}
+      <h3 className="font-serif text-[18px] leading-[24px] text-black">{imageTitle}</h3>
+      {image.summary !== undefined && image.summary.trim().length > 0 && (
+        <p className="mt-2 font-serif text-[16px] leading-[21px] text-black">
+          {image.summary}
+        </p>
+      )}
+      <div className="mt-1 space-y-1 font-serif text-[13px] leading-[17px] text-black">
+        {image.page_number !== undefined && <p>Page {image.page_number}</p>}
+        {image.image_type !== undefined && <p>Type: {image.image_type}</p>}
+        {image.storage_path !== undefined && (
+          <p className="break-all">Storage: {image.storage_path}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function groupByFirstLetter(keywords: KeywordSummary[]): [string, KeywordSummary[]][] {
+  const groups = new Map<string, KeywordSummary[]>();
 
   for (const keyword of keywords) {
-    const letter = keyword[0].toUpperCase();
+    const letter = keyword.term[0].toUpperCase();
     const bucket = groups.get(letter);
     if (bucket !== undefined) {
       bucket.push(keyword);
@@ -144,6 +206,8 @@ export function KeywordsFolder({ entry }: KeywordsFolderProps) {
 
   const keywords = useMemo(() => collectKeywords(entry), [entry]);
   const groupedKeywords = useMemo(() => groupByFirstLetter(keywords), [keywords]);
+  const relatedInfo = useMemo(() => collectRelatedInfo(entry), [entry]);
+  const images = entry.images ?? entry.background?.images ?? [];
 
   return (
     <div
@@ -200,7 +264,7 @@ export function KeywordsFolder({ entry }: KeywordsFolderProps) {
                 </div>
 
                 <div className="flex-1 overflow-y-auto">
-                  {folder.key === "keywords" ? (
+                  {folder.key === "keywords" && (
                     keywords.length === 0 ? (
                       <p className="px-6 py-3 font-serif text-base text-[#5e503f]">
                         No keywords found for this paper.
@@ -211,16 +275,44 @@ export function KeywordsFolder({ entry }: KeywordsFolderProps) {
                           <div className="mb-2 bg-[#5e503f] px-2 py-1 font-serif text-base font-semibold text-[#d9d9d9]">
                             {letter}
                           </div>
-                          {terms.map((term) => (
-                            <VocabularyCard key={term} term={term} />
+                          {terms.map((keyword) => (
+                            <VocabularyCard key={keyword.term} item={keyword} />
                           ))}
                         </div>
                       ))
                     )
-                  ) : (
-                    <p className="px-6 py-3 font-serif text-base italic text-[#5e503f]">
-                      Coming soon.
-                    </p>
+                  )}
+
+                  {folder.key === "related" && (
+                    relatedInfo.length === 0 ? (
+                      <p className="px-6 py-3 font-serif text-base text-[#5e503f]">
+                        No related info found for this paper.
+                      </p>
+                    ) : (
+                      <div className="px-6 pt-3">
+                        {relatedInfo.map((item) => (
+                          <RelatedInfoCard key={item.title} item={item} />
+                        ))}
+                      </div>
+                    )
+                  )}
+
+                  {folder.key === "images" && (
+                    images.length === 0 ? (
+                      <p className="px-6 py-3 font-serif text-base text-[#5e503f]">
+                        No extracted images found for this paper.
+                      </p>
+                    ) : (
+                      <div className="px-6 pt-3">
+                        {images.map((image, index) => (
+                          <ImageCard
+                            key={`${image.storage_path ?? image.file_name ?? "image"}-${index}`}
+                            image={image}
+                            index={index}
+                          />
+                        ))}
+                      </div>
+                    )
                   )}
                 </div>
               </div>

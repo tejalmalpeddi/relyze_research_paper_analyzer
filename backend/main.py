@@ -5,6 +5,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, UploadFile, File, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from app.routers.history import router as history_router
 from app.routers.auth import router as auth_router
 from app.routers.stickynotes import router as sticky_router
@@ -23,6 +24,11 @@ sys.path.insert(0, str(ROOT_DIRECTORY / "parser"))
 from parser import parse_and_save_pdf
 
 app = FastAPI(title="Relyze API")
+app.mount(
+    "/assets",
+    StaticFiles(directory=str(ROOT_DIRECTORY / "parser" / "assets")),
+    name="assets",
+)
 
 app.add_middleware(
     CORSMiddleware,

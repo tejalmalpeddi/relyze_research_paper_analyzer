@@ -230,6 +230,46 @@ def extract_images_from_pdf(
     print(f"Done. {saved_count} image file(s) saved to {output_path}")
 
 
+def _image_type_from_name(file_name: str) -> str:
+    if "_vector_" in file_name:
+        return "vector"
+    if "_raster_" in file_name:
+        return "raster"
+    return "image"
+
+
+def _page_number_from_name(file_name: str) -> Optional[int]:
+    parts = file_name.split("_")
+    if len(parts) < 2 or parts[0] != "page":
+        return None
+
+    try:
+        return int(parts[1])
+    except ValueError:
+        return None
+
+
+def _image_metadata(output_directory: Path, document_id: str) -> list[dict]:
+    document_directory = output_directory / document_id
+    if not document_directory.exists():
+        return []
+
+    images = []
+    for image_path in sorted(document_directory.iterdir()):
+        if not image_path.is_file():
+            continue
+
+        images.append(
+            {
+                "file_name": image_path.name,
+                "storage_path": f"/assets/{document_id}/{image_path.name}",
+                "page_number": _page_number_from_name(image_path.name),
+                "image_type": _image_type_from_name(image_path.name),
+            }
+        )
+    return images
+
+
 def parse_and_save_pdf(pdf_path, user_id=None, file_name=None):
     pdf_path = Path(pdf_path)
     stored_file_name = file_name or pdf_path.name
@@ -250,7 +290,23 @@ def parse_and_save_pdf(pdf_path, user_id=None, file_name=None):
         title,
     )
 
-    return response.data[0]
+    document = response.data[0]
+    document_id = document["id"]
+    document_image_directory = IMAGE_OUTPUT_DIRECTORY / document_id
+    extract_images_from_pdf(pdf_path, document_image_directory)
+    images = _image_metadata(IMAGE_OUTPUT_DIRECTORY, document_id)
+
+    if images:
+        update_response = (
+            supabase.table("documents")
+            .update({"images": images})
+            .eq("id", document_id)
+            .execute()
+        )
+        if update_response.data:
+            document = update_response.data[0]
+
+    return document
 
 
 if __name__ == "__main__":
