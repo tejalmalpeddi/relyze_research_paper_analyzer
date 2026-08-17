@@ -23,6 +23,7 @@ def save_document(
     structured_document,
     markdown_document,
     user_id=None,
+    title=None,
 ):
     document_data = {
         "file_name": file_name,
@@ -33,6 +34,8 @@ def save_document(
     }
     if user_id is not None:
         document_data["user_id"] = user_id
+    if title is not None:
+        document_data["title"] = title
 
     response = (
         supabase

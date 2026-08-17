@@ -1,5 +1,8 @@
 import json
 from pathlib import Path
+import os
+from typing import Optional
+os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 
 import pymupdf
 from docling.document_converter import DocumentConverter
@@ -40,14 +43,52 @@ def extract_raw_text_from_pdf(pdf_path):
     return raw_text_data
 
 
+def extract_title(document) -> Optional[str]:
+    """
+    Best-effort real paper title, read off Docling's own layout detection
+    rather than the filename. In standard academic PDF layout the title is
+    the first section-header-labeled text block on the page (it sits above
+    the author line, which layout detection also tags as a section header,
+    so "first one" is what distinguishes it). Returns None if the document
+    has no section headers at all (e.g. a scanned PDF with no layout info),
+    letting the caller fall back to a filename-derived title instead.
+    """
+    for text_item in document.texts:
+        label = getattr(text_item, "label", None)
+        if label is not None and getattr(label, "value", None) == "section_header":
+            title = text_item.text.strip()
+            if title:
+                return title
+    return None
+
+
 def extract_structured_document(pdf_path):
-    document_converter = DocumentConverter()
+    from docling.datamodel.pipeline_options import PdfPipelineOptions, AcceleratorOptions, AcceleratorDevice
+    from docling.datamodel.base_models import InputFormat
+    from docling.document_converter import PdfFormatOption
+
+
+    pipeline_options = PdfPipelineOptions()
+    pipeline_options.accelerator_options = AcceleratorOptions(
+        num_threads=4,
+        device=AcceleratorDevice.CPU
+    )
+
+    document_converter = DocumentConverter(
+        format_options={
+            InputFormat.PDF: PdfFormatOption(
+                pipeline_options=pipeline_options
+            )
+        }
+    )
+
     conversion_result = document_converter.convert(pdf_path)
 
     markdown_document = conversion_result.document.export_to_markdown()
     structured_document = conversion_result.document.export_to_dict()
+    title = extract_title(conversion_result.document)
 
-    return markdown_document, structured_document
+    return markdown_document, structured_document, title
 
 
 def _cluster_rects(rects, pad=15):
@@ -191,25 +232,22 @@ def extract_images_from_pdf(
 
 def parse_and_save_pdf(pdf_path, user_id=None, file_name=None):
     pdf_path = Path(pdf_path)
+    stored_file_name = file_name or pdf_path.name
 
     raw_text_data = extract_raw_text_from_pdf(pdf_path)
-    markdown_document, structured_document = extract_structured_document(pdf_path)
+    markdown_document, structured_document, extracted_title = extract_structured_document(pdf_path)
+
+    title = extracted_title or Path(stored_file_name).stem.replace("_", " ").replace("-", " ").title()
 
     supabase = connect_to_supabase()
     response = save_document(
         supabase,
-        # file_name is the ORIGINAL uploaded filename (e.g.
-        # "physicspaper1.pdf"), passed in by whatever called this
-        # function. pdf_path.name is only a fallback for when nobody
-        # supplies one -- callers that first copy the upload into a
-        # temporary file (main.py's /documents/import does exactly this)
-        # would otherwise end up saving that temp file's own throwaway
-        # name (e.g. "tmpzmtkvnn0.pdf") instead of anything meaningful.
-        file_name or pdf_path.name,
+        stored_file_name,
         raw_text_data,
         structured_document,
         markdown_document,
         user_id,
+        title,
     )
 
     return response.data[0]
@@ -223,7 +261,7 @@ if __name__ == "__main__":
         json.dump(raw_text_data, f, indent=2, ensure_ascii=False)
 
     # Extract structured document using Docling
-    markdown_document, structured_document = extract_structured_document(
+    markdown_document, structured_document, extracted_title = extract_structured_document(
         PDF_INPUT_FILE
     )
 
@@ -249,7 +287,8 @@ if __name__ == "__main__":
         PDF_INPUT_FILE.name,
         raw_text_data,
         structured_document,
-        markdown_document
+        markdown_document,
+        title=extracted_title or PDF_INPUT_FILE.stem.replace("_", " ").replace("-", " ").title(),
     )
 
     print(response.data)
