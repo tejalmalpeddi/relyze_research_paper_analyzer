@@ -7,7 +7,7 @@ import json
 import os
 from supabase import create_client, Client
 
-from .segmenter   import segment, detect_domain
+from .segmenter   import segment, detect_domain, detect_topics
 from .extractor   import extract_all
 from .relationship import build_edges
 
@@ -45,6 +45,7 @@ def fetch_document(document_id: str) -> dict:
     return {
         "id":        response.data["id"],
         "file_name": response.data.get("file_name", "document.pdf"),
+        "title":     response.data.get("title"),
         "user_id":   response.data.get("user_id"),
         "pages":     raw.get("pages", []),
     }
@@ -57,6 +58,7 @@ def save_results(
     file_name: str,
     map_json: dict,
     structured_data: dict,
+    filters: list[str],
 ) -> dict:
     """
     Writes generated map data back to the documents table.
@@ -64,7 +66,7 @@ def save_results(
     response = _supabase.table("documents").update({
         "title":           file_name,
         "map_json":        map_json,
-        "filters":         [],
+        "filters":         filters,
         "structured_data": structured_data,
         "status":          "completed",
     }).eq("id", document_id).execute()
@@ -125,12 +127,41 @@ def enrich_pages_with_nlp(pages: list[dict]) -> dict:
 
     return {
         "domain":        domain,
+        "full_text":     full_text,
         "all_key_terms": unique_terms[:20],
         "all_entities":  list(set(all_entities))[:15],
         "all_params":    all_params,
         "chunks":        all_chunks,
     }
 
+
+
+# fallback tag when a document doesn't match any TOPIC_SIGNALS at all.
+_DOMAIN_TAG_LABELS = {
+    "science":  "Science",
+    "tech":     "Technology",
+    "legal":    "Legal",
+    "business": "Business",
+    "general":  "General",
+}
+
+
+def generate_paper_tags(nlp_data: dict) -> list[str]:
+    """
+    Builds the short tags saved to documents.filters and shown as the
+    small color-coded chips under each paper card on the homepage.
+
+    These come from detect_topics(), a fixed taxonomy of broad subject
+    areas (e.g. "Machine Learning", "Neuroscience") -- deliberately generic
+    rather than pulled from this one paper's specific vocabulary, so that
+    unrelated papers on the same subject end up sharing tags and the
+    homepage filter is actually useful across a whole library. Falls back
+    to the coarse domain bucket if nothing in the taxonomy matched.
+    """
+    tags = detect_topics(nlp_data["full_text"], top_n=3)
+    if not tags:
+        tags = [_DOMAIN_TAG_LABELS.get(nlp_data["domain"], "General")]
+    return tags
 
 
 def build_map_json(
@@ -329,6 +360,8 @@ def run_pipeline(document_id: str) -> dict:
             "page_count": len(pages),
         }
 
+        filters = generate_paper_tags(nlp_data)
+
         print("[pipeline] Saving to Supabase")
         history_row = save_results(
             document_id     = document_id,
@@ -336,6 +369,7 @@ def run_pipeline(document_id: str) -> dict:
             file_name       = doc["file_name"],
             map_json        = map_json,
             structured_data = structured_data,
+            filters         = filters,
         )
 
         print("[pipeline] Done")
