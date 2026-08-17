@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.core.auth import verify_cookie
 from app.core.db import supabase
-from app.schemas.schemas import HistoryCreate
+from app.schemas.schemas import HistoryCreate, HistoryRename
 
 router = APIRouter(prefix="/history", tags=["history"])
 
@@ -118,6 +118,25 @@ def history_get_by_id(history_id: str, user=Depends(verify_cookie)):
         )
     return _normalize_history_row(response.data[0])
 
+
+@router.put("/rename/{history_id}", status_code=status.HTTP_200_OK)
+def history_rename(history_id: str, payload: HistoryRename, user=Depends(verify_cookie)):
+    next_title = payload.title.strip()
+    if not next_title:
+        raise HTTPException(status_code=400, detail="Title cannot be empty.")
+
+    response = (
+        supabase.table("documents")
+        .update({"title": next_title})
+        .eq("id", history_id)
+        .eq("user_id", user.id)
+        .execute()
+    )
+    if not response.data:
+        raise HTTPException(
+            status_code=404, detail=f"History item with id '{history_id}' not found."
+        )
+    return {"edited": True, "id": history_id}
 
 @router.delete("/{history_id}", status_code=status.HTTP_200_OK)
 def history_delete(history_id: str, user=Depends(verify_cookie)):

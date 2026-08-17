@@ -23,7 +23,7 @@ import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { HistoryEntry } from "@/lib/types";
-import { fetchHistoryList, deleteHistory, ApiError } from "@/lib/api";
+import { fetchHistoryList, deleteHistory, renameHistory, ApiError } from "@/lib/api";
 import { useAuth } from '@/app/auth/auth-query';
 
 // ---------------------------------------------------------------------
@@ -202,14 +202,17 @@ function DeleteConfirmModal({
 interface PaperCardProps {
   entry: HistoryEntry;
   onDeleted: (deletedId: string) => void;
+  onRenamed: () => void;
 }
 
-function PaperCard({ entry, onDeleted }: PaperCardProps) {
+function PaperCard({ entry, onDeleted, onRenamed }: PaperCardProps) {
   const router = useRouter();
 
   const [isOptionsRowOpen, setIsOptionsRowOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState<boolean>(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [content, setContent] = useState<string>(entry.title);
   const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null);
 
   function handleOptionsButtonClick() {
@@ -241,8 +244,36 @@ function PaperCard({ entry, onDeleted }: PaperCardProps) {
   // endpoint, which doesn't exist). Left as a visible but non-functional
   // button, matching the mockup, rather than silently pretending it works.
   function handleRenameButtonClick() {
-    // Intentionally does nothing right now.
+    setIsEditing(true);
   }
+
+  const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setContent(e.target.value);
+  };
+
+  const saveChanges = async (nextContent: string) => {
+    const nextTitle = nextContent.trim();
+
+    if (!nextTitle) {
+      setContent(entry.title);
+      setIsEditing(false);
+      return;
+    }
+
+    try {
+      await renameHistory(entry.id, nextTitle);
+      onRenamed();
+    } catch (error) {
+      setContent(entry.title);
+      if (error instanceof Error) {
+        setDeleteErrorMessage(error.message);
+      } else {
+        setDeleteErrorMessage("Failed to rename history title.");
+      }
+    } finally {
+      setIsEditing(false);
+    }
+  };
 
   async function handleConfirmDeleteClick() {
     setIsDeleting(true);
@@ -271,54 +302,73 @@ function PaperCard({ entry, onDeleted }: PaperCardProps) {
       </div>
 
       <div className="flex items-center justify-between bg-stone-200 px-3 py-2">
-        <span className="line-clamp-2 font-serif text-sm font-semibold text-stone-900">
-          {entry.title}
-        </span>
+        {isEditing ? (<input
+          value={content}
+          onChange={handleTextChange}
+          onBlur={() => {
+            saveChanges(content);
+          }}
+          placeholder={content}
+          className="font-serif text-sm font-semibold text-stone-900 flex-1 min-w-0 bg-white"
+        />) : (
+          <span className="flex-1 min-w-0 line-clamp-2 font-serif text-sm font-semibold text-stone-900">
+            {content}
+          </span>
+        )}
         <button
           type="button"
           onClick={handleOptionsButtonClick}
           aria-label="Show options for this paper"
+          className="shrink-0 ml-2" 
         >
-          <Image src="/icons/options.svg" alt="" width={16} height={16} />
+          <Image src="/icons/options.svg" alt=""width={16} height={16} />
         </button>
       </div>
 
-      {isOptionsRowOpen === true && (
-        <div className="flex items-center justify-center gap-6 bg-stone-100 py-3">
-          <button type="button" onClick={handleTrashButtonClick} aria-label="Delete this paper">
-            <MaskedIcon iconPath="/icons/trash.svg" colorHex="#b3555f" sizePixels={20} />
-          </button>
-          <button
-            type="button"
-            onClick={handleRedirectButtonClick}
-            aria-label="Open this paper's mind map"
-          >
-            <MaskedIcon iconPath="/icons/redirect.svg" colorHex="#3f3a30" sizePixels={20} />
-          </button>
-          <button type="button" onClick={handleRenameButtonClick} aria-label="Rename this paper">
-            <MaskedIcon iconPath="/icons/rename.svg" colorHex="#3f3a30" sizePixels={20} />
-          </button>
-        </div>
-      )}
+      {
+        isOptionsRowOpen === true && (
+          <div className="flex items-center justify-center gap-6 bg-stone-100 py-3">
+            <button type="button" onClick={handleTrashButtonClick} aria-label="Delete this paper">
+              <MaskedIcon iconPath="/icons/trash.svg" colorHex="#b3555f" sizePixels={20} />
+            </button>
+            <button
+              type="button"
+              onClick={handleRedirectButtonClick}
+              aria-label="Open this paper's mind map"
+            >
+              <MaskedIcon iconPath="/icons/redirect.svg" colorHex="#3f3a30" sizePixels={20} />
+            </button>
+            <button type="button" onClick={handleRenameButtonClick} aria-label="Rename this paper">
+              <MaskedIcon iconPath="/icons/rename.svg" colorHex="#3f3a30" sizePixels={20} />
+            </button>
+          </div>
+        )
+      }
 
-      {isDeleteModalOpen === true && (
-        <DeleteConfirmModal
-          paperTitle={entry.title}
-          onKeep={handleKeepButtonClick}
-          onConfirmDelete={handleConfirmDeleteClick}
-        />
-      )}
+      {
+        isDeleteModalOpen === true && (
+          <DeleteConfirmModal
+            paperTitle={entry.title}
+            onKeep={handleKeepButtonClick}
+            onConfirmDelete={handleConfirmDeleteClick}
+          />
+        )
+      }
 
-      {isDeleting === true && (
-        <p className="mt-1 text-center font-serif text-xs text-stone-400">Deleting...</p>
-      )}
+      {
+        isDeleting === true && (
+          <p className="mt-1 text-center font-serif text-xs text-stone-400">Deleting...</p>
+        )
+      }
 
-      {deleteErrorMessage !== null && (
-        <p className="mt-1 text-center font-serif text-xs text-[#c1666b]">
-          {deleteErrorMessage}
-        </p>
-      )}
-    </div>
+      {
+        deleteErrorMessage !== null && (
+          <p className="mt-1 text-center font-serif text-xs text-[#c1666b]">
+            {deleteErrorMessage}
+          </p>
+        )
+      }
+    </div >
   );
 }
 
@@ -356,8 +406,8 @@ export default function PreviousPapersSection() {
 
   //fetchHistoryList() sends network request to GET/history 
   //Inside handleResponse (in lib/api.ts), the line 
-    // const parsedData = await response.json(); takes that raw text and turns it into a real, 
-    // usable JavaScript array/object. parsed from JSON is what enters as input "fetchedEntries"
+  // const parsedData = await response.json(); takes that raw text and turns it into a real, 
+  // usable JavaScript array/object. parsed from JSON is what enters as input "fetchedEntries"
   //then, catch, finally is promise chaining for error handling instead of nested ifs and callbacks
   function loadHistory() {
     setIsLoading(true);
@@ -382,16 +432,33 @@ export default function PreviousPapersSection() {
   }
 
   useEffect(() => {
-    loadHistory();
+    fetchHistoryList()
+      .then((fetchedEntries) => {
+        setEntries(fetchedEntries);
+        setLoadErrorMessage(null);
+      })
+      .catch((error) => {
+        if (error instanceof ApiError && error.status === 401) {
+          // Nobody's logged in -- this isn't really a failure, so it
+          // doesn't go into loadErrorMessage at all.
+        } else if (error instanceof Error) {
+          setLoadErrorMessage(error.message);
+        } else {
+          setLoadErrorMessage("Something went wrong while loading your papers.");
+        }
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
 
-    function handleWindowFocus() {
-      loadHistory();
-    }
+    // function handleWindowFocus() {
+    //   loadHistory();
+    // }
 
-    window.addEventListener("focus", handleWindowFocus);
-    return () => {
-      window.removeEventListener("focus", handleWindowFocus);
-    };
+    // window.addEventListener("focus", handleWindowFocus);
+    // return () => {
+    //   window.removeEventListener("focus", handleWindowFocus);
+    // };
   }, []);
 
   // Called by a PaperCard after it successfully deletes itself on the
@@ -506,15 +573,15 @@ export default function PreviousPapersSection() {
           </p>
         )}
 
-         {isLoading === false &&
-            (isAuthenticated === true && visibleEntries.length === 0) && (
-               <div className="flex w-full flex-col items-center gap-4 py-10 text-center">
+        {isLoading === false &&
+          (isAuthenticated === true && visibleEntries.length === 0) && (
+            <div className="flex w-full flex-col items-center gap-4 py-10 text-center">
               <p className="font-serif text-stone-300">
                 No saved papers yet. Upload a PDF to see it here.
               </p>
             </div>
-            )
-          }
+          )
+        }
 
         {/* Covers two cases with the same message: an explicit 401 from
             the backend (isLoggedOut), and a plain empty list with no
@@ -523,7 +590,7 @@ export default function PreviousPapersSection() {
             a 401 right now -- see the note on PreviousPapersSection. */}
         {isLoading === false &&
           loadErrorMessage === null &&
-          (isAuthenticated === false ) && (
+          (isAuthenticated === false) && (
             <div className="flex w-full flex-col items-center gap-4 py-10 text-center">
               <p className="font-serif text-stone-300">
                 You are currently logged out, nothing to display!
@@ -541,7 +608,7 @@ export default function PreviousPapersSection() {
         {isLoading === false && isAuthenticated === true && loadErrorMessage === null && visibleEntries.length > 0 && (
           <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-6">
             {visibleEntries.map((entry) => (
-              <PaperCard key={entry.id} entry={entry} onDeleted={handlePaperDeleted} />
+              <PaperCard key={entry.id} entry={entry} onDeleted={handlePaperDeleted} onRenamed={loadHistory}/>
             ))}
           </div>
         )}

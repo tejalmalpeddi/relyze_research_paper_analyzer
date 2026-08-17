@@ -17,6 +17,9 @@ class HistoryRead(BaseModel):
     filters: list[str]
     user_id: str
     
+class HistoryRename(BaseModel):
+    title: str
+    
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
@@ -42,3 +45,4 @@ class StickyNotesUpdate(BaseModel):
     content: Optional[str] = None
     position_x: Optional[float] = None
     position_y: Optional[float] = None
+    
