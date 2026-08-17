@@ -31,9 +31,9 @@ def _fallback_placeholder(pages: list[dict]) -> list[SubcategoryItem]:
             name="Document Overview",
             category="Background",
             content=ContentLevels(
-                beginner="Add a GROQ_API_KEY to your .env to generate AI-powered concept map nodes.",
-                intermediate="Add a GROQ_API_KEY to your .env to generate AI-powered concept map nodes.",
-                advanced="Add a GROQ_API_KEY to your .env to generate AI-powered concept map nodes.",
+                beginner="The AI concept-map generator could not produce valid structured output for this import, so this placeholder keeps the paper available.",
+                intermediate="The LLM request ran, but its response could not be parsed into the required concept-map JSON shape. Re-import the paper or check the backend log for the exact parsing error.",
+                advanced="The subcategory generator fell back because the LLM response failed schema or JSON parsing. The import still completed, but the generated map uses this placeholder until valid structured output is produced.",
             ),
             sourcePage=1,
             sourceSnippet=snippet,

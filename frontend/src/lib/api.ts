@@ -37,6 +37,13 @@ import {
 // running the backend locally with `uvicorn main:app` on its default port.
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+export function backendAssetUrl(path: string | undefined): string | null {
+  if (!path) return null;
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  if (path.startsWith("/")) return `${API_URL}${path}`;
+  return `${API_URL}/${path}`;
+}
+
 // A regular Error, plus the HTTP status code that caused it. Callers
 // (like History.tsx) can check err.status === 401 to tell "you're not
 // logged in" apart from every other kind of failure, without having to

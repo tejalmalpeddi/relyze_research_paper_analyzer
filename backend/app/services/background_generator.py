@@ -1,0 +1,362 @@
+import json
+import os
+from typing import Optional
+
+from app.schemas.background import BackgroundContent
+
+MAX_BACKGROUND_CHARS = 7000
+MAX_BACKGROUND_ITEMS = 6
+MAX_KEY_TERMS = 12
+MAX_IMAGE_ITEMS = 8
+SUMMARY_SENTENCE_LIMIT = 2
+DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b"
+DEFAULT_GROQ_FALLBACK_MODELS = "qwen/qwen3.6-27b"
+
+
+def _page_context(pages: list[dict]) -> str:
+    return "\n\n".join(
+        f"[Page {page.get('page_number', '?')}]\n{page.get('text', '')}"
+        for page in sorted(pages, key=lambda page: page.get("page_number", 0))
+    )[:MAX_BACKGROUND_CHARS]
+
+
+def _subcategory_context(subcategories: list) -> list[dict]:
+    return [
+        {
+            "name": sub.name,
+            "category": sub.category,
+            "summary": sub.content.intermediate,
+            "sourcePage": sub.sourcePage,
+            "relatedTerms": sub.relatedTerms,
+            "prerequisites": {
+                "beginner": sub.prerequisites.beginner,
+                "intermediate": sub.prerequisites.intermediate,
+                "advanced": sub.prerequisites.advanced,
+            },
+        }
+        for sub in subcategories
+    ]
+
+
+def _dedupe(items: list[str]) -> list[str]:
+    seen = set()
+    unique_items = []
+    for item in items:
+        normalized = item.strip()
+        key = normalized.lower()
+        if normalized and key not in seen:
+            unique_items.append(normalized)
+            seen.add(key)
+    return unique_items
+
+
+def _summary_item(title: str, summary: str, title_key: str) -> dict:
+    return {
+        title_key: title.strip(),
+        "summary": summary.strip(),
+    }
+
+
+def _image_title(image: dict, index: int) -> str:
+    return (
+        _clean_string(image.get("file_name"))
+        or _clean_string(image.get("storage_path"))
+        or f"Image {index + 1}"
+    )
+
+
+def _image_context(images: list[dict]) -> list[dict]:
+    return [
+        {
+            "file_name": image.get("file_name"),
+            "storage_path": image.get("storage_path"),
+            "page_number": image.get("page_number"),
+            "image_type": image.get("image_type"),
+        }
+        for image in (images or [])[:MAX_IMAGE_ITEMS]
+        if isinstance(image, dict)
+    ]
+
+
+def _image_summary_item(image: dict, summary: str, index: int) -> dict:
+    return {
+        "file_name": image.get("file_name"),
+        "storage_path": image.get("storage_path"),
+        "page_number": image.get("page_number"),
+        "image_type": image.get("image_type"),
+        "summary": summary.strip()
+        or (
+            f"{_image_title(image, index)} is an extracted visual from this paper. "
+            "Use its page and file metadata to review the figure alongside the text."
+        ),
+    }
+
+
+def _clean_string(value) -> str:
+    return value.strip() if isinstance(value, str) else ""
+
+
+def _prerequisite_terms(subcategories: list) -> list[str]:
+    terms = []
+    for sub in subcategories:
+        terms.extend(sub.relatedTerms)
+        terms.extend(sub.prerequisites.beginner)
+        terms.extend(sub.prerequisites.intermediate)
+    return _dedupe(terms)
+
+
+def _fallback_background(
+    file_name: str,
+    subcategories: list,
+    nlp_data: dict,
+    images: Optional[list[dict]] = None,
+) -> dict:
+    important_subcategories = sorted(
+        subcategories,
+        key=lambda sub: sub.importance,
+        reverse=True,
+    )[:5]
+
+    keyword_terms = _dedupe(
+        nlp_data.get("all_key_terms", []) + _prerequisite_terms(subcategories)
+    )[:MAX_KEY_TERMS]
+
+    content = {
+        "title": (
+            file_name.replace(".pdf", "").replace("-", " ").replace("_", " ").title()
+        ),
+        "keywords": [
+            _summary_item(
+                term,
+                (
+                    f"{term} is a key concept surfaced from this paper's NLP "
+                    "analysis. Review it before reading so the paper's terminology "
+                    "is easier to follow."
+                ),
+                "term",
+            )
+            for term in keyword_terms
+        ],
+        "related_info": [
+            _summary_item(sub.name, sub.content.intermediate, "title")
+            for sub in important_subcategories
+        ],
+        "images": [
+            _image_summary_item(image, "", index)
+            for index, image in enumerate(_image_context(images or []))
+        ],
+        "source_pages": sorted(
+            {sub.sourcePage for sub in important_subcategories if sub.sourcePage is not None}
+        ),
+    }
+    return BackgroundContent(**content).model_dump()
+
+
+def _normalize_summary_items(items, title_key: str) -> list[dict]:
+    normalized = []
+    seen = set()
+
+    for item in items or []:
+        if isinstance(item, str):
+            title = item.strip()
+            summary = ""
+        elif isinstance(item, dict):
+            title = _clean_string(
+                item.get(title_key)
+                or item.get("term")
+                or item.get("title")
+                or item.get("name")
+                or ""
+            )
+            summary = _clean_string(
+                item.get("summary") or item.get("description") or ""
+            )
+        else:
+            continue
+
+        key = title.lower()
+        if title and key not in seen:
+            normalized.append(_summary_item(title, summary, title_key))
+            seen.add(key)
+
+    return normalized
+
+
+def _normalize_image_items(items, source_images: list[dict]) -> list[dict]:
+    source_lookup = {}
+    for index, image in enumerate(_image_context(source_images)):
+        for key in (
+            _clean_string(image.get("storage_path")),
+            _clean_string(image.get("file_name")),
+            str(image.get("page_number") or ""),
+        ):
+            if key:
+                source_lookup[key.lower()] = (index, image)
+
+    normalized = []
+    seen = set()
+
+    for index, item in enumerate(items or []):
+        if isinstance(item, str):
+            candidate = {"summary": item}
+        elif isinstance(item, dict):
+            candidate = item
+        else:
+            continue
+
+        summary = _clean_string(candidate.get("summary") or candidate.get("description"))
+        match_keys = [
+            _clean_string(candidate.get("storage_path")),
+            _clean_string(candidate.get("file_name")),
+            str(candidate.get("page_number") or ""),
+        ]
+        source_index = index
+        source_image = {
+            "file_name": candidate.get("file_name"),
+            "storage_path": candidate.get("storage_path"),
+            "page_number": candidate.get("page_number"),
+            "image_type": candidate.get("image_type"),
+        }
+
+        for key in match_keys:
+            match = source_lookup.get(key.lower()) if key else None
+            if match is not None:
+                source_index, source_image = match
+                break
+
+        identifier = (
+            _clean_string(source_image.get("storage_path"))
+            or _clean_string(source_image.get("file_name"))
+            or str(source_image.get("page_number") or source_index)
+        ).lower()
+        if identifier in seen:
+            continue
+
+        normalized.append(_image_summary_item(source_image, summary, source_index))
+        seen.add(identifier)
+
+    if normalized:
+        return normalized[:MAX_IMAGE_ITEMS]
+
+    return [
+        _image_summary_item(image, "", index)
+        for index, image in enumerate(_image_context(source_images))
+    ]
+
+
+def _normalize_background_content(
+    content: dict,
+    file_name: str,
+    source_images: Optional[list[dict]] = None,
+) -> dict:
+    if not isinstance(content, dict):
+        return _fallback_background(file_name, [], {}, source_images)
+
+    keywords = _normalize_summary_items(content.get("keywords"), "term")[:MAX_KEY_TERMS]
+    related_info = _normalize_summary_items(
+        content.get("related_info") or content.get("related_information"),
+        "title",
+    )[:MAX_BACKGROUND_ITEMS]
+
+    normalized = {
+        "title": content.get("title")
+        or file_name.replace(".pdf", "").replace("-", " ").replace("_", " ").title(),
+        "keywords": keywords,
+        "related_info": related_info,
+        "images": _normalize_image_items(content.get("images"), source_images or []),
+        "source_pages": content.get("source_pages") or [],
+    }
+    return BackgroundContent(**normalized).model_dump()
+
+
+def _groq_models_to_try() -> list[str]:
+    model_names = [
+        os.getenv("GROQ_MODEL", DEFAULT_GROQ_MODEL),
+        *os.getenv("GROQ_FALLBACK_MODELS", DEFAULT_GROQ_FALLBACK_MODELS).split(","),
+    ]
+
+    models = []
+    seen = set()
+    for model_name in model_names:
+        normalized = model_name.strip()
+        if normalized and normalized not in seen:
+            models.append(normalized)
+            seen.add(normalized)
+    return models
+
+
+def generate_background_content(
+    file_name: str,
+    pages: list[dict],
+    subcategories: list,
+    nlp_data: dict,
+    images: Optional[list[dict]] = None,
+) -> dict:
+    if not os.getenv("GROQ_API_KEY"):
+        return _fallback_background(file_name, subcategories, nlp_data, images)
+
+    try:
+        from groq import Groq
+
+        client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "Generate reader-prep background content for a research paper. "
+                    "Use only the supplied paper text, subcategories, and NLP terms. "
+                    "Focus on key terms and related context a reader should know before reading. "
+                    "Do not summarize the whole paper or add unsupported outside facts. "
+                    "Return valid JSON with exactly these keys: title, keywords, "
+                    "related_info, images, source_pages. "
+                    "keywords must be an array of objects with exactly: "
+                    "term and summary. related_info must be an array of objects "
+                    "with exactly: title and summary. images must be an array "
+                    "of objects with exactly: file_name, storage_path, "
+                    "page_number, image_type, and summary. Every summary must be brief, "
+                    f"no more than {SUMMARY_SENTENCE_LIMIT} sentences. "
+                    "Return ONLY valid JSON, no markdown fences or commentary."
+                ),
+            },
+            {
+                "role": "user",
+                "content": json.dumps(
+                    {
+                        "file_name": file_name,
+                        "paper_text": _page_context(pages),
+                        "subcategories": _subcategory_context(subcategories),
+                        "keywords": nlp_data.get("all_key_terms", [])[:20],
+                        "images": _image_context(images or []),
+                        "domain": nlp_data.get("domain"),
+                    }
+                ),
+            },
+        ]
+
+        last_error = None
+        for model_name in _groq_models_to_try():
+            try:
+                response = client.chat.completions.create(
+                    model=model_name,
+                    messages=messages,
+                    response_format={"type": "json_object"},
+                    temperature=0.2,
+                    max_tokens=1200,
+                )
+                break
+            except Exception as error:
+                last_error = error
+        else:
+            raise last_error or RuntimeError("No Groq models configured.")
+
+        raw_text = response.choices[0].message.content.strip()
+        if raw_text.startswith("```"):
+            parts = raw_text.split("```")
+            raw_text = parts[1]
+            if raw_text.startswith("json"):
+                raw_text = raw_text[4:]
+            raw_text = raw_text.strip()
+
+        return _normalize_background_content(json.loads(raw_text), file_name, images)
+    except Exception:
+        return _fallback_background(file_name, subcategories, nlp_data, images)
