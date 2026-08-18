@@ -22,7 +22,17 @@ import { useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import PreviousPapersSection from "@/components/History";
+import Popup from "@/components/popups/popup";
 import { importPdf } from "@/lib/api";
+import VisualizeBlurb from "@/components/home/visualizeblurb";
+
+// Which popup (if any) the upload flow currently needs shown. "uploading"
+// needs its own uploadId (for the future cancelUpload() call) and the
+// picked file's name (shown as the popup's topText); "difficultySelect"
+// only needs the id the backend gave back for the newly-created paper.
+type UploadPopupState =
+  | { stage: "uploading"; uploadId: string; fileName: string }
+  | { stage: "difficultySelect"; paperId: string };
 
 export default function HomePage() {
   // useRef<HTMLInputElement>(null) -- the <HTMLInputElement> generic says
@@ -43,6 +53,10 @@ export default function HomePage() {
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
+
+  // Drives the Uploading / Difficulty Select popups. null = neither is
+  // showing.
+  const [uploadPopup, setUploadPopup] = useState<UploadPopupState | null>(null);
 
   // Runs when you click the big leather-pad tray (the visible "button").
   // fileInputRef.current is where React actually stores the real <input>
@@ -68,13 +82,23 @@ export default function HomePage() {
       setSelectedFileName(file.name);
       setImportError(null);
       setIsImporting(true);
+      // Show the Uploading popup right away, with a fresh id for this
+      // particular upload (only used for the future cancelUpload() call
+      // -- it has nothing to do with the backend yet).
+      setUploadPopup({ stage: "uploading", uploadId: crypto.randomUUID(), fileName: file.name });
 
       try {
         const imported = await importPdf(file);
-        router.push(`/mindmap?id=${imported.history.id}`);
+        // This resolving IS the real "upload finished" signal -- instead
+        // of routing straight to the mind map, swap the popup over to
+        // Difficulty Select for the paper that was just created.
+        setUploadPopup({ stage: "difficultySelect", paperId: String(imported.history.id) });
       } catch (error) {
         setImportError("Import failed. Check the backend logs.");
         console.error("Failed to import PDF:", error);
+        // Something went wrong -- close the popup and fall back to the
+        // existing inline error text under the upload tray.
+        setUploadPopup(null);
       } finally {
         setIsImporting(false);
       }
@@ -85,41 +109,32 @@ export default function HomePage() {
     }
   }
 
+  // Called when the Uploading popup's "Cancel Upload" button is pressed
+  // (that button already tried the real cancelUpload() backend call
+  // itself first, skeleton for now). This just clears the popup from the
+  // page either way. Note: the in-flight importPdf() request itself isn't
+  // actually aborted by this yet -- there's no real backend cancellation
+  // wired up, so it'll keep running in the background even once the
+  // popup's gone, until that's implemented.
+  function handleUploadCancelled() {
+    setUploadPopup(null);
+    setIsImporting(false);
+  }
+
   // Everything below is JSX -- describes what should appear on screen,
   // re-run every time this component re-renders (e.g. after
   // setSelectedFileName runs). Same "flex h-screen flex-col" full-page
   // layout trick as the Mind Map page
   return (
-    <div className="flex min-h-dvh flex-col">
+    <main className="flex min-h-screen flex-col">
 
       {/* The main wood-desk hero area. */}
-      <div
-        className="relative flex flex-1 items-center justify-center gap-16 px-16"
-        style={{ paddingTop: '100px', backgroundImage: "url(/background/wood.png)", backgroundSize: "cover" }}
+      <section
+        className="h-[90vh] max-h-[700px] w-full bg-cover bg-center shadow-xl/50 flex items-center justify-center gap-10 pt-[5%]"
+        style={{ backgroundImage: "url('/background/wood.png')" }}
       >
         {/* The "Visualize your research, your way" card.*/}
-        <div className="relative w-96 bg-stone-50 pb-9 shadow-lg">
-          <Image
-            src="/interface/magnifying-glass.png"
-            alt=""
-            width={110}
-            height={90}
-            className="absolute -left-25 -top-10 z-10 h-auto w-60 -rotate-20 object-contain -scale-x-100"
-          />
-
-          <div className="flex flex-col items-center gap-4 px-12 py-10 text-center">
-            <p className="font-serif text-3xl leading-snug text-stone-900">
-              Visualize your research, your way.
-            </p>
-            <p className="font-serif text-base text-stone-600">
-              Research analysis tools tailored to your level of understanding.
-            </p>
-          </div>
-
-          <div className="absolute bottom-0 left-0 h-9 w-full">
-            <Image src="/interface/torn-paper.svg" alt="" fill className="object-fill" />
-          </div>
-        </div>
+        <VisualizeBlurb />
 
         {/* The leather-pad "Upload PDF" tray -- this is the actual,
             visible, clickable thing you see and press. It's a real
@@ -131,34 +146,26 @@ export default function HomePage() {
           type="button"
           onClick={handleUploadTrayClick}
           disabled={isImporting}
-          className="relative h-96 w-96 shrink-0"
+          className="relative aspect-3/4 h-full bg-contain bg-center bg-no-repeat cursor-pointer flex flex-col items-center justify-center gap-3 text-white"
+          style={{ backgroundImage: "url(/interface/leather-pad.png)" }}
         >
-          <Image
-            src="/interface/leather-pad.png"
-            alt=""
-            width={400}
-            height={400}
-            className="h-full w-full object-contain"
-          />
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-            <span className="font-serif text-lg text-white">
+            <h2 className="text-stone-200">
               {isImporting ? "Importing PDF..." : "Upload PDF"}
-            </span>
-            <Image src="/icons/upload.svg" alt="" width={50} height={52} />
+            </h2>
+            <Image src="/icons/upload.svg" alt="" width={70} height={70} />
             {/* Same {condition && (...)} idiom from the Mind Map page:
                 only show the filename text once something has actually
                 been picked (selectedFileName is no longer null). */}
             {selectedFileName !== null && (
-              <span className="mt-2 max-w-55 truncate font-serif text-xs text-stone-200">
+              <p className="mt-2 max-w-[60%] truncate text-stone-200">
                 {selectedFileName}
-              </span>
+              </p>
             )}
             {importError !== null && (
-              <span className="mt-2 max-w-60 text-center font-serif text-xs text-red-200">
+              <p className="mt-2 max-w-[60%] text-center text-red-200">
                 {importError}
-              </span>
+              </p>
             )}
-          </div>
         </button>
 
         {/* The actual, invisible file picker input -- this is the REAL
@@ -183,13 +190,36 @@ export default function HomePage() {
           onChange={handleFileInputChange}
           className="hidden"
         />
-      </div>
+      </section>
 
       {/* The "Previous Papers" section -- entirely built and data-fetched
           inside History.tsx.*/}
       <PreviousPapersSection />
-    </div>
+
+      {uploadPopup?.stage === "uploading" && (
+        <Popup
+          type="uploading"
+          uploadId={uploadPopup.uploadId}
+          fileName={uploadPopup.fileName}
+          onClose={handleUploadCancelled}
+        />
+      )}
+
+      {uploadPopup?.stage === "difficultySelect" && (
+        <Popup
+          type="difficultySelect"
+          paperId={uploadPopup.paperId}
+          onClose={() => setUploadPopup(null)}
+        />
+      )}
+
+
+      {/* Drawer Background */}
+      {/* fixed to the bottom of the screen to give "pulling out drawer" effect */}
+      {/* borders adapt to screen size */}
+      <div className="drawer-bg fixed bottom-0 left-0 w-full h-screen box-border -z-10"></div>
+
+    </main>
   );
 
 }
-
