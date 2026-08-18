@@ -472,13 +472,6 @@ export default function PreviousPapersSection() {
     });
   }
 
-  function handleFiltersButtonClick() {
-    if (isFiltersPanelOpen === true) {
-      setIsFiltersPanelOpen(false);
-    } else {
-      setIsFiltersPanelOpen(true);
-    }
-  }
 
   // Every unique filter tag across every currently-loaded paper, used to
   // build the FiltersPanel's checkbox list. Recomputed only when
