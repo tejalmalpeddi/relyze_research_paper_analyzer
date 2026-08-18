@@ -29,6 +29,7 @@ import { HistoryEntry } from "@/lib/types";
 import { fetchHistoryList, renameHistory, ApiError } from "@/lib/api";
 import { useAuth } from '@/app/auth/auth-query';
 import Popup from "@/components/popups/popup";
+import useScrollJack from "./home/scrolljack";
 
 // ---------------------------------------------------------------------
 // MaskedIcon
@@ -117,60 +118,65 @@ interface FiltersPanelProps {
   availableFilterTags: string[];
   selectedFilterTags: Set<string>;
   onToggleFilterTag: (tag: string) => void;
-  onClose: () => void;
 }
 
 function FiltersPanel({
   availableFilterTags,
   selectedFilterTags,
   onToggleFilterTag,
-  onClose,
 }: FiltersPanelProps) {
+  const [expanded, setExpanded] = useState(false);
+
   return (
-    <div className="relative w-64 rounded-sm bg-stone-50 p-5 shadow-xl">
-      <div className="mb-4 flex items-center justify-between">
-        <h3 className="font-serif text-lg text-stone-900">Filters</h3>
-        <button type="button" onClick={onClose} aria-label="Close filters">
-          <Image src="/icons/filter.svg" alt="" width={20} height={20} />
-        </button>
-      </div>
+    <form className="relative inline-flex flex-col w-[50%] max-w-[300px] z-50">
+      <button
+        type="button"
+        onClick={() => setExpanded((prev) => !prev)}
+        className="inline-flex items-center justify-between bg-off-white p-4"
+      >
+        <h2>Filters</h2>
+        <img src="/icons/filter.svg" alt="Filter icon" className="size-8 object-contain" />
+      </button>
 
-      {availableFilterTags.length === 0 ? (
-        <p className="font-serif text-sm text-stone-500">
-          No filter tags on any saved paper yet.
-        </p>
-      ) : (
-        <ul className="flex flex-col gap-3">
-          {availableFilterTags.map((tag) => {
-            // Spelled out instead of a ternary: is this specific tag
-            // currently checked?
-            let isChecked: boolean;
-            if (selectedFilterTags.has(tag) === true) {
-              isChecked = true;
-            } else {
-              isChecked = false;
-            }
+      {expanded && (
+        <div className="absolute top-[100%] drop-shadow-lg/50 w-full">
+          <ul className="bg-white px-4 pt-2 pb-4 w-full">
+            {availableFilterTags.length === 0 ? (
+              <li className="my-2 text-sm text-stone-500">No filters yet.</li>
+            ) : (
+              availableFilterTags.map((tag) => {
+                // Spelled out instead of a ternary: is this specific tag
+                // currently checked?
+                let isChecked: boolean;
+                if (selectedFilterTags.has(tag) === true) {
+                  isChecked = true;
+                } else {
+                  isChecked = false;
+                }
 
-            return (
-              <li key={tag}>
-                <button
-                  type="button"
-                  onClick={() => onToggleFilterTag(tag)}
-                  className="flex items-center gap-3 font-serif text-base text-stone-800"
-                >
-                  <span className="flex h-5 w-5 items-center justify-center border border-stone-500">
-                    {isChecked === true && (
-                      <Image src="/icons/check-mark.svg" alt="" width={12} height={12} />
-                    )}
-                  </span>
-                  {tag}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+                return (
+                  <li key={tag}>
+                    <button
+                      type="button"
+                      onClick={() => onToggleFilterTag(tag)}
+                      className="w-full inline-flex items-center gap-3 my-2 cursor-pointer"
+                    >
+                      <span className="flex h-5 w-5 items-center justify-center border border-stone-500">
+                        {isChecked === true && (
+                          <Image src="/icons/check-mark.svg" alt="" width={12} height={12} />
+                        )}
+                      </span>
+                      {tag}
+                    </button>
+                  </li>
+                );
+              })
+            )}
+          </ul>
+          <img src="/interface/torn-paper.svg" alt="Torn paper" />
+        </div>
       )}
-    </div>
+    </form>
   );
 }
 
@@ -265,7 +271,7 @@ function PaperCard({ entry, onDeleted, onRenamed }: PaperCardProps) {
   };
 
   return (
-    <div className="relative">
+    <li className="relative">
       <div className="flex h-40 w-full items-center justify-center bg-stone-50 shadow-md">
         {/* No real thumbnail/preview image exists for a paper's map yet --
             this is intentionally left as a plain blank card, matching the
@@ -315,7 +321,7 @@ function PaperCard({ entry, onDeleted, onRenamed }: PaperCardProps) {
 
       {
         isOptionsRowOpen === true && (
-          <div className="flex items-center justify-center gap-6 bg-stone-100 py-3">
+          <menu className="flex items-center justify-center gap-6 bg-stone-100 py-3">
             <button type="button" onClick={handleTrashButtonClick} aria-label="Delete this paper">
               <MaskedIcon iconPath="/icons/trash.svg" colorHex="#b3555f" sizePixels={20} />
             </button>
@@ -329,7 +335,7 @@ function PaperCard({ entry, onDeleted, onRenamed }: PaperCardProps) {
             <button type="button" onClick={handleRenameButtonClick} aria-label="Rename this paper">
               <MaskedIcon iconPath="/icons/rename.svg" colorHex="#3f3a30" sizePixels={20} />
             </button>
-          </div>
+          </menu>
         )
       }
 
@@ -350,7 +356,7 @@ function PaperCard({ entry, onDeleted, onRenamed }: PaperCardProps) {
           </p>
         )
       }
-    </div >
+    </li >
   );
 }
 
@@ -364,6 +370,8 @@ function PaperCard({ entry, onDeleted, onRenamed }: PaperCardProps) {
 // appears on screen, the same way page.tsx used to in the very first
 // version of this app.
 export default function PreviousPapersSection() {
+  const listRef = useScrollJack();
+  
   const router = useRouter();
 
   //current value and function to change it.
@@ -498,51 +506,15 @@ export default function PreviousPapersSection() {
   }, [entries, selectedFilterTags]);
 
   return (
-    <div
-      // Extra bottom padding while the Filters dropdown is open. The
-      // dropdown is position:absolute, so it doesn't naturally push this
-      // container taller -- without this, a tall dropdown pokes out past
-      // the bottom edge of this drawer background into whatever's below
-      // (bare page background, showing as black). Padding forces this
-      // box to actually be tall enough to contain it, and since
-      // backgroundSize "cover" is recalculated against this box's real
-      // height, the drawer art extends to cover that space too.
-      className={
-        isFiltersPanelOpen === true
-          ? "px-8 pt-8 pb-72"
-          : "px-8 py-8"
-      }
-    >
-      {/* This inner wrapper is what actually shifts the section to the
-          right: a fixed max width plus ml-auto (an "automatic" left
-          margin) makes the block hug the right edge of the outer div
-          instead of stretching across the whole page. */}
-      <div className="w-full px-10">
-        <div className="mb-6 flex items-center justify-between pt-5">
-          <h2 className="font-serif text-xl font-bold text-stone-100">Previous Papers</h2>
-
-          <div className="relative">
-            <button
-              type="button"
-              onClick={handleFiltersButtonClick}
-              className="flex items-center gap-2 rounded-sm bg-stone-200 px-4 py-2 font-serif font-semibold text-stone-900"
-            >
-              Filters
-              <Image src="/icons/filter.svg" alt="" width={16} height={16} />
-            </button>
-
-            {isFiltersPanelOpen === true && (
-              <div className="absolute right-0 z-40 mt-2">
-                <FiltersPanel
-                  availableFilterTags={availableFilterTags}
-                  selectedFilterTags={selectedFilterTags}
-                  onToggleFilterTag={handleToggleFilterTag}
-                  onClose={() => setIsFiltersPanelOpen(false)}
-                />
-              </div>
-            )}
-          </div>
-        </div>
+      <section className="h-[80vh] p-20 pt-0">
+        <header className="flex justify-between mb-12">
+          <h2 className="text-white pt-[2rem]">Previous Papers</h2>
+          <FiltersPanel
+            availableFilterTags={availableFilterTags}
+            selectedFilterTags={selectedFilterTags}
+            onToggleFilterTag={handleToggleFilterTag}
+          />
+        </header>
 
         {isLoading === true && (
           <p className="font-serif text-stone-300">Loading your papers...</p>
@@ -586,14 +558,17 @@ export default function PreviousPapersSection() {
             </div>
           )}
 
-        {isLoading === false && isAuthenticated === true && loadErrorMessage === null && visibleEntries.length > 0 && (
-          <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-6">
-            {visibleEntries.map((entry) => (
-              <PaperCard key={entry.id} entry={entry} onDeleted={handlePaperDeleted} onRenamed={loadHistory}/>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+        <ul
+        ref={listRef}
+        className="h-[90%] grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-7 gap-4 overflow-hidden mt-4 mb-50 scrollbar-hidden"
+    >
+        {isLoading === false &&
+          isAuthenticated === true &&
+          loadErrorMessage === null &&
+          visibleEntries.map((entry) => (
+            <PaperCard key={entry.id} entry={entry} onDeleted={handlePaperDeleted} onRenamed={loadHistory}/>
+          ))}
+      </ul>
+      </section>
   );
 }
