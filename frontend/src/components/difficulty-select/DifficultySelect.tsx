@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import styles from './DifficultySelect.module.css';
 
 export type Difficulty = 'Beginner' | 'Intermediate' | 'Advanced';
@@ -30,8 +31,16 @@ interface DifficultySelectProps {
  * page via a wrapping element, so it stays reusable across pages.
  */
 export default function DifficultySelect({ value, onChange }: DifficultySelectProps) {
+  const [hoveredDifficulty, setHoveredDifficulty] = useState<Difficulty | null>(null);
+  const hoverDifficulty = hoveredDifficulty ?? value;
+
   return (
     <div className={styles.pill} role="radiogroup" aria-label="Difficulty">
+      <span
+        className={styles.hoverIndicator}
+        style={{ inset: INDICATOR_INSETS[hoverDifficulty] }}
+        data-visible={hoveredDifficulty !== null && hoveredDifficulty !== value}
+      />
       <span className={styles.indicator} style={{ inset: INDICATOR_INSETS[value] }} />
       {DIFFICULTIES.map((difficulty) => (
         <button
@@ -44,6 +53,10 @@ export default function DifficultySelect({ value, onChange }: DifficultySelectPr
             inset: BUTTON_INSETS[difficulty],
             color: value === difficulty ? '#0a0908' : '#d9d9d9',
           }}
+          onMouseEnter={() => setHoveredDifficulty(difficulty)}
+          onMouseLeave={() => setHoveredDifficulty(null)}
+          onFocus={() => setHoveredDifficulty(difficulty)}
+          onBlur={() => setHoveredDifficulty(null)}
           onClick={() => onChange(difficulty)}
         >
           {difficulty}

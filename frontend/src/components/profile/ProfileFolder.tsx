@@ -1,6 +1,6 @@
 'use client';
 
-import { KeyboardEvent, useId, useState } from 'react';
+import { KeyboardEvent, useId } from 'react';
 import Image from 'next/image';
 import styles from './ProfileFolder.module.css';
 
@@ -75,6 +75,7 @@ function PreferenceTab({ title }: PreferenceTabProps) {
 }
 
 interface ProfileFolderProps {
+  isOpen?: boolean;
   email?: string;
   profileSrc?: string;
   preferences?: ProfilePreference[];
@@ -85,6 +86,7 @@ interface ProfileFolderProps {
 }
 
 export default function ProfileFolder({
+  isOpen = true,
   email = '',
   profileSrc,
   preferences = [],
@@ -93,15 +95,14 @@ export default function ProfileFolder({
   onSignOut,
   onDeleteAccount,
 }: ProfileFolderProps) {
-  const [emailValue, setEmailValue] = useState(email);
   const emailFieldId = useId();
 
   return (
-    <section className={styles.root} aria-label="Account settings" data-name="folder">
+    <section className={styles.root} data-open={isOpen} aria-label="Account settings" data-name="folder">
       <div className={styles.folderBack} data-name="folder-back 1">
         <div className={styles.folderBackShape} data-name="path1">
           <svg className={styles.folderShapeSvg} fill="none" preserveAspectRatio="none" viewBox="0 0 579.118 719.871">
-            <path d={FOLDER_BACK_PATH} fill="#927E67" />
+            <path d={FOLDER_BACK_PATH} fill="currentColor" />
           </svg>
         </div>
 
@@ -174,7 +175,7 @@ export default function ProfileFolder({
             <span className={styles.emailBox} />
             <h3 className={styles.emailLabel}>Email</h3>
             <p className={styles.emailValue}>
-              {emailValue}
+              {email}
             </p>
 
             <span className={styles.passwordBox} />
@@ -234,7 +235,7 @@ export default function ProfileFolder({
         <div className={styles.folderFrontInner} data-name="folder-front 1">
           <div className={styles.folderFrontShape}>
             <svg className={styles.folderShapeSvg} fill="none" preserveAspectRatio="none" viewBox="0 0 522.669 716.399">
-              <path d={FOLDER_FRONT_PATH} fill="#C4AB8E" />
+              <path d={FOLDER_FRONT_PATH} fill="currentColor" />
             </svg>
           </div>
         </div>
