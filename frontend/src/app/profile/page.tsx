@@ -145,7 +145,7 @@ function ProfilePageContent() {
           <div className={styles.folderRotate}>
             <div className={styles.folderSize}>
               <ProfileFolder
-                key={isAuthenticated ? (user?.id || "Guest") : ""}
+                isOpen={isAuthenticated}
                 email={isAuthenticated ? (user?.email || "Guest (Anonymous)") : ""}
                 profileSrc={getProfileImage(metadata)}
                 preferences={user ? preferences : []}

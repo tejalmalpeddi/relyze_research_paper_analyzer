@@ -57,8 +57,11 @@ export default function NavBar({
   const pathname = usePathname();
   const router = useRouter();
   const [isSplitMenuOpen, setIsSplitMenuOpen] = useState(false);
+  const [pendingActiveTab, setPendingActiveTab] = useState<{ href: string; fromPath: string } | null>(null);
 
-  const resolvedActiveTab = activeTab ?? pathname ?? '/';
+  const currentPathname = pathname ?? '/';
+  const resolvedActiveTab =
+    activeTab ?? (pendingActiveTab?.fromPath === currentPathname ? pendingActiveTab.href : currentPathname);
   const isProfileActive = resolvedActiveTab === PROFILE_TAB.href;
 
   const activeTabIndex = useMemo(
@@ -72,6 +75,7 @@ export default function NavBar({
   const inactiveTabs = MENU_TABS.filter((tab) => tab.href !== resolvedActiveTab);
 
   function handleNavClick(href: string) {
+    setPendingActiveTab({ href, fromPath: currentPathname });
     if (onTabClick) {
       onTabClick(href);
     } else {
