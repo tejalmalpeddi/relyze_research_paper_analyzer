@@ -5,9 +5,6 @@
 // a single file, separate from the mind-map components in MindMap.tsx).
 // From top to bottom, in the order they appear below:
 //
-//   MaskedIcon           -- a small helper for recoloring the black-and-
-//                            white SVG icon files to match the mockup's
-//                            colors (see its own comment for how/why).
 //   FiltersPanel          -- the popover with the filter checkboxes.
 //   PaperCard             -- one single card in the "Previous Papers" grid.
 //                            Its delete confirmation is the shared
@@ -30,52 +27,6 @@ import { fetchHistoryList, renameHistory, ApiError } from "@/lib/api";
 import { useAuth } from '@/app/auth/auth-query';
 import Popup from "@/components/popups/popup";
 import useScrollJack from "./home/scrolljack";
-
-// ---------------------------------------------------------------------
-// MaskedIcon
-// ---------------------------------------------------------------------
-//
-// The icon files under public/icons/ are plain black SVGs (their fill
-// color is baked into the file itself). An ordinary <img> or Next.js
-// <Image> tag always draws them in that one baked-in color -- there is
-// no "color" prop that could make an <Image> draw the trash icon in red
-// instead of black.
-//
-// To get around that, this component uses the icon file as a CSS "mask"
-// instead of a picture: a mask tells the browser "only show my
-// background color in the shape of this image, and hide it everywhere
-// else." That means the actual VISIBLE color comes from a plain CSS
-// backgroundColor we choose ourselves, while the SHAPE still comes from
-// the SVG file. This is the only place in the whole app that needs this
-// trick -- everywhere else, an icon's own built-in color already matches
-// what the mockup wants.
-interface MaskedIconProps {
-  iconPath: string;
-  colorHex: string;
-  sizePixels: number;
-}
-
-function MaskedIcon({ iconPath, colorHex, sizePixels }: MaskedIconProps) {
-  return (
-    <span
-      aria-hidden="true"
-      style={{
-        display: "inline-block",
-        width: sizePixels,
-        height: sizePixels,
-        backgroundColor: colorHex,
-        WebkitMaskImage: `url(${iconPath})`,
-        maskImage: `url(${iconPath})`,
-        WebkitMaskSize: "contain",
-        maskSize: "contain",
-        WebkitMaskRepeat: "no-repeat",
-        maskRepeat: "no-repeat",
-        WebkitMaskPosition: "center",
-        maskPosition: "center",
-      }}
-    />
-  );
-}
 
 // ---------------------------------------------------------------------
 // tagColorFor
@@ -163,7 +114,7 @@ function FiltersPanel({
                     >
                       <span className="flex h-5 w-5 items-center justify-center border border-stone-500">
                         {isChecked === true && (
-                          <Image src="/icons/check-mark.svg" alt="" width={12} height={12} />
+                          <Image src="/icons/check-mark.svg" alt="checkmark" width={12} height={12} />
                         )}
                       </span>
                       {tag}
@@ -286,9 +237,9 @@ function PaperCard({ entry, onDeleted, onRenamed }: PaperCardProps) {
             saveChanges(content);
           }}
           placeholder={content}
-          className="font-serif text-sm font-semibold text-stone-900 flex-1 min-w-0 bg-white"
+          className=" text-sm font-semibold text-stone-900 flex-1 min-w-0 bg-white"
         />) : (
-          <span className="flex-1 min-w-0 line-clamp-2 font-serif text-sm font-semibold text-stone-900">
+          <span className="flex-1 min-w-0 line-clamp-2  text-sm font-semibold text-stone-900">
             {content}
           </span>
         )}
@@ -309,7 +260,7 @@ function PaperCard({ entry, onDeleted, onRenamed }: PaperCardProps) {
             return (
               <span
                 key={tag}
-                className="rounded-full px-2 py-0.5 font-serif text-[9px] leading-tight"
+                className="rounded-full px-2 py-0.5 text-sm leading-tight"
                 style={{ backgroundColor: color.background, color: color.text }}
               >
                 {tag}
@@ -323,17 +274,17 @@ function PaperCard({ entry, onDeleted, onRenamed }: PaperCardProps) {
         isOptionsRowOpen === true && (
           <menu className="flex items-center justify-center gap-6 bg-stone-100 py-3">
             <button type="button" onClick={handleTrashButtonClick} aria-label="Delete this paper">
-              <MaskedIcon iconPath="/icons/trash.svg" colorHex="#b3555f" sizePixels={20} />
+              <Image src="/icons/trash.svg" alt="Delete" width={20} height={20} />
             </button>
             <button
               type="button"
               onClick={handleRedirectButtonClick}
               aria-label="Open this paper's mind map"
             >
-              <MaskedIcon iconPath="/icons/redirect.svg" colorHex="#3f3a30" sizePixels={20} />
+              <Image src="/icons/redirect.svg" alt="Open Mind Map" width={20} height={20} />
             </button>
             <button type="button" onClick={handleRenameButtonClick} aria-label="Rename this paper">
-              <MaskedIcon iconPath="/icons/rename.svg" colorHex="#3f3a30" sizePixels={20} />
+              <Image src="/icons/rename.svg" alt="Rename" width={20} height={20} />
             </button>
           </menu>
         )
@@ -351,7 +302,7 @@ function PaperCard({ entry, onDeleted, onRenamed }: PaperCardProps) {
 
       {
         renameErrorMessage !== null && (
-          <p className="mt-1 text-center font-serif text-xs text-[#c1666b]">
+          <p className="mt-1 text-center  text-xs text-light-red">
             {renameErrorMessage}
           </p>
         )
@@ -510,22 +461,20 @@ export default function PreviousPapersSection() {
         </header>
 
         {isLoading === true && (
-          <p className="font-serif text-stone-300">Loading your papers...</p>
+          <p className=" text-stone-300">Loading your papers...</p>
         )}
 
         {isLoading === false && loadErrorMessage !== null && (
-          <p className="font-serif text-[#c1666b]">
+          <p className=" text-light-red">
             Couldn&apos;t load your papers: {loadErrorMessage}
           </p>
         )}
 
         {isLoading === false &&
           (isAuthenticated === true && visibleEntries.length === 0) && (
-            <div className="flex w-full flex-col items-center gap-4 py-10 text-center">
-              <p className="font-serif text-stone-300">
-                No saved papers yet. Upload a PDF to see it here.
-              </p>
-            </div>
+            <p className="text-stone-300">
+              No saved papers yet. Upload a PDF to see it here.
+            </p>
           )
         }
 
@@ -537,18 +486,18 @@ export default function PreviousPapersSection() {
         {isLoading === false &&
           loadErrorMessage === null &&
           (isAuthenticated === false) && (
-            <div className="flex w-full flex-col items-center gap-4 py-10 text-center">
-              <p className="font-serif text-stone-300">
+            <dialog className="flex w-full flex-col items-center gap-4 py-10 text-center bg-transparent">
+              <p className=" text-stone-300">
                 You are currently logged out, nothing to display!
               </p>
               <button
                 type="button"
                 onClick={() => router.push("/profile")}
-                className="rounded-sm bg-[#5b4636] px-6 py-2 font-serif font-semibold text-white"
+                className="bg-off-white px-6 py-2"
               >
                 Sign In
               </button>
-            </div>
+            </dialog>
           )}
 
         <ul
