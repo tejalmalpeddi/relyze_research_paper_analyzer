@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { EB_Garamond } from "next/font/google";
 import dagre from "@dagrejs/dagre";
@@ -16,8 +16,10 @@ import {
     Handle,
     Position,
     NodeProps,
+    EdgeProps,
     useStore,
     OnNodesDelete,
+    getStraightPath,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { HistoryEntry, MapNode, StickyNoteEntry } from "@/lib/types";
@@ -55,6 +57,47 @@ function getCssFilterForColor(color: string): string {
 }
 
 const NODE_WIDTH = 320;
+const EDGE_ANIMATION_MS = 650;
+
+type AnimatedEdgeData = {
+    animationState?: "expand" | "retract";
+};
+
+function getEdgeKey(edge: Pick<Edge, "source" | "target">): string {
+    return `${edge.source}->${edge.target}`;
+}
+
+function AnimatedStraightEdge({
+    id,
+    sourceX,
+    sourceY,
+    targetX,
+    targetY,
+    style,
+    data,
+}: EdgeProps<Edge<AnimatedEdgeData>>) {
+    const [edgePath] = getStraightPath({ sourceX, sourceY, targetX, targetY });
+    const animationName =
+        data?.animationState === "retract"
+            ? "mind-map-edge-retract"
+            : data?.animationState === "expand"
+                ? "mind-map-edge-expand"
+                : undefined;
+
+    return (
+        <path
+            id={id}
+            className="react-flow__edge-path"
+            d={edgePath}
+            pathLength={1}
+            style={{
+                ...style,
+                animation: animationName ? `${animationName} ${EDGE_ANIMATION_MS}ms ease-in-out both` : undefined,
+                strokeDasharray: animationName ? 1 : undefined,
+            }}
+        />
+    );
+}
 
 function layoutNodesWithDagre(
     nodesToLayout: Node<PaperNodeData>[],
@@ -146,6 +189,7 @@ export interface PaperNodeData extends Record<string, unknown> {
     depth: number;
     isExpanded: boolean;
     childCount: number;
+    animationState?: "appear" | "disappear";
     handleColor?: string;
     expandColor?: string;
     onToggleChildren?: () => void;
@@ -190,6 +234,12 @@ function PaperNode({ data }: NodeProps<PaperFlowNode>) {
                 display: "flex",
                 flexDirection: "column",
                 position: "relative",
+                animation:
+                    data.animationState === "appear"
+                        ? `mind-map-node-appear ${EDGE_ANIMATION_MS}ms ease-in-out both`
+                        : data.animationState === "disappear"
+                            ? `mind-map-node-disappear ${EDGE_ANIMATION_MS}ms ease-in-out both`
+                            : undefined,
             }}
         >
             {!isRoot && (
@@ -339,19 +389,35 @@ function DifficultyToggle({
         { value: "intermediate", label: "Intermediate" },
         { value: "advanced", label: "Advanced" },
     ];
+    const [hoveredLevel, setHoveredLevel] = useState<DifficultyLevel | null>(null);
+    const hoverLevel = hoveredLevel ?? selectedLevel;
+    const hoverIndex = levelOptions.findIndex((option) => option.value === hoverLevel);
 
     return (
-        <div className="flex items-center gap-1 rounded-full bg-[#5b4636] p-1 font-serif text-sm">
+        <div className="relative grid grid-cols-3 rounded-full bg-[#5b4636] p-1 font-serif text-sm">
+            <span
+                aria-hidden="true"
+                className="absolute bottom-1 top-1 rounded-full bg-[#d9b48f] transition-[left,opacity] duration-200 ease-out"
+                style={{
+                    left: `calc(0.25rem + ${hoverIndex * 33.333333}%)`,
+                    width: "calc(33.333333% - 0.5rem)",
+                    opacity: hoveredLevel !== null && hoveredLevel !== selectedLevel ? 0.3 : 0,
+                }}
+            />
             {levelOptions.map((option) => {
                 const isSelected = option.value === selectedLevel;
                 const buttonClassName = isSelected
-                    ? "rounded-full bg-[#d9b48f] px-3 py-1 text-stone-900 font-medium"
-                    : "rounded-full px-3 py-1 text-stone-300 hover:text-white";
+                    ? "relative z-10 rounded-full bg-[#d9b48f] px-3 py-1 text-stone-900 font-medium"
+                    : "relative z-10 rounded-full px-3 py-1 text-stone-300 hover:text-white";
 
                 return (
                     <button
                         key={option.value}
                         type="button"
+                        onMouseEnter={() => setHoveredLevel(option.value)}
+                        onMouseLeave={() => setHoveredLevel(null)}
+                        onFocus={() => setHoveredLevel(option.value)}
+                        onBlur={() => setHoveredLevel(null)}
                         onClick={() => onSelectLevel(option.value)}
                         className={buttonClassName}
                     >
@@ -415,6 +481,10 @@ const nodeTypes = {
     stickyNote: StickyNoteNode,
 };
 
+const edgeTypes = {
+    animatedStraight: AnimatedStraightEdge,
+};
+
 interface MapCanvasProps {
     entry: HistoryEntry;
 }
@@ -444,24 +514,26 @@ function MapCanvas({ entry }: MapCanvasProps) {
 
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
     const [selectedLevel, setSelectedLevel] = useState<DifficultyLevel>("beginner");
+    const [renderedVisibleIds, setRenderedVisibleIds] = useState<Set<string>>(() => new Set(rootIds));
+    const [expandingEdgeIds, setExpandingEdgeIds] = useState<Set<string>>(new Set());
+    const [retractingEdgeIds, setRetractingEdgeIds] = useState<Set<string>>(new Set());
+    const [appearingNodeIds, setAppearingNodeIds] = useState<Set<string>>(new Set());
+    const [disappearingNodeIds, setDisappearingNodeIds] = useState<Set<string>>(new Set());
+    const [retractTimerId, setRetractTimerId] = useState<ReturnType<typeof setTimeout> | null>(null);
 
     const [placingColor, setPlacingColor] = useState<string | null>(null);
     const [cursorPos, setCursorPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
     const zoom = useStore((state) => state.transform[2]);
 
-    function toggleExpand(id: string) {
-        setExpandedIds((previousExpandedIds) => {
-            const nextExpandedIds = new Set(previousExpandedIds);
-            if (nextExpandedIds.has(id) === true) {
-                nextExpandedIds.delete(id);
-            } else {
-                nextExpandedIds.add(id);
+    useEffect(() => {
+        return () => {
+            if (retractTimerId !== null) {
+                clearTimeout(retractTimerId);
             }
-            return nextExpandedIds;
-        });
-    }
+        };
+    }, [retractTimerId]);
 
-    const visibleIds = useMemo(() => {
+    const getVisibleIdsForExpandedIds = useCallback((expandedIdSet: Set<string>): Set<string> => {
         const visited = new Set<string>();
         const queue = [...rootIds];
         while (queue.length > 0) {
@@ -470,7 +542,7 @@ function MapCanvas({ entry }: MapCanvasProps) {
             if (visited.has(id) === true) continue;
 
             visited.add(id);
-            if (expandedIds.has(id) === true) {
+            if (expandedIdSet.has(id) === true) {
                 const childIds = children.get(id);
                 if (childIds !== undefined) {
                     for (const childId of childIds) {
@@ -482,13 +554,90 @@ function MapCanvas({ entry }: MapCanvasProps) {
             }
         }
         return visited;
-    }, [rootIds, children, expandedIds]);
+    }, [rootIds, children]);
+
+    const getDescendantIds = useCallback((id: string): Set<string> => {
+        const descendants = new Set<string>();
+        const queue = [...(children.get(id) ?? [])];
+        while (queue.length > 0) {
+            const childId = queue.shift();
+            if (childId === undefined || descendants.has(childId)) continue;
+
+            descendants.add(childId);
+            queue.push(...(children.get(childId) ?? []));
+        }
+        return descendants;
+    }, [children]);
+
+    const animateRenderedVisibility = useCallback((nextVisibleIds: Set<string>) => {
+        if (retractTimerId !== null) {
+            clearTimeout(retractTimerId);
+            setRetractTimerId(null);
+        }
+
+        const enteringNodeIds = new Set([...nextVisibleIds].filter((id) => renderedVisibleIds.has(id) === false));
+        const leavingNodeIds = new Set([...renderedVisibleIds].filter((id) => nextVisibleIds.has(id) === false));
+        const hasAnimation = enteringNodeIds.size > 0 || leavingNodeIds.size > 0;
+
+        if (hasAnimation === false) {
+            setAppearingNodeIds(new Set());
+            setDisappearingNodeIds(new Set());
+            setExpandingEdgeIds(new Set());
+            setRetractingEdgeIds(new Set());
+            setRenderedVisibleIds(nextVisibleIds);
+            return;
+        }
+
+        const nextExpandingEdgeIds = new Set<string>();
+        const nextRetractingEdgeIds = new Set<string>();
+        for (const edge of edges) {
+            const isRendered = renderedVisibleIds.has(edge.source) && renderedVisibleIds.has(edge.target);
+            const willRemain = nextVisibleIds.has(edge.source) && nextVisibleIds.has(edge.target);
+            if (!isRendered && willRemain) {
+                nextExpandingEdgeIds.add(getEdgeKey(edge));
+            }
+            if (isRendered && !willRemain) {
+                nextRetractingEdgeIds.add(getEdgeKey(edge));
+            }
+        }
+
+        setAppearingNodeIds(enteringNodeIds);
+        setDisappearingNodeIds(leavingNodeIds);
+        setExpandingEdgeIds(nextExpandingEdgeIds);
+        setRetractingEdgeIds(nextRetractingEdgeIds);
+        setRenderedVisibleIds(new Set([...renderedVisibleIds, ...nextVisibleIds]));
+        const nextRetractTimerId = setTimeout(() => {
+            setRenderedVisibleIds(nextVisibleIds);
+            setAppearingNodeIds(new Set());
+            setDisappearingNodeIds(new Set());
+            setExpandingEdgeIds(new Set());
+            setRetractingEdgeIds(new Set());
+            setRetractTimerId(null);
+        }, EDGE_ANIMATION_MS);
+        setRetractTimerId(nextRetractTimerId);
+    }, [edges, renderedVisibleIds, retractTimerId]);
+
+    const toggleExpand = useCallback((id: string) => {
+        const nextExpandedIds = new Set(expandedIds);
+        const descendantIds = getDescendantIds(id);
+        if (nextExpandedIds.has(id) === true) {
+            nextExpandedIds.delete(id);
+            for (const descendantId of descendantIds) {
+                nextExpandedIds.delete(descendantId);
+            }
+        } else {
+            nextExpandedIds.add(id);
+        }
+
+        setExpandedIds(nextExpandedIds);
+        animateRenderedVisibility(getVisibleIdsForExpandedIds(nextExpandedIds));
+    }, [animateRenderedVisibility, expandedIds, getDescendantIds, getVisibleIdsForExpandedIds]);
 
     const { layoutedMindMapNodes, visibleEdge } = useMemo(() => {
         const unpositionedNodes: Node<PaperNodeData>[] = [];
 
         for (const node of rawNodes) {
-            if (visibleIds.has(node.id) === false) continue;
+            if (renderedVisibleIds.has(node.id) === false) continue;
 
             const depth = depths.get(node.id) ?? 0;
             const childIds = children.get(node.id);
@@ -506,6 +655,11 @@ function MapCanvas({ entry }: MapCanvasProps) {
                     depth: depth,
                     isExpanded: expandedIds.has(node.id),
                     childCount: childCount,
+                    animationState: disappearingNodeIds.has(node.id)
+                        ? "disappear"
+                        : appearingNodeIds.has(node.id)
+                            ? "appear"
+                            : undefined,
                     handleColor: depth > 0 ? colorForDepth(depth - 1) : undefined,
                     expandColor: colorForDepth(depth),
                     onToggleChildren: () => toggleExpand(node.id),
@@ -515,11 +669,18 @@ function MapCanvas({ entry }: MapCanvasProps) {
 
         const filteredEdges: Edge[] = [];
         for (const edge of edges) {
-            if (visibleIds.has(edge.source) === true && visibleIds.has(edge.target) === true) {
+            if (renderedVisibleIds.has(edge.source) === true && renderedVisibleIds.has(edge.target) === true) {
                 const sourceDepth = depths.get(edge.source) ?? 0;
                 filteredEdges.push({
                     ...edge,
-                    type: "straight",
+                    type: "animatedStraight",
+                    data: {
+                        animationState: retractingEdgeIds.has(getEdgeKey(edge))
+                            ? "retract"
+                            : expandingEdgeIds.has(getEdgeKey(edge))
+                                ? "expand"
+                                : undefined,
+                    },
                     style: {
                         stroke: colorForDepth(sourceDepth),
                         strokeWidth: 5,
@@ -531,7 +692,20 @@ function MapCanvas({ entry }: MapCanvasProps) {
 
         const layoutedNodes = layoutNodesWithDagre(unpositionedNodes, filteredEdges);
         return { layoutedMindMapNodes: layoutedNodes, visibleEdge: filteredEdges };
-    }, [rawNodes, edges, visibleIds, depths, children, expandedIds, selectedLevel]);
+    }, [
+        rawNodes,
+        edges,
+        renderedVisibleIds,
+        depths,
+        children,
+        expandedIds,
+        selectedLevel,
+        expandingEdgeIds,
+        retractingEdgeIds,
+        appearingNodeIds,
+        disappearingNodeIds,
+        toggleExpand,
+    ]);
 
     useEffect(() => {
         async function loadAndSyncNodes() {
@@ -635,7 +809,7 @@ function MapCanvas({ entry }: MapCanvasProps) {
 
     useEffect(() => {
         fitView({ duration: 250 });
-    }, [expandedIds, fitView]);
+    }, [renderedVisibleIds, fitView]);
 
     return (
         <div
@@ -667,6 +841,7 @@ function MapCanvas({ entry }: MapCanvasProps) {
                 onNodeDragStop={handleNodeDragStop}
                 onNodesDelete={handleNodeDelete}
                 nodeTypes={nodeTypes}
+                edgeTypes={edgeTypes}
                 nodesDraggable={true}
                 nodesConnectable={false}
                 elementsSelectable={true}

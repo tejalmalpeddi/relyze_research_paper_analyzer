@@ -562,19 +562,7 @@ export default function PreviousPapersSection() {
 
   return (
     <div
-      // Extra bottom padding while the Filters dropdown is open. The
-      // dropdown is position:absolute, so it doesn't naturally push this
-      // container taller -- without this, a tall dropdown pokes out past
-      // the bottom edge of this drawer background into whatever's below
-      // (bare page background, showing as black). Padding forces this
-      // box to actually be tall enough to contain it, and since
-      // backgroundSize "cover" is recalculated against this box's real
-      // height, the drawer art extends to cover that space too.
-      className={
-        isFiltersPanelOpen === true
-          ? "bg-[#2a2117] px-8 pt-8 pb-72"
-          : "bg-[#2a2117] px-8 py-8"
-      }
+      className="bg-[#2a2117] px-8 py-8"
       style={{ backgroundImage: "url(/background/drawer.png)", backgroundSize: "cover" }}
     >
       {/* This inner wrapper is what actually shifts the section to the
@@ -595,16 +583,21 @@ export default function PreviousPapersSection() {
               <Image src="/icons/filter.svg" alt="" width={16} height={16} />
             </button>
 
-            {isFiltersPanelOpen === true && (
-              <div className="absolute right-0 z-40 mt-2">
-                <FiltersPanel
-                  availableFilterTags={availableFilterTags}
-                  selectedFilterTags={selectedFilterTags}
-                  onToggleFilterTag={handleToggleFilterTag}
-                  onClose={() => setIsFiltersPanelOpen(false)}
-                />
-              </div>
-            )}
+            <div
+              className={
+                isFiltersPanelOpen === true
+                  ? "absolute right-0 z-40 mt-2 origin-top-right translate-y-0 scale-100 opacity-100 transition duration-200 ease-out"
+                  : "pointer-events-none absolute right-0 z-40 mt-2 origin-top-right -translate-y-2 scale-95 opacity-0 transition duration-150 ease-in"
+              }
+              aria-hidden={isFiltersPanelOpen === false}
+            >
+              <FiltersPanel
+                availableFilterTags={availableFilterTags}
+                selectedFilterTags={selectedFilterTags}
+                onToggleFilterTag={handleToggleFilterTag}
+                onClose={() => setIsFiltersPanelOpen(false)}
+              />
+            </div>
           </div>
         </div>
 
