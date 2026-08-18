@@ -7,15 +7,10 @@ import DifficultySelect, { type Difficulty } from '@/components/difficulty-selec
 // popup.tsx itself has no self-reference to fix here -- the "/components/popups/popup"
 // path is what OTHER files (like profile/page.tsx) import this file as.
 import styles from './popup.module.css';
-import {deleteHistory} from '@/lib/api'
+import {deleteHistory, cancelUpload} from '@/lib/api'
 import {useAuth} from '@/app/auth/auth-query'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function pollUploadStatus(uploadId: string, onParsingComplete: (paperId: string) => void) {
-  const timeoutId = window.setTimeout(() => onParsingComplete(uploadId), 800);
-  return () => window.clearTimeout(timeoutId);
-}
 
 // -----------------------------------------------------------------------
 // Shared shell — the white card + inner border + header/body/footer slots.
@@ -42,7 +37,10 @@ interface PopupShellProps {
   title: string;
   children: ReactNode;
   footer?: ReactNode;
-  onClose: () => void;
+  // Optional now: when omitted, clicking the backdrop does nothing --
+  // used by UploadingPopup, where "Cancel Upload" is meant to be the only
+  // way to close it.
+  onClose?: () => void;
 }
 
 function PopupShell({ title, children, footer, onClose }: PopupShellProps) {
@@ -52,19 +50,16 @@ function PopupShell({ title, children, footer, onClose }: PopupShellProps) {
   // those create a new containing block that would otherwise trap this
   // "fixed" backdrop inside that ancestor instead of the real screen.
   const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => setMounted(true));
-    return () => cancelAnimationFrame(frame);
-  }, []);
+  useEffect(() => setMounted(true), []);
 
   function handleBackdropClick(e: MouseEvent<HTMLDivElement>) {
     if (e.target === e.currentTarget) {
-      onClose();
+      onClose?.();
     }
   }
 
   const content = (
-    <div className="fixed top-0 left-0 size-full" onClick={handleBackdropClick}>
+    <div className="fixed top-0 left-0 size-full bg-black/50" onClick={handleBackdropClick}>
       <dialog className="block mx-auto mt-50 w-[495px] h-[330px] bg-off-white p-6 shadow-lg/50">
         <article className="relative size-full border-dark-brown border-2 flex flex-col items-center">
           <header className="absolute -top-6 w-fit bg-off-white p-2">
@@ -86,30 +81,48 @@ function PopupShell({ title, children, footer, onClose }: PopupShellProps) {
 // -----------------------------------------------------------------------
 // Uploading / Difficulty Select
 //
-// Together these form one self-contained flow: `UploadFlowPopup` owns the
-// transition from "uploading" to "difficulty select" itself once the parser
-// signals completion, so the parent never needs to know this happened or
-// re-render with a different `type`.
+// These are two independent, plain entry points now -- unlike before,
+// there's no internal polling or self-managed transition between them.
+// The real "upload finished" signal is importPdf() resolving in whatever
+// page triggers the upload (e.g. the homepage) -- that page is what
+// decides when to stop rendering type="uploading" and start rendering
+// type="difficultySelect" instead. See PopupProps/the dispatcher below.
 // -----------------------------------------------------------------------
 
 function UploadingPopup({
   uploadId,
-  onParsingComplete,
+  fileName,
   onClose,
 }: {
   uploadId: string;
-  onParsingComplete: (paperId: string) => void;
+  fileName: string;
   onClose: () => void;
 }) {
-  useEffect(() => {
-    // Skeleton: swap pollUploadStatus for whatever the python PDF parser
-    // actually gives us (websocket push, webhook-fed status route, etc).
-    const cleanup = pollUploadStatus(uploadId, onParsingComplete);
-    return cleanup;
-  }, [uploadId, onParsingComplete]);
+  async function handleCancel() {
+    try {
+      // TODO: connect to the real cancel-upload backend call once it
+      // exists. Until then, this always fails -- caught below so the
+      // popup still closes instead of getting stuck or showing an error
+      // for a feature that isn't implemented yet.
+      await cancelUpload(uploadId);
+    } catch {
+      // Not implemented yet -- close anyway.
+    }
+    onClose();
+  }
 
   return (
-    <PopupShell title="Uploading paper..." onClose={onClose}>
+    <PopupShell
+      title="Uploading paper..."
+      // No onClose passed to PopupShell here on purpose -- clicking the
+      // backdrop does nothing. "Cancel Upload" below is the only way out.
+      footer={
+        <button type="button" className={styles.buttonNeutral} onClick={handleCancel}>
+          Cancel Upload
+        </button>
+      }
+    >
+      <p className={styles.topText}>{fileName}</p>
       <img className={styles.loadingGif} src="/interface/loading.gif" alt="Uploading, please wait..." />
     </PopupShell>
   );
@@ -126,8 +139,9 @@ function DifficultySelectPopup({
   const [difficulty, setDifficulty] = useState<Difficulty>('Beginner');
 
   function goTo(path: string) {
+    // TODO: persist the chosen difficulty for `paperId` before navigating.
     // TODO: double check these route paths match your actual app routes.
-    router.push(`${path}?id=${paperId}`);
+    router.push(path);
   }
 
   return (
@@ -154,7 +168,7 @@ function DifficultySelectPopup({
         </menu>
       }
     >
-      <p>How familiar are you with this paper&apos;s topic?</p>
+      <p>How familiar are you with this paper's topic?</p>
       <DifficultySelect value={difficulty} onChange={setDifficulty} />
       {difficulty == 'Beginner' && (
         <p className={styles.blurb}>
@@ -172,26 +186,6 @@ function DifficultySelectPopup({
         </p>
       )}
     </PopupShell>
-  );
-}
-
-type UploadFlowState =
-  | { view: 'uploading'; uploadId: string }
-  | { view: 'difficultySelect'; paperId: string };
-
-function UploadFlowPopup({ uploadId, onClose }: { uploadId: string; onClose: () => void }) {
-  const [state, setState] = useState<UploadFlowState>({ view: 'uploading', uploadId });
-
-  if (state.view === 'difficultySelect') {
-    return <DifficultySelectPopup paperId={state.paperId} onClose={onClose} />;
-  }
-
-  return (
-    <UploadingPopup
-      uploadId={state.uploadId}
-      onParsingComplete={(paperId) => setState({ view: 'difficultySelect', paperId })}
-      onClose={onClose}
-    />
   );
 }
 
@@ -232,7 +226,6 @@ function AuthSuccessPopup({
 // -----------------------------------------------------------------------
 
 function SignOutPopup({ onClose }: { onClose: () => void }) {
-  const router = useRouter();
   const [stage, setStage] = useState<'confirm' | 'done'>('confirm');
   const {logout} = useAuth();
 
@@ -243,22 +236,7 @@ function SignOutPopup({ onClose }: { onClose: () => void }) {
   }
 
   if (stage === 'done') {
-    // Two stacked buttons rather than the shared single-button
-    // AuthSuccessPopup: "Log In to Another Account" just closes this popup
-    // (onClose) -- since the user is unauthenticated again at this point,
-    // the parent page's own login-gate picks up automatically once nothing
-    // else is open, rather than this popup needing to know how to open the
-    // login popup itself.
-    return (
-      <PopupShell title="Signed Out" onClose={onClose}>
-        <button type="button" className={styles.buttonNeutral} onClick={onClose}>
-          Log In to Another Account
-        </button>
-        <button type="button" className={styles.buttonNeutral} onClick={() => router.push('/')}>
-          Return to Home Page
-        </button>
-      </PopupShell>
-    );
+    return <AuthSuccessPopup title="Signed Out" onClose={onClose} />;
   }
 
   return (
@@ -380,9 +358,23 @@ function DeletePaperPopup({
   paperTitle: string;
   onDeleted: () => void;
 }) {
+  const [error, setError] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+
   async function handleDelete() {
-    // TODO: real delete call; only fire onDeleted on success.
-    await deleteHistory(paperId);
+    setError('');
+    setIsDeleting(true);
+    try {
+      // deleteHistory expects a numeric id -- paperId comes in as a
+      // string here for consistency with the other popup props (e.g.
+      // difficultySelect's paperId), so it's converted right at the call
+      // site instead.
+      await deleteHistory(Number(paperId));
+    } catch (err) {
+      setIsDeleting(false);
+      setError(err instanceof Error ? err.message : 'Something went wrong while deleting.');
+      return;
+    }
     onDeleted();
   }
 
@@ -392,20 +384,39 @@ function DeletePaperPopup({
       onClose={onClose}
       footer={
         <menu className={styles.buttonRow}>
-          <li>
-            <button type="button" className={styles.buttonNeutral} onClick={onClose}>
-              Keep
-            </button>
-          </li>
-          <li>
-            <button type="button" className={styles.buttonDanger} onClick={handleDelete}>
-              Delete
-            </button>
-          </li>
+          {error ? (
+            <>
+              <li>
+                <button type="button" className={styles.buttonNeutral} onClick={onClose}>
+                  Close
+                </button>
+              </li>
+              <li>
+                <button type="button" className={styles.buttonDanger} onClick={handleDelete} disabled={isDeleting}>
+                  {isDeleting ? 'Retrying...' : 'Retry'}
+                </button>
+              </li>
+            </>
+          ) : (
+            <>
+              <li>
+                <button type="button" className={styles.buttonNeutral} onClick={onClose} disabled={isDeleting}>
+                  Keep
+                </button>
+              </li>
+              <li>
+                <button type="button" className={styles.buttonDanger} onClick={handleDelete} disabled={isDeleting}>
+                  {isDeleting ? 'Deleting...' : 'Delete'}
+                </button>
+              </li>
+            </>
+          )}
         </menu>
       }
     >
-      <p>Are you sure you want to delete &quot;{paperTitle}&quot;?</p>
+      <p className={error ? styles.error : undefined}>
+        {error || `Are you sure you want to delete "${paperTitle}"?`}
+      </p>
     </PopupShell>
   );
 }
@@ -588,6 +599,7 @@ function ForgotPasswordPopup({
       return;
     }
     try {
+      // TODO: verify if implementation is correct
       await requestPasswordReset(email);
     } catch {
       setError('Invalid email.');
@@ -808,7 +820,7 @@ function AuthFlowPopup({ initialView, onClose }: { initialView: AuthView; onClos
 // -----------------------------------------------------------------------
 
 export type PopupProps =
-  | { type: 'uploading'; uploadId: string; onClose: () => void }
+  | { type: 'uploading'; uploadId: string; fileName: string; onClose: () => void }
   | { type: 'difficultySelect'; paperId: string; onClose: () => void }
   | { type: 'login'; onClose: () => void }
   | { type: 'createAccount'; onClose: () => void }
@@ -828,7 +840,9 @@ export type PopupProps =
 export default function Popup(props: PopupProps) {
   switch (props.type) {
     case 'uploading':
-      return <UploadFlowPopup uploadId={props.uploadId} onClose={props.onClose} />;
+      return (
+        <UploadingPopup uploadId={props.uploadId} fileName={props.fileName} onClose={props.onClose} />
+      );
     case 'difficultySelect':
       return <DifficultySelectPopup paperId={props.paperId} onClose={props.onClose} />;
     case 'login':

@@ -216,6 +216,13 @@ export async function importPdf(file: File): Promise<{ history: { id: string } }
   return handleResponse<{ history: { id: string } }>(response);
 }
 
+export async function cancelUpload(uploadId: string): Promise<void> {
+  // TODO: tell the backend to actually cancel/abort this in-progress
+  // upload. Until this exists, UploadingPopup's Cancel button will always
+  // hit the catch block below it and just close the popup regardless.
+  throw new Error('cancelUpload: not implemented');
+}
+
 export async function fetchStickyNotes(documentId: string | number): Promise<StickyNoteEntry[]> {
     const res = await fetch(`${API_URL}/sticky_notes/get/${documentId}`, {
         method: "GET",

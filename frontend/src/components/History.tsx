@@ -9,8 +9,11 @@
 //                            white SVG icon files to match the mockup's
 //                            colors (see its own comment for how/why).
 //   FiltersPanel          -- the popover with the filter checkboxes.
-//   DeleteConfirmModal    -- the "Keep / Delete" confirmation dialog.
 //   PaperCard             -- one single card in the "Previous Papers" grid.
+//                            Its delete confirmation is the shared
+//                            deletePaperConfirm Popup (components/popups/popup.tsx)
+//                            rather than a component defined in this file --
+//                            see the note above isDeleteConfirmOpen below.
 //   PreviousPapersSection -- the piece the homepage actually imports: the
 //                            "Previous Papers" header, the Filters button,
 //                            and the grid of PaperCards. This is also the
@@ -23,8 +26,9 @@ import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { HistoryEntry } from "@/lib/types";
-import { fetchHistoryList, deleteHistory, renameHistory, ApiError } from "@/lib/api";
+import { fetchHistoryList, renameHistory, ApiError } from "@/lib/api";
 import { useAuth } from '@/app/auth/auth-query';
+import Popup from "@/components/popups/popup";
 
 // ---------------------------------------------------------------------
 // MaskedIcon
@@ -171,62 +175,21 @@ function FiltersPanel({
 }
 
 // ---------------------------------------------------------------------
-// DeleteConfirmModal
-// ---------------------------------------------------------------------
-//
-// A simple "are you sure" dialog. It doesn't know how to actually delete
-// anything itself -- it just calls the onConfirm function it was handed,
-// and lets whoever rendered it (PaperCard, below) decide what that
-// actually does.
-interface DeleteConfirmModalProps {
-  paperTitle: string;
-  onConfirmDelete: () => void;
-  onKeep: () => void;
-}
-
-function DeleteConfirmModal({
-  paperTitle,
-  onConfirmDelete,
-  onKeep,
-}: DeleteConfirmModalProps) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-[420px] rounded-sm border border-stone-400 bg-stone-100 p-8 text-center shadow-2xl">
-        <p className="mb-6 font-serif text-lg text-stone-900">
-          Are you sure you want to delete &quot;{paperTitle}&quot;?
-        </p>
-        <div className="flex items-center justify-center gap-4">
-          <button
-            type="button"
-            onClick={onKeep}
-            className="rounded-sm bg-[#5b4636] px-6 py-2 font-serif text-white"
-          >
-            Keep
-          </button>
-          <button
-            type="button"
-            onClick={onConfirmDelete}
-            className="rounded-sm bg-[#c1666b] px-6 py-2 font-serif text-white"
-          >
-            Delete
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------
 // PaperCard
 // ---------------------------------------------------------------------
 //
 // One single card in the grid. Owns two small pieces of LOCAL state:
 // whether its own options row (trash / redirect / rename) is currently
-// showing, and whether its own delete-confirmation modal is currently
+// showing, and whether its own delete-confirmation popup is currently
 // showing. Neither of those needs to be known by any other card or by
 // the parent list -- exactly like PaperNode's own isContentOpen state in
 // MindMap.tsx, each card manages its own little bit of "am I open right
 // now" independently.
+//
+// The delete confirmation itself is the shared deletePaperConfirm Popup
+// (components/popups/popup.tsx) -- it owns the real deleteHistory()
+// backend call and its own error/loading state internally now, so this
+// card only needs to open/close it and react to onDeleted.
 interface PaperCardProps {
   entry: HistoryEntry;
   onDeleted: (deletedId: string) => void;
@@ -237,11 +200,13 @@ function PaperCard({ entry, onDeleted, onRenamed }: PaperCardProps) {
   const router = useRouter();
 
   const [isOptionsRowOpen, setIsOptionsRowOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isEditing, setIsEditing] = useState<boolean>(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [content, setContent] = useState<string>(entry.title);
-  const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null);
+  // Shared between the rename flow below and (previously) the delete
+  // flow -- delete errors now show inside the popup itself instead, so
+  // this is only ever set by saveChanges() at this point.
+  const [renameErrorMessage, setRenameErrorMessage] = useState<string | null>(null);
 
   function handleOptionsButtonClick() {
     if (isOptionsRowOpen === true) {
@@ -252,11 +217,7 @@ function PaperCard({ entry, onDeleted, onRenamed }: PaperCardProps) {
   }
 
   function handleTrashButtonClick() {
-    setIsDeleteModalOpen(true);
-  }
-
-  function handleKeepButtonClick() {
-    setIsDeleteModalOpen(false);
+    setIsDeleteConfirmOpen(true);
   }
 
   // This is the button "next to the trash" you pointed out -- it sends
@@ -294,32 +255,14 @@ function PaperCard({ entry, onDeleted, onRenamed }: PaperCardProps) {
     } catch (error) {
       setContent(entry.title);
       if (error instanceof Error) {
-        setDeleteErrorMessage(error.message);
+        setRenameErrorMessage(error.message);
       } else {
-        setDeleteErrorMessage("Failed to rename history title.");
+        setRenameErrorMessage("Failed to rename history title.");
       }
     } finally {
       setIsEditing(false);
     }
   };
-
-  async function handleConfirmDeleteClick() {
-    setIsDeleting(true);
-    setDeleteErrorMessage(null);
-    try {
-      await deleteHistory(entry.id);
-      // Tell the parent grid to drop this card from the list it's
-      // showing -- see PreviousPapersSection's handlePaperDeleted below.
-      onDeleted(entry.id);
-    } catch (error) {
-      if (error instanceof Error) {
-        setDeleteErrorMessage(error.message);
-      } else {
-        setDeleteErrorMessage("Something went wrong while deleting.");
-      }
-      setIsDeleting(false);
-    }
-  }
 
   return (
     <div className="relative">
@@ -390,26 +333,20 @@ function PaperCard({ entry, onDeleted, onRenamed }: PaperCardProps) {
         )
       }
 
-      {
-        isDeleteModalOpen === true && (
-          <DeleteConfirmModal
-            paperTitle={entry.title}
-            onKeep={handleKeepButtonClick}
-            onConfirmDelete={handleConfirmDeleteClick}
-          />
-        )
-      }
+      {isDeleteConfirmOpen && (
+        <Popup
+          type="deletePaperConfirm"
+          paperId={String(entry.id)}
+          paperTitle={entry.title}
+          onClose={() => setIsDeleteConfirmOpen(false)}
+          onDeleted={() => onDeleted(entry.id)}
+        />
+      )}
 
       {
-        isDeleting === true && (
-          <p className="mt-1 text-center font-serif text-xs text-stone-400">Deleting...</p>
-        )
-      }
-
-      {
-        deleteErrorMessage !== null && (
+        renameErrorMessage !== null && (
           <p className="mt-1 text-center font-serif text-xs text-[#c1666b]">
-            {deleteErrorMessage}
+            {renameErrorMessage}
           </p>
         )
       }
@@ -506,9 +443,9 @@ export default function PreviousPapersSection() {
     // };
   }, []);
 
-  // Called by a PaperCard after it successfully deletes itself on the
-  // backend -- removes that same entry from THIS list, so the grid
-  // updates immediately without needing to re-fetch everything.
+  // Called by a PaperCard after its deletePaperConfirm popup successfully
+  // deletes it on the backend -- removes that same entry from THIS list,
+  // so the grid updates immediately without needing to re-fetch everything.
   function handlePaperDeleted(deletedId: string) {
     setEntries((previousEntries) =>
       previousEntries.filter((entry) => entry.id !== deletedId)
@@ -572,10 +509,9 @@ export default function PreviousPapersSection() {
       // height, the drawer art extends to cover that space too.
       className={
         isFiltersPanelOpen === true
-          ? "bg-[#2a2117] px-8 pt-8 pb-72"
-          : "bg-[#2a2117] px-8 py-8"
+          ? "px-8 pt-8 pb-72"
+          : "px-8 py-8"
       }
-      style={{ backgroundImage: "url(/background/drawer.png)", backgroundSize: "cover" }}
     >
       {/* This inner wrapper is what actually shifts the section to the
           right: a fixed max width plus ml-auto (an "automatic" left
