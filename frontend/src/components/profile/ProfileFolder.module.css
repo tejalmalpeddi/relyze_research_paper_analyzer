@@ -2,6 +2,12 @@
   position: relative;
   width: 100%;
   height: 100%;
+  --folder-back-color: #927e67;
+  --folder-front-color: #c4ab8e;
+}
+
+.root[data-open='false'] {
+  --folder-back-color: #c4ab8e;
 }
 
 /* ── Folder back ── */
@@ -11,6 +17,8 @@
   inset: 0;
   overflow: clip;
   filter: drop-shadow(0px 4px 5px rgba(0, 0, 0, 0.5));
+  color: var(--folder-back-color);
+  transition: color 650ms ease;
 }
 
 .folderBackShape {
@@ -39,6 +47,14 @@
 .profilePage {
   position: absolute;
   inset: 4.93% 13.62% 18.88% 7.9%;
+  opacity: 1;
+  transition: opacity 500ms ease 300ms;
+}
+
+.root[data-open='false'] .profilePage {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease;
 }
 
 .paperSurface {
@@ -350,6 +366,12 @@
   justify-content: center;
   inset: 9.34% 2.7% 73.15% 92.93%;
   container-type: size;
+  opacity: 1;
+  transition: opacity 350ms ease;
+}
+
+.root[data-open='false'] .spineOuter {
+  opacity: 0;
 }
 
 .spineRotate {
@@ -379,6 +401,19 @@
   justify-content: center;
   inset: 0 96.12% 0 -96.12%;
   container-type: size;
+  color: var(--folder-front-color);
+  opacity: 1;
+  transform: scaleX(1);
+  transform-origin: right center;
+  transition:
+    opacity 450ms ease,
+    transform 800ms ease;
+}
+
+.root[data-open='false'] .folderFront {
+  opacity: 0;
+  transform: scaleX(0.05);
+  pointer-events: none;
 }
 
 .folderFrontInner {

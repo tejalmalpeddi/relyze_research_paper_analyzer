@@ -14,6 +14,22 @@
   z-index: 1;
 }
 
+.hoverIndicator {
+  position: absolute;
+  background-color: #c6ac8f;
+  border-radius: 11px;
+  opacity: 0;
+  transition:
+    inset 200ms ease,
+    opacity 120ms ease;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.hoverIndicator[data-visible='true'] {
+  opacity: 0.32;
+}
+
 .btn {
   position: absolute;
   display: grid;

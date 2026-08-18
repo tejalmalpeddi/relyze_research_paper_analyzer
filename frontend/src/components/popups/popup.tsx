@@ -50,7 +50,10 @@ function PopupShell({ title, children, footer, onClose }: PopupShellProps) {
   // those create a new containing block that would otherwise trap this
   // "fixed" backdrop inside that ancestor instead of the real screen.
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   function handleBackdropClick(e: MouseEvent<HTMLDivElement>) {
     if (e.target === e.currentTarget) {
@@ -168,7 +171,7 @@ function DifficultySelectPopup({
         </menu>
       }
     >
-      <p>How familiar are you with this paper's topic?</p>
+      <p>How familiar are you with this paper&apos;s topic?</p>
       <DifficultySelect value={difficulty} onChange={setDifficulty} />
       {difficulty == 'Beginner' && (
         <p className={styles.blurb}>
@@ -365,11 +368,7 @@ function DeletePaperPopup({
     setError('');
     setIsDeleting(true);
     try {
-      // deleteHistory expects a numeric id -- paperId comes in as a
-      // string here for consistency with the other popup props (e.g.
-      // difficultySelect's paperId), so it's converted right at the call
-      // site instead.
-      await deleteHistory(Number(paperId));
+      await deleteHistory(paperId);
     } catch (err) {
       setIsDeleting(false);
       setError(err instanceof Error ? err.message : 'Something went wrong while deleting.');
