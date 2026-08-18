@@ -21,6 +21,7 @@
 #      because sticky notes belong to the Mind Map page, not this one --
 #      this file is everything the Interactive Paper page specifically
 #      needs.
+import re
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
@@ -57,6 +58,29 @@ def _verify_document_owner(document_id: str, user_id: str):
     )
     if not document_check.data:
         raise HTTPException(status_code=404, detail="Document not found.")
+    
+def _filter_references(row):
+    markdown_content = row.get("markdown_content")
+    
+    if not markdown_content:
+         return {
+        "id": row.get("id"),
+        "title": row.get("title") or row.get("file_name") or "Untitled paper",
+        "markdown_content": "No citations found in paper"
+    }
+    pattern = r'(?:#+\s*|^(?=\n))\s*(?:References|Bibliography|Works Cited)\s*\n+(.*)'
+    match = re.search(pattern, markdown_content, re.IGNORECASE | re.DOTALL)
+    
+    if match:
+        refs_text = match.group(1).strip()
+    else:
+        refs_text = "No citations matched"
+
+    return {
+        "id": row.get("id"),
+        "title": row.get("title"),
+        "markdown_content": refs_text
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -106,6 +130,20 @@ def documents_get_by_id(document_id: str, user=Depends(verify_cookie)):
         )
     return response.data[0]
 
+@router.get("/references/{document_id}")
+def history_references_by_id(document_id: str, user=Depends(verify_cookie)):
+    response = (
+        _documents_query()
+        .eq("id", document_id)
+        .eq("user_id", user.id)
+        .execute()
+    )
+    if not response.data:
+        raise HTTPException(
+            status_code=404, detail=f"Document with id '{document_id}' not found."
+        )
+    # return response.data[0]
+    return _filter_references(response.data[0])
 
 # ---------------------------------------------------------------------------
 # Highlights and strokes both live in ONE real table, "pdf_annotations"

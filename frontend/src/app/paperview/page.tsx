@@ -176,7 +176,7 @@ function PaperBubbleBar({ currentDocumentId }: PaperBubbleBarProps) {
         <span className={styles.paperSelectorMessage}>You are currently logged out, nothing to display!</span>
         <button
           type="button"
-          onClick={() => router.push('/auth')}
+          onClick={() => router.push('/profile')}
           className="shrink-0 rounded-sm bg-[#5b4636] px-4 py-1.5 font-serif text-xs font-semibold text-white"
         >
           Sign In

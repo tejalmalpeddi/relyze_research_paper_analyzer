@@ -28,6 +28,7 @@ import {
   HighlightPayload,
   StrokeEntry,
   StrokePayload,
+  ReferenceEntry
 } from "./types";
 //generic type ^^ later comes in to play 
 
@@ -340,4 +341,11 @@ export async function deleteStroke(documentId: string, strokeId: string): Promis
     credentials: "include",
   });
   return handleResponse<{ deleted: boolean; id: string }>(response);
+}
+
+export async function fetchReferenceById(documentId: string): Promise<ReferenceEntry> {
+  const response = await fetch(`${API_URL}/references/${documentId}`, { 
+    credentials: "include",
+  });
+  return handleResponse<ReferenceEntry>(response);
 }

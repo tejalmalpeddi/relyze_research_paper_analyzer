@@ -173,7 +173,6 @@ def _normalize_history_row(row):
         "background": background,
     }
 
-
 @router.post("/create", status_code=status.HTTP_201_CREATED)
 def history_create(payload: HistoryCreate, user=Depends(verify_cookie)):
     history_dump = payload.model_dump(mode="json")
@@ -253,22 +252,6 @@ def history_get(user=Depends(verify_cookie)):
     )
     return [_normalize_history_row(row) for row in response.data]
 
-
-@router.get("/{history_id}")
-def history_get_by_id(history_id: str, user=Depends(verify_cookie)):
-    response = (
-        _history_query()
-        .eq("id", history_id)
-        .eq("user_id", user.id)
-        .execute()
-    )
-    if not response.data:
-        raise HTTPException(
-            status_code=404, detail=f"History item with id '{history_id}' not found."
-        )
-    return _normalize_history_row(response.data[0])
-
-
 @router.put("/rename/{history_id}", status_code=status.HTTP_200_OK)
 def history_rename(history_id: str, payload: HistoryRename, user=Depends(verify_cookie)):
     next_title = payload.title.strip()
@@ -287,6 +270,20 @@ def history_rename(history_id: str, payload: HistoryRename, user=Depends(verify_
             status_code=404, detail=f"History item with id '{history_id}' not found."
         )
     return {"edited": True, "id": history_id}
+
+@router.get("/{history_id}")
+def history_get_by_id(history_id: str, user=Depends(verify_cookie)):
+    response = (
+        _history_query()
+        .eq("id", history_id)
+        .eq("user_id", user.id)
+        .execute()
+    )
+    if not response.data:
+        raise HTTPException(
+            status_code=404, detail=f"History item with id '{history_id}' not found."
+        )
+    return _normalize_history_row(response.data[0])
 
 @router.delete("/{history_id}", status_code=status.HTTP_200_OK)
 def history_delete(history_id: str, user=Depends(verify_cookie)):
