@@ -1,0 +1,151 @@
+/* The body section is the single source of truth for child positioning:
+   it centers everything by default. Children only ever set their own
+   appearance (color, font, spacing between their own internal parts) —
+   never their own position within the card. The one exception is
+   `.topText`, which pulls itself out of flow to sit pinned under the
+   title; everything else just flows normally and gets centered as a
+   group. */
+.body {
+  position: static;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  width: 100%;
+  gap: 0.75rem;
+  text-align: center;
+}
+
+/* Buttons "hang" off the bottom edge of the card: anchored to the card's
+   bottom border, then pulled down by half their own height. */
+.footer {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translate(-50%, 50%);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  width: 80%;
+  gap: 0.75rem;
+  text-align: left;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.9rem;
+  gap: 0.25rem;
+}
+
+.field input {
+  border: none;
+  border-bottom: 1px solid var(--color-dark-brown);
+  background: transparent;
+  font: inherit;
+  padding: 0.25rem 0;
+  outline: none;
+}
+
+.field input:focus {
+  border-bottom-width: 2px;
+}
+
+.field input:disabled {
+  opacity: 0.6;
+}
+
+/* Instructions and error messages: pinned to the top of the card, right
+   under the title, regardless of what else is in the card. */
+.topText {
+  position: absolute;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80%;
+  margin: 0;
+  text-align: center;
+}
+
+.error {
+  color: var(--color-light-red);
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+/* Row holding the small text-link(s) at the bottom of a form -- e.g.
+   "Forgot password?" + "Create account" on Login, or just "Log in to
+   existing account" on Create Account. Right-aligned as a group so they
+   sit next to each other rather than each hugging the edge on their own
+   line. */
+.linkRow {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  margin: 0;
+}
+
+.link,
+.linkBrown {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.link {
+  color: var(--color-light-red);
+}
+
+.linkBrown {
+  color: var(--color-dark-brown);
+}
+
+.buttonRow {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.buttonNeutral,
+.buttonDanger {
+  border: none;
+  color: var(--color-off-white);
+  cursor: pointer;
+  padding: 0.5rem 1.5rem;
+  white-space: nowrap;
+}
+
+.buttonNeutral {
+  background: var(--color-dark-brown);
+}
+
+.buttonNeutral:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.buttonDanger {
+  background: var(--color-light-red);
+}
+
+.blurb {
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+
+.loadingGif {
+  position: relative;
+  width: 30%;
+  height: auto;
+}

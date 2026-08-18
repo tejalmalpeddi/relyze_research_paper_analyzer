@@ -21,15 +21,21 @@ def save_document(
     file_name,
     raw_text_data,
     structured_document,
-    markdown_document
+    markdown_document,
+    user_id=None,
+    title=None,
 ):
     document_data = {
         "file_name": file_name,
         "raw_text": raw_text_data,
         "structured_data": structured_document,
         "markdown_content": markdown_document,
-        "status": "completed"
+        "status": "processing"
     }
+    if user_id is not None:
+        document_data["user_id"] = user_id
+    if title is not None:
+        document_data["title"] = title
 
     response = (
         supabase

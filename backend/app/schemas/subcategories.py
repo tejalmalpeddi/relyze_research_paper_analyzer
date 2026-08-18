@@ -35,16 +35,28 @@ class ParserOutput(BaseModel):
 
 # --- Response (what goes OUT) ---
 
+class ContentLevels(BaseModel):
+    beginner: str
+    intermediate: str
+    advanced: str
+
+
+class PrerequisiteLevels(BaseModel):
+    beginner: list[str] = Field(default_factory=list)
+    intermediate: list[str] = Field(default_factory=list)
+    advanced: list[str] = Field(default_factory=list)
+
+
 class SubcategoryItem(BaseModel):
     """One node on the concept map."""
     id: str
     name: str
     category: CategoryLiteral
-    shortExplanation: str
+    content: ContentLevels
     sourcePage: int
     sourceSnippet: str
     relatedTerms: list[str]
-    prerequisites: list[str]
+    prerequisites: PrerequisiteLevels
     importance: int = Field(..., ge=1, le=5)  # must be 1–5
 
 class SubcategoryResponse(BaseModel):
@@ -54,4 +66,3 @@ class SubcategoryResponse(BaseModel):
     sourceFile: str                       # original filename
     subcategories: list[SubcategoryItem]  # all the concept map nodes
     totalCount: int                       # how many nodes there are
-    

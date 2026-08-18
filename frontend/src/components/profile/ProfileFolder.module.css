@@ -13,11 +13,6 @@
   filter: drop-shadow(0px 4px 5px rgba(0, 0, 0, 0.5));
 }
 
-.folderBg {
-  position: absolute;
-  inset: 0;
-}
-
 .folderBackShape {
   position: absolute;
   inset: 1.51% 0.77% 2.27% 1.91%;
@@ -53,51 +48,43 @@
   box-shadow: 0px 4px 10px 0px rgba(0, 0, 0, 0.5);
 }
 
-/* ── Delete Account ── */
+/* ── Delete Account / Sign Out ──
+   Each is now a single <button> covering the full rectangle (so clicking
+   anywhere on it activates it, not just the text) -- the colored
+   background comes from the button itself, the svg draws the inset
+   drop-shadowed rect on top, and the label centers over both via flex. */
 
-.deleteBtnBox {
+.deleteBtn,
+.signOutBtn {
   position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.deleteBtn {
   background-color: #c1666b;
   inset: 93.68% 5.14% -6.14% 56.1%;
 }
 
-.btnSvgWrap {
-  position: absolute;
-  inset: 0 -2.21% -11.27% -2.21%;
-}
-
-.btnSvg {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.deleteBtnLabel {
-  position: absolute;
-  inset: 98.07% 14.13% -1.75% 65.1%;
-  word-break: break-word;
-  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
-  font-size: 16px;
-  text-align: center;
-  color: #fff;
-  white-space: nowrap;
-  line-height: normal;
-  background: none;
-  border: none;
-  cursor: pointer;
-}
-
-/* ── Sign Out ── */
-
-.signOutBtnBox {
-  position: absolute;
+.signOutBtn {
   background-color: #5e503f;
   inset: 93.68% 49.68% -6.14% 11.56%;
 }
 
-.signOutBtnLabel {
+.btnSvg {
   position: absolute;
-  inset: 98.07% 62.96% -1.75% 25.05%;
+  inset: 0 -2.21% -11.27% -2.21%;
+  display: block;
+}
+
+.deleteBtnLabel,
+.signOutBtnLabel {
+  position: relative;
+  z-index: 1;
   word-break: break-word;
   font-family: var(--font-eb-garamond), 'EB Garamond', serif;
   font-size: 16px;
@@ -105,30 +92,25 @@
   color: #fff;
   white-space: nowrap;
   line-height: normal;
-  background: none;
-  border: none;
-  cursor: pointer;
 }
 
 /* ── Preferences ── */
 
-.prefsHeader {
+.prefsHeaderLabel {
   position: absolute;
   background-color: #5e503f;
   height: 22px;
   left: 43px;
   top: 194px;
   width: 413px;
-}
-
-.prefsHeaderLabel {
-  position: absolute;
-  left: 56.32px;
-  top: 197px;
-  width: 59.211px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  padding-left: 13.32px;
   word-break: break-word;
   font-family: var(--font-eb-garamond), 'EB Garamond', serif;
   font-size: 12px;
+  font-weight: normal;
   color: #d9d9d9;
   line-height: normal;
 }
@@ -138,6 +120,7 @@
   height: 299px;
   left: 43px;
   top: 216px;
+  border: 1px solid #5e503f;
 }
 
 .scrollContent {
@@ -149,33 +132,28 @@
   position: relative;
   width: 100%;
   height: 100%;
-}
-
-.scrollBorder {
-  position: absolute;
-  inset: 0;
-  border: 1px solid #5e503f;
-  pointer-events: none;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 /* ── Account ── */
 
-.accountHeader {
+.accountHeaderLabel {
   position: absolute;
   background-color: #5e503f;
   height: 22px;
   left: 177px;
   top: 44px;
   width: 279px;
-}
-
-.accountHeaderLabel {
-  position: absolute;
-  left: 186px;
-  top: 47px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  padding-left: 9px;
   word-break: break-word;
   font-family: var(--font-eb-garamond), 'EB Garamond', serif;
   font-size: 12px;
+  font-weight: normal;
   color: #d9d9d9;
   white-space: nowrap;
   line-height: normal;
@@ -205,7 +183,6 @@
   color: #000;
   line-height: normal;
   inset: 15.96% 4.5% 80% 39.83%;
-  z-index: 1;
   padding: 0;
   background: transparent;
   border: 0;
@@ -228,6 +205,7 @@
   color: #5e503f;
   line-height: normal;
   inset: 22.46% 3.64% 74.74% 39.83%;
+  margin: 0;
 }
 
 .passwordValue {
@@ -239,14 +217,7 @@
   line-height: normal;
   inset: 26.14% 3.64% 70.18% 39.83%;
   z-index: 1;
-  padding: 0;
-  background: transparent;
-  border: 0;
-  outline: 0;
-}
-
-.passwordValue[readonly] {
-  cursor: default;
+  margin: 0;
 }
 
 .editIcon {
@@ -260,27 +231,6 @@
   border: 0;
   cursor: pointer;
   z-index: 2;
-}
-
-.eyeIcon {
-  position: absolute;
-  aspect-ratio: 1;
-  left: 86.6%;
-  right: 10.07%;
-  top: 144px;
-  padding: 0;
-  color: #5e503f;
-  background: transparent;
-  border: 0;
-  cursor: pointer;
-  z-index: 2;
-}
-
-.eyeIconSvg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
 }
 
 .editIconImg {
@@ -309,11 +259,6 @@
   width: hypot(89.5176cqw, -9.02881cqh);
   rotate: -6.15deg;
   position: relative;
-}
-
-.profileCardBg {
-  position: absolute;
-  inset: 0;
   background-color: #d9d9d9;
   box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.25);
 }
@@ -343,7 +288,16 @@
   background-color: #a3a3a3;
 }
 
-/* ── Paperclip ── */
+/* ── Paperclip ──
+   NOTE: kept as two nested elements intentionally, unlike the other
+   collapses on this page. This uses CSS container queries (container-type:
+   size on the outer + hypot(cqw,cqh) on the inner) to compute a rotated
+   element's bounding box responsively -- an element can't query its own
+   container-type context, so the outer (the container) and inner (the
+   thing reading that container's size) have to be two separate elements
+   for this specific technique to work. Same reasoning applies to
+   .profileCardOuter/.profileCardRotate and .editProfileOuter/.editProfileRotate
+   above/below. */
 
 .paperclipOuter {
   position: absolute;
@@ -441,97 +395,28 @@
   inset: 1.69% 10.46% 2.55% 1.7%;
 }
 
-/* ── DifficultySelect ── */
-
-.difficultyOuter {
-  position: absolute;
-  inset: 55.37% 2.91% 11.57% 25.91%;
-}
-
-.difficultyPill {
-  position: absolute;
-  height: 40px;
-  left: 0;
-  top: 0;
-  width: 294px;
-}
-
-.difficultyBg {
-  position: absolute;
-  inset: 0;
-  background-color: #5e503f;
-  border-radius: 10px;
-  z-index: 0;
-}
-
-.difficultyIndicator {
-  position: absolute;
-  background-color: #c6ac8f;
-  border-radius: 11px;
-  transition: inset 200ms;
-  z-index: 1;
-}
-
-.difficultyBtn {
-  position: absolute;
-  display: grid;
-  align-items: center;
-  justify-content: center;
-  place-items: center;
-  padding: 0;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
-  font-size: 17px;
-  text-align: center;
-  white-space: nowrap;
-  line-height: 40px;
-  z-index: 2;
-}
-
-.difficultyBtnText {
-  display: block;
-  width: 100%;
-  height: 40px;
-  line-height: 40px;
-  margin: 0;
-  text-align: center;
-}
-
-/* ── PreferenceTab ── */
+/* ── PreferenceTab ──
+   .prefTabBg was previously a separate inset:0 sibling div matching this
+   element's own box exactly -- folded its background/border directly onto
+   the <li> itself instead. */
 
 .prefTab {
   position: relative;
-  flex-shrink: 0;
-  height: 121px;
-  width: 413px;
-}
-
-.prefTabMargin {
-  margin-bottom: -1px;
-}
-
-.prefTabBg {
-  position: absolute;
-  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: left;
+  gap: 1rem;
+  padding: 1rem;
+  min-height: 5rem;
+  width: 396px;
   background-color: #d9d9d9;
   border: 1px solid #5e503f;
 }
 
-.prefTabTitle {
-  position: absolute;
-  inset: 21.49% 4.84% 61.16% 26.63%;
-  word-break: break-word;
-  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
-  font-size: 16px;
-  color: #000;
-  line-height: normal;
-}
-
 .prefTabPaper {
-  position: absolute;
-  inset: 12.4% 77.97% 11.57% 3.63%;
+  flex-shrink: 0;
+  aspect-ratio: 3/4;
+  width: 3rem;
   background-color: #fff;
 }
 

@@ -1,5 +1,8 @@
 import json
 from pathlib import Path
+import os
+from typing import Optional
+os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 
 import pymupdf
 from docling.document_converter import DocumentConverter
@@ -40,14 +43,52 @@ def extract_raw_text_from_pdf(pdf_path):
     return raw_text_data
 
 
+def extract_title(document) -> Optional[str]:
+    """
+    Best-effort real paper title, read off Docling's own layout detection
+    rather than the filename. In standard academic PDF layout the title is
+    the first section-header-labeled text block on the page (it sits above
+    the author line, which layout detection also tags as a section header,
+    so "first one" is what distinguishes it). Returns None if the document
+    has no section headers at all (e.g. a scanned PDF with no layout info),
+    letting the caller fall back to a filename-derived title instead.
+    """
+    for text_item in document.texts:
+        label = getattr(text_item, "label", None)
+        if label is not None and getattr(label, "value", None) == "section_header":
+            title = text_item.text.strip()
+            if title:
+                return title
+    return None
+
+
 def extract_structured_document(pdf_path):
-    document_converter = DocumentConverter()
+    from docling.datamodel.pipeline_options import PdfPipelineOptions, AcceleratorOptions, AcceleratorDevice
+    from docling.datamodel.base_models import InputFormat
+    from docling.document_converter import PdfFormatOption
+
+
+    pipeline_options = PdfPipelineOptions()
+    pipeline_options.accelerator_options = AcceleratorOptions(
+        num_threads=4,
+        device=AcceleratorDevice.CPU
+    )
+
+    document_converter = DocumentConverter(
+        format_options={
+            InputFormat.PDF: PdfFormatOption(
+                pipeline_options=pipeline_options
+            )
+        }
+    )
+
     conversion_result = document_converter.convert(pdf_path)
 
     markdown_document = conversion_result.document.export_to_markdown()
     structured_document = conversion_result.document.export_to_dict()
+    title = extract_title(conversion_result.document)
 
-    return markdown_document, structured_document
+    return markdown_document, structured_document, title
 
 
 def _cluster_rects(rects, pad=15):
@@ -76,6 +117,13 @@ def _cluster_rects(rects, pad=15):
             out.append(base)
         clusters = out
     return clusters
+
+
+def _rect_area(rect) -> float:
+    get_area = getattr(rect, "get_area", None)
+    if callable(get_area):
+        return get_area()
+    return max(0, rect.x1 - rect.x0) * max(0, rect.y1 - rect.y0)
 
 
 def extract_images_from_pdf(
@@ -153,11 +201,11 @@ def extract_images_from_pdf(
         vector_figures_saved = 0
 
         if drawings:
-            drawing_rects = [d["rect"] for d in drawings if d["rect"].get_area() > 0]
+            drawing_rects = [d["rect"] for d in drawings if _rect_area(d["rect"]) > 0]
             clusters = _cluster_rects(drawing_rects, pad=15)
 
             for cluster in clusters:
-                if cluster.get_area() < min_area:
+                if _rect_area(cluster) < min_area:
                     continue
 
                 paths_in_cluster = sum(1 for r in drawing_rects if cluster.contains(r))
@@ -166,7 +214,7 @@ def extract_images_from_pdf(
 
                 if any(
                     cluster.intersects(r)
-                    and (cluster & r).get_area() > 0.8 * cluster.get_area()
+                    and _rect_area(cluster & r) > 0.8 * _rect_area(cluster)
                     for r in page_raster_rects
                 ):
                     continue
@@ -189,6 +237,85 @@ def extract_images_from_pdf(
     print(f"Done. {saved_count} image file(s) saved to {output_path}")
 
 
+def _image_type_from_name(file_name: str) -> str:
+    if "_vector_" in file_name:
+        return "vector"
+    if "_raster_" in file_name:
+        return "raster"
+    return "image"
+
+
+def _page_number_from_name(file_name: str) -> Optional[int]:
+    parts = file_name.split("_")
+    if len(parts) < 2 or parts[0] != "page":
+        return None
+
+    try:
+        return int(parts[1])
+    except ValueError:
+        return None
+
+
+def _image_metadata(output_directory: Path, document_id: str) -> list[dict]:
+    document_directory = output_directory / document_id
+    if not document_directory.exists():
+        return []
+
+    images = []
+    for image_path in sorted(document_directory.iterdir()):
+        if not image_path.is_file():
+            continue
+
+        images.append(
+            {
+                "file_name": image_path.name,
+                "storage_path": f"/assets/{document_id}/{image_path.name}",
+                "page_number": _page_number_from_name(image_path.name),
+                "image_type": _image_type_from_name(image_path.name),
+            }
+        )
+    return images
+
+
+def parse_and_save_pdf(pdf_path, user_id=None, file_name=None):
+    pdf_path = Path(pdf_path)
+    stored_file_name = file_name or pdf_path.name
+
+    raw_text_data = extract_raw_text_from_pdf(pdf_path)
+    markdown_document, structured_document, extracted_title = extract_structured_document(pdf_path)
+
+    title = extracted_title or Path(stored_file_name).stem.replace("_", " ").replace("-", " ").title()
+
+    supabase = connect_to_supabase()
+    response = save_document(
+        supabase,
+        stored_file_name,
+        raw_text_data,
+        structured_document,
+        markdown_document,
+        user_id,
+        title,
+    )
+
+    document = response.data[0]
+    document_id = document["id"]
+    document_image_directory = IMAGE_OUTPUT_DIRECTORY / document_id
+    extract_images_from_pdf(pdf_path, document_image_directory)
+    images = _image_metadata(IMAGE_OUTPUT_DIRECTORY, document_id)
+
+    if images:
+        update_response = (
+            supabase.table("documents")
+            .update({"images": images})
+            .eq("id", document_id)
+            .execute()
+        )
+        if update_response.data:
+            document = update_response.data[0]
+
+    return document
+
+
 if __name__ == "__main__":
     # Extract plain text using PyMuPDF
     raw_text_data = extract_raw_text_from_pdf(PDF_INPUT_FILE)
@@ -197,7 +324,7 @@ if __name__ == "__main__":
         json.dump(raw_text_data, f, indent=2, ensure_ascii=False)
 
     # Extract structured document using Docling
-    markdown_document, structured_document = extract_structured_document(
+    markdown_document, structured_document, extracted_title = extract_structured_document(
         PDF_INPUT_FILE
     )
 
@@ -223,7 +350,8 @@ if __name__ == "__main__":
         PDF_INPUT_FILE.name,
         raw_text_data,
         structured_document,
-        markdown_document
+        markdown_document,
+        title=extracted_title or PDF_INPUT_FILE.stem.replace("_", " ").replace("-", " ").title(),
     )
 
     print(response.data)

@@ -1,6 +1,6 @@
 'use client';
 
-import { KeyboardEvent, useRef, useState } from 'react';
+import { KeyboardEvent, useId, useState } from 'react';
 import Image from 'next/image';
 import styles from './ProfileFolder.module.css';
 
@@ -27,6 +27,11 @@ const BUTTON_INSETS: Record<Difficulty, { inset: string }> = {
   Intermediate: { inset: '0 33.33% 0 33.33%' },
   Advanced:     { inset: '0 0 0 66.66%' },
 };
+
+// Never the real password -- always exactly 8 literal asterisks, regardless
+// of the actual password's length. This field is display-only; the real
+// value is never sent to or rendered by this component at all.
+const MASKED_PASSWORD = '********';
 
 function DifficultySelect({
   value,
@@ -58,22 +63,14 @@ function DifficultySelect({
 
 interface PreferenceTabProps {
   title: string;
-  difficulty: Difficulty;
-  isLast?: boolean;
-  onDifficultyChange?: (difficulty: Difficulty) => void;
 }
 
-function PreferenceTab({ title, difficulty, isLast = false, onDifficultyChange }: PreferenceTabProps) {
+function PreferenceTab({ title }: PreferenceTabProps) {
   return (
-    <div
-      className={`${styles.prefTab}${isLast ? '' : ` ${styles.prefTabMargin}`}`}
-      data-name="preference tab"
-    >
-      <div className={styles.prefTabBg} />
-      <p className={styles.prefTabTitle}>{title}</p>
-      <DifficultySelect value={difficulty} onChange={(value) => onDifficultyChange?.(value)} />
-      <div className={styles.prefTabPaper} data-name="paper" />
-    </div>
+    <li className={styles.prefTab} data-name="preference tab">
+      <span aria-hidden className={styles.prefTabPaper} data-name="paper" />
+      <p>{title}</p>
+    </li>
   );
 }
 
@@ -81,8 +78,7 @@ interface ProfileFolderProps {
   email?: string;
   profileSrc?: string;
   preferences?: ProfilePreference[];
-  onEmailSave?: (email: string) => void;
-  onPasswordSave?: (password: string) => void;
+  onPasswordEditClick?: () => void;
   onPreferenceDifficultyChange?: (index: number, difficulty: Difficulty) => void;
   onSignOut?: () => void | Promise<void>;
   onDeleteAccount?: () => void | Promise<void>;
@@ -92,50 +88,17 @@ export default function ProfileFolder({
   email = '',
   profileSrc,
   preferences = [],
-  onEmailSave,
-  onPasswordSave,
+  onPasswordEditClick,
   onPreferenceDifficultyChange,
   onSignOut,
   onDeleteAccount,
 }: ProfileFolderProps) {
   const [emailValue, setEmailValue] = useState(email);
-  const [passwordValue, setPasswordValue] = useState('');
-  const [isPasswordEditing, setIsPasswordEditing] = useState(false);
-  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
-  const passwordInputRef = useRef<HTMLInputElement>(null);
-
-  function handlePasswordEditClick() {
-    setIsPasswordEditing(true);
-    window.requestAnimationFrame(() => passwordInputRef.current?.focus());
-  }
-
-  function handleEmailSave() {
-    const nextEmail = emailValue.trim();
-    if (!nextEmail || nextEmail === email) return;
-    onEmailSave?.(nextEmail);
-  }
-
-  function handlePasswordSave() {
-    if (!passwordValue) {
-      setIsPasswordEditing(false);
-      return;
-    }
-
-    onPasswordSave?.(passwordValue);
-    setPasswordValue('');
-    setIsPasswordEditing(false);
-  }
-
-  function handleEnterBlur(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key === 'Enter') {
-      event.currentTarget.blur();
-    }
-  }
+  const emailFieldId = useId();
 
   return (
-    <div className={styles.root} data-name="folder">
+    <section className={styles.root} aria-label="Account settings" data-name="folder">
       <div className={styles.folderBack} data-name="folder-back 1">
-        <div className={styles.folderBg} />
         <div className={styles.folderBackShape} data-name="path1">
           <svg className={styles.folderShapeSvg} fill="none" preserveAspectRatio="none" viewBox="0 0 579.118 719.871">
             <path d={FOLDER_BACK_PATH} fill="#927E67" />
@@ -145,143 +108,103 @@ export default function ProfileFolder({
         <div className={styles.profilePage} data-name="profile page">
           <div className={styles.paperSurface} />
 
-          <div className={styles.deleteBtnBox} data-name="Red Button">
-            <div className={styles.btnSvgWrap}>
-              <svg className={styles.btnSvg} fill="none" preserveAspectRatio="none" viewBox="0 0 189 79">
-                <g filter="url(#delete-btn-shadow)">
-                  <path d="M4 0H185V71H4V0Z" fill="#C1666B" />
-                </g>
-                <defs>
-                  <filter colorInterpolationFilters="sRGB" filterUnits="userSpaceOnUse" height="79" id="delete-btn-shadow" width="189" x="0" y="0">
-                    <feFlood floodOpacity="0" result="BackgroundImageFix" />
-                    <feColorMatrix in="SourceAlpha" result="hardAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" />
-                    <feOffset dy="4" />
-                    <feGaussianBlur stdDeviation="2" />
-                    <feComposite in2="hardAlpha" operator="out" />
-                    <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0" />
-                    <feBlend in2="BackgroundImageFix" mode="normal" result="effect1_dropShadow" />
-                    <feBlend in="SourceGraphic" in2="effect1_dropShadow" mode="normal" result="shape" />
-                  </filter>
-                </defs>
-              </svg>
-            </div>
-          </div>
-          <button className={styles.deleteBtnLabel} onClick={onDeleteAccount}>
-            Delete Account
-          </button>
-
-          <div className={styles.signOutBtnBox} data-name="Brown Button">
-            <div className={styles.btnSvgWrap}>
-              <svg className={styles.btnSvg} fill="none" preserveAspectRatio="none" viewBox="0 0 189 79">
-                <g filter="url(#signout-btn-shadow)">
-                  <path d="M4 0H185V71H4V0Z" fill="#5E503F" />
-                </g>
-                <defs>
-                  <filter colorInterpolationFilters="sRGB" filterUnits="userSpaceOnUse" height="79" id="signout-btn-shadow" width="189" x="0" y="0">
-                    <feFlood floodOpacity="0" result="BackgroundImageFix" />
-                    <feColorMatrix in="SourceAlpha" result="hardAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" />
-                    <feOffset dy="4" />
-                    <feGaussianBlur stdDeviation="2" />
-                    <feComposite in2="hardAlpha" operator="out" />
-                    <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0" />
-                    <feBlend in2="BackgroundImageFix" mode="normal" result="effect1_dropShadow" />
-                    <feBlend in="SourceGraphic" in2="effect1_dropShadow" mode="normal" result="shape" />
-                  </filter>
-                </defs>
-              </svg>
-            </div>
-          </div>
-          <button className={styles.signOutBtnLabel} onClick={onSignOut}>
-            Sign Out
-          </button>
-
-          <div className={styles.prefsHeader} />
-          <p className={styles.prefsHeaderLabel}>Preferences</p>
-          <div className={styles.scrollFrame} data-name="scroll frame">
-            <div className={styles.scrollContent}>
-              {preferences.map((pref, i) => (
-                <PreferenceTab
-                  key={i}
-                  title={pref.title}
-                  difficulty={pref.difficulty}
-                  isLast={i === preferences.length - 1}
-                  onDifficultyChange={(difficulty) => onPreferenceDifficultyChange?.(i, difficulty)}
-                />
-              ))}
-            </div>
-            <div aria-hidden className={styles.scrollBorder} />
-          </div>
-
-          <div className={styles.accountHeader} />
-          <p className={styles.accountHeaderLabel}>Account</p>
-          <div className={styles.emailBox} />
-          <p className={styles.emailLabel}>Email</p>
-          <input
-            aria-label="Email"
-            className={styles.emailValue}
-            type="email"
-            value={emailValue}
-            onChange={(event) => setEmailValue(event.target.value)}
-            onBlur={handleEmailSave}
-            onKeyDown={handleEnterBlur}
-          />
-          <div className={styles.passwordBox} />
-          <p className={styles.passwordLabel}>Password</p>
-          <input
-            aria-label="Password"
-            className={styles.passwordValue}
-            ref={passwordInputRef}
-            type={isPasswordVisible ? 'text' : 'password'}
-            value={passwordValue}
-            readOnly={!isPasswordEditing}
-            onClick={handlePasswordEditClick}
-            onChange={(event) => setPasswordValue(event.target.value)}
-            onBlur={handlePasswordSave}
-            onKeyDown={handleEnterBlur}
-          />
-          <button
-            aria-label={isPasswordVisible ? 'Hide password' : 'Show password'}
-            className={styles.eyeIcon}
-            type="button"
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={() => setIsPasswordVisible((visible) => !visible)}
-          >
-            <svg className={styles.eyeIconSvg} fill="none" viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M2.5 12C4.7 7.8 8 5.7 12 5.7S19.3 7.8 21.5 12C19.3 16.2 16 18.3 12 18.3S4.7 16.2 2.5 12Z"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-              />
-              {isPasswordVisible ? (
-                <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2" />
-              ) : (
-                <path d="M4 4L20 20" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
-              )}
+          <button type="button" className={styles.deleteBtn} onClick={onDeleteAccount}>
+            <svg className={styles.btnSvg} fill="none" preserveAspectRatio="none" viewBox="0 0 189 79" aria-hidden="true">
+              <g filter="url(#delete-btn-shadow)">
+                <path d="M4 0H185V71H4V0Z" fill="#C1666B" />
+              </g>
+              <defs>
+                <filter colorInterpolationFilters="sRGB" filterUnits="userSpaceOnUse" height="79" id="delete-btn-shadow" width="189" x="0" y="0">
+                  <feFlood floodOpacity="0" result="BackgroundImageFix" />
+                  <feColorMatrix in="SourceAlpha" result="hardAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" />
+                  <feOffset dy="4" />
+                  <feGaussianBlur stdDeviation="2" />
+                  <feComposite in2="hardAlpha" operator="out" />
+                  <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0" />
+                  <feBlend in2="BackgroundImageFix" mode="normal" result="effect1_dropShadow" />
+                  <feBlend in="SourceGraphic" in2="effect1_dropShadow" mode="normal" result="shape" />
+                </filter>
+              </defs>
             </svg>
+            <span className={styles.deleteBtnLabel}>Delete Account</span>
           </button>
-          <button
-            aria-label="Edit password"
-            aria-pressed={isPasswordEditing}
-            className={styles.editIcon}
-            type="button"
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={handlePasswordEditClick}
-            data-name="edit"
-          >
-            <Image alt="" className={styles.editIconImg} fill sizes="20px" src="/icons/pencil.svg" />
+
+          <button type="button" className={styles.signOutBtn} onClick={onSignOut}>
+            <svg className={styles.btnSvg} fill="none" preserveAspectRatio="none" viewBox="0 0 189 79" aria-hidden="true">
+              <g filter="url(#signout-btn-shadow)">
+                <path d="M4 0H185V71H4V0Z" fill="#5E503F" />
+              </g>
+              <defs>
+                <filter colorInterpolationFilters="sRGB" filterUnits="userSpaceOnUse" height="79" id="signout-btn-shadow" width="189" x="0" y="0">
+                  <feFlood floodOpacity="0" result="BackgroundImageFix" />
+                  <feColorMatrix in="SourceAlpha" result="hardAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" />
+                  <feOffset dy="4" />
+                  <feGaussianBlur stdDeviation="2" />
+                  <feComposite in2="hardAlpha" operator="out" />
+                  <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0" />
+                  <feBlend in2="BackgroundImageFix" mode="normal" result="effect1_dropShadow" />
+                  <feBlend in="SourceGraphic" in2="effect1_dropShadow" mode="normal" result="shape" />
+                </filter>
+              </defs>
+            </svg>
+            <span className={styles.signOutBtnLabel}>Sign Out</span>
           </button>
+
+          <section aria-labelledby={`${emailFieldId}-prefs-heading`}>
+            <h2 id={`${emailFieldId}-prefs-heading`} className={styles.prefsHeaderLabel}>
+              Papers
+            </h2>
+            <div className={styles.scrollFrame} data-name="scroll frame">
+              <ul className={styles.scrollContent}>
+                {preferences.map((pref, i) => (
+                  <PreferenceTab
+                    key={i}
+                    title={pref.title}
+                  />
+                ))}
+              </ul>
+            </div>
+          </section>
+
+          <section aria-labelledby={`${emailFieldId}-account-heading`}>
+            <h2 id={`${emailFieldId}-account-heading`} className={styles.accountHeaderLabel}>
+              Account
+            </h2>
+
+            <span className={styles.emailBox} />
+            <h3 className={styles.emailLabel}>Email</h3>
+            <p className={styles.emailValue}>
+              {emailValue}
+            </p>
+
+            <span className={styles.passwordBox} />
+            <h3 className={styles.passwordLabel}>Password</h3>
+            {/* Display-only -- always exactly 8 asterisks, never the real
+                password, never editable inline. Editing happens entirely
+                through the Confirm Password / New Password popups,
+                triggered by the pencil icon below. */}
+            <p aria-label="Password (hidden)" className={styles.passwordValue}>
+              {MASKED_PASSWORD}
+            </p>
+            <button
+              aria-label="Edit password"
+              className={styles.editIcon}
+              type="button"
+              onClick={onPasswordEditClick}
+              data-name="edit"
+            >
+              <Image alt="" className={styles.editIconImg} fill sizes="20px" src="/icons/pencil.svg" />
+            </button>
+          </section>
 
           <div className={styles.profileCardOuter} data-name="Profile">
             <div className={styles.profileCardRotate}>
-              <div className={styles.profileCardBg} />
               <div className={styles.profileCardOverlay} />
               <div className={styles.profileCardImage}>
                 {profileSrc ? (
                   <Image alt="Profile picture" fill src={profileSrc} className={styles.imgCover} />
                 ) : (
-                  <Image alt="Profile picture" fill src="/icons/profile.png" className={styles.profileCardPlaceholder} />
+                  <Image alt="Profile picture" fill src="/icons/profile-placeholder.svg" className={styles.profileCardPlaceholder} />
                 )}
               </div>
             </div>
@@ -316,6 +239,6 @@ export default function ProfileFolder({
           </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

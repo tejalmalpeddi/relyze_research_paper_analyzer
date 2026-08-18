@@ -69,7 +69,7 @@ function MaskedIcon({ iconPath, colorHex, sizePixels }: MaskedIconProps) {
 // ---------------------------------------------------------------------
 interface PaperPreviewProps {
   entry: HistoryEntry;
-  onDeleted: (deletedId: number) => void;
+  onDeleted: (deletedId: string) => void;
 }
 
 export default function PaperPreview({ entry, onDeleted }: PaperPreviewProps) {

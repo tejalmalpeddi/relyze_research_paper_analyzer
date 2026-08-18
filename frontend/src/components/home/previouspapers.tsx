@@ -17,6 +17,7 @@ import Filters from "@/components/home/filters";
 import useScrollJack from "@/components/home/scrolljack";
 import { HistoryEntry } from "@/lib/types";
 import { fetchHistoryList, ApiError } from "@/lib/api";
+import {useAuth} from "@/app/auth/auth-query"
 
 export default function PreviousPapers() {
   const listRef = useScrollJack();
@@ -30,17 +31,16 @@ export default function PreviousPapers() {
   // show a friendly "please log in" prompt instead of a scary error.
   const [isLoggedOut, setIsLoggedOut] = useState(false);
   const [selectedFilterTags, setSelectedFilterTags] = useState<Set<string>>(new Set());
+  const {isAuthenticated} = useAuth();
 
   useEffect(() => {
     fetchHistoryList()
       .then((fetchedEntries) => {
         setEntries(fetchedEntries);
         setLoadErrorMessage(null);
-        setIsLoggedOut(false);
       })
       .catch((error) => {
         if (error instanceof ApiError && error.status === 401) {
-          setIsLoggedOut(true);
         } else if (error instanceof Error) {
           setLoadErrorMessage(error.message);
         } else {
@@ -55,7 +55,7 @@ export default function PreviousPapers() {
   // Called by a PaperPreview after it successfully deletes itself on the
   // backend -- removes that same entry from THIS list, so the grid
   // updates immediately without needing to re-fetch everything.
-  function handlePaperDeleted(deletedId: number) {
+  function handlePaperDeleted(deletedId: string) {
     setEntries((previousEntries) =>
       previousEntries.filter((entry) => entry.id !== deletedId)
     );
@@ -112,17 +112,15 @@ export default function PreviousPapers() {
         <p className="font-serif text-stone-300 mt-4">Loading your papers...</p>
       )}
 
-      {isLoading === false && isLoggedOut === false && loadErrorMessage !== null && (
+      {isLoading === false && isAuthenticated === true && loadErrorMessage !== null && (
         <p className="font-serif text-[#c1666b] mt-4">
           Couldn&apos;t load your papers: {loadErrorMessage}
         </p>
       )}
 
-      {/* Covers two cases with the same message: an explicit 401 from the
-          backend (isLoggedOut), and a plain empty list with no error. */}
       {isLoading === false &&
         loadErrorMessage === null &&
-        (isLoggedOut === true || visibleEntries.length === 0) && (
+        (isAuthenticated === false || visibleEntries.length === 0) && (
           <div className="flex w-full flex-col items-center gap-4 py-10 text-center">
             <p className="font-serif text-stone-300">
               You are currently logged out, nothing to display!
@@ -142,7 +140,7 @@ export default function PreviousPapers() {
         className="h-[80%] grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 overflow-hidden mt-4 mb-50 scrollbar-hidden"
       >
         {isLoading === false &&
-          isLoggedOut === false &&
+          isAuthenticated === true &&
           loadErrorMessage === null &&
           visibleEntries.map((entry) => (
             <li key={entry.id}>

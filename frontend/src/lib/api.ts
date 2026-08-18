@@ -17,7 +17,18 @@
 // build a URL matching one specific backend route, send the request, 
 // hand the raw response through handleResponse for parsing/error-checking. 
 
-import { HistoryCreatePayload, HistoryEntry } from "./types";
+import {
+  HistoryCreatePayload,
+  HistoryEntry,
+  StickyNotePayload,
+  StickyNoteEdit,
+  StickyNoteEntry,
+  DocumentEntry,
+  HighlightEntry,
+  HighlightPayload,
+  StrokeEntry,
+  StrokePayload,
+} from "./types";
 //generic type ^^ later comes in to play 
 
 // Where the backend actually lives. NEXT_PUBLIC_API_URL can be set in a
@@ -25,6 +36,13 @@ import { HistoryCreatePayload, HistoryEntry } from "./types";
 // without changing this file at all. If it's not set, we assume you're
 // running the backend locally with `uvicorn main:app` on its default port.
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+export function backendAssetUrl(path: string | undefined): string | null {
+  if (!path) return null;
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  if (path.startsWith("/")) return `${API_URL}${path}`;
+  return `${API_URL}/${path}`;
+}
 
 // A regular Error, plus the HTTP status code that caused it. Callers
 // (like History.tsx) can check err.status === 401 to tell "you're not
@@ -124,8 +142,8 @@ export async function fetchHistoryByTitle(title: string): Promise<HistoryEntry> 
 // the Mind Map page when it's reached via a specific paper's "redirect"
 // button, so it can ask the backend for exactly that one row instead of
 // downloading every saved paper and searching through them here.
-export async function fetchHistoryById(id: number): Promise<HistoryEntry> {
-  const response = await fetch(`${API_URL}/history/${id}`, { credentials: "include" });
+export async function fetchHistoryById(id: string): Promise<HistoryEntry> {
+  const response = await fetch(`${API_URL}/history/${id}`, { credentials: "include", cache: 'no-store' });
   return handleResponse<HistoryEntry>(response);
 }
 
@@ -135,7 +153,7 @@ export async function fetchHistoryById(id: number): Promise<HistoryEntry> {
 // and pick the newest row directly instead of downloading every saved
 // paper and comparing created_at timestamps here.
 export async function fetchLatestHistory(): Promise<HistoryEntry> {
-  const response = await fetch(`${API_URL}/history/latest`, { credentials: "include" });
+  const response = await fetch(`${API_URL}/history/latest`, { credentials: "include" , cache: 'no-store'});
   return handleResponse<HistoryEntry>(response);
 }
 
@@ -143,7 +161,7 @@ export async function fetchLatestHistory(): Promise<HistoryEntry> {
 // map_json attached. Meant for a future autocomplete/search box; not used
 // anywhere in the app yet.
 export async function fetchHistoryTitles(): Promise<{ title: string }[]> {
-  const response = await fetch(`${API_URL}/history/get_title`, { credentials: "include" });
+  const response = await fetch(`${API_URL}/history/get_title`, { credentials: "include", cache: 'no-store' });
   return handleResponse<{ title: string }[]>(response);
 }
 
@@ -166,10 +184,160 @@ export async function createHistory(
 
 // DELETE /history/{id} -- permanently remove one saved paper. Used by the
 // "Delete" confirmation button on the homepage's paper-card options menu.
-export async function deleteHistory(id: number): Promise<{ deleted: boolean; id: number }> {
+export async function deleteHistory(id: string): Promise<{ deleted: boolean; id: string }> {
   const response = await fetch(`${API_URL}/history/${id}`, {
     method: "DELETE",
     credentials: "include",
   });
-  return handleResponse<{ deleted: boolean; id: number }>(response);
+  return handleResponse<{ deleted: boolean; id: string }>(response);
+}
+
+export async function renameHistory(documentId: string | number, payload: string) {
+    const res = await fetch(`${API_URL}/history/rename/${documentId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ title: payload }),
+    });
+    if (!res.ok) throw new Error("Failed to rename history");
+    return res.json();
+}
+
+export async function importPdf(file: File): Promise<{ history: { id: string } }> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(`${API_URL}/documents/import`, {
+    method: "POST",
+    credentials: "include",
+    body: formData,
+  });
+
+  return handleResponse<{ history: { id: string } }>(response);
+}
+
+export async function fetchStickyNotes(documentId: string | number): Promise<StickyNoteEntry[]> {
+    const res = await fetch(`${API_URL}/sticky_notes/get/${documentId}`, {
+        method: "GET",
+        credentials: "include",
+    });
+    if (!res.ok) return [];
+    return res.json();
+}
+
+export async function createStickyNotes(documentId: string | number, payload: StickyNotePayload) {
+    const res = await fetch(`${API_URL}/sticky_notes/create/${documentId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error("Failed to create sticky note");
+    return res.json();
+}
+
+export async function clearStickyNotes(documentId: string | number, sticky_note_id: string | number) {
+    const res = await fetch(`${API_URL}/sticky_notes/clear/${documentId}/${sticky_note_id}`, {
+        method: "POST",
+        credentials: "include",
+    });
+    if (!res.ok) throw new Error("Failed to clear sticky notes");
+    return res.json();
+}
+
+export async function editStickyNotes(documentId: string | number, payload: StickyNoteEdit) {
+    const res = await fetch(`${API_URL}/sticky_notes/edit/${documentId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error("Failed to edit sticky notes");
+    return res.json();
+}
+
+// GET /documents -- every paper the logged-in caller has uploaded, FULL
+// rows (including markdown_content) -- unlike fetchHistoryList above,
+// which deliberately returns the same table trimmed down to just the
+// mind-map fields. Used by the Interactive Paper page's paper-picker
+// bubbles.
+export async function fetchDocumentList(): Promise<DocumentEntry[]> {
+  const response = await fetch(`${API_URL}/documents`, { credentials: "include" });
+  return handleResponse<DocumentEntry[]>(response);
+}
+
+// GET /documents/latest -- whichever paper was uploaded most recently.
+// Used when the Interactive Paper page is reached with no "?id=" in the
+// URL, same role fetchLatestHistory plays for the Mind Map page.
+export async function fetchLatestDocument(): Promise<DocumentEntry> {
+  const response = await fetch(`${API_URL}/documents/latest`, { credentials: "include" });
+  return handleResponse<DocumentEntry>(response);
+}
+
+// GET /documents/{id} -- one paper, full row. Used when a specific
+// bubble is clicked.
+export async function fetchDocumentById(id: string): Promise<DocumentEntry> {
+  const response = await fetch(`${API_URL}/documents/${id}`, { credentials: "include" });
+  return handleResponse<DocumentEntry>(response);
+}
+
+// GET /highlights/get/{documentId} -- every highlight saved on this
+// paper. Fetched once when the paper's Markdown finishes rendering, then
+// each one is redrawn as a <mark> at its saved block_index/offsets.
+export async function fetchHighlights(documentId: string): Promise<HighlightEntry[]> {
+  const response = await fetch(`${API_URL}/highlights/get/${documentId}`, { credentials: "include" });
+  return handleResponse<HighlightEntry[]>(response);
+}
+
+// POST /highlights/create/{documentId} -- save a new highlight. Called
+// once, right when a text selection is made with the highlighter tool
+// armed -- there's no separate "edit" call anywhere, a highlight is
+// immutable once created.
+export async function createHighlight(documentId: string, payload: HighlightPayload): Promise<HighlightEntry> {
+  const response = await fetch(`${API_URL}/highlights/create/${documentId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<HighlightEntry>(response);
+}
+
+// DELETE /highlights/{documentId}/{highlightId} -- remove one highlight.
+export async function deleteHighlight(documentId: string, highlightId: string): Promise<{ deleted: boolean; id: string }> {
+  const response = await fetch(`${API_URL}/highlights/${documentId}/${highlightId}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  return handleResponse<{ deleted: boolean; id: string }>(response);
+}
+
+// GET /strokes/get/{documentId} -- every pencil stroke saved on this
+// paper.
+export async function fetchStrokes(documentId: string): Promise<StrokeEntry[]> {
+  const response = await fetch(`${API_URL}/strokes/get/${documentId}`, { credentials: "include" });
+  return handleResponse<StrokeEntry[]>(response);
+}
+
+// POST /strokes/create/{documentId} -- save a new pencil stroke. Called
+// once per stroke, when the pointer lifts after drawing it.
+export async function createStroke(documentId: string, payload: StrokePayload): Promise<StrokeEntry> {
+  const response = await fetch(`${API_URL}/strokes/create/${documentId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  return handleResponse<StrokeEntry>(response);
+}
+
+// DELETE /strokes/{documentId}/{strokeId} -- remove one stroke. This IS
+// the eraser tool -- clicking a stroke with the eraser armed calls this,
+// there's no separate "erase part of a stroke" capability.
+export async function deleteStroke(documentId: string, strokeId: string): Promise<{ deleted: boolean; id: string }> {
+  const response = await fetch(`${API_URL}/strokes/${documentId}/${strokeId}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  return handleResponse<{ deleted: boolean; id: string }>(response);
 }
