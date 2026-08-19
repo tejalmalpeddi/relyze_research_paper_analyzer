@@ -135,7 +135,7 @@ export default function ProfileFolder({
 
           <div className={styles.paperclipOuter}>
             <div className={styles.paperclipRotate}>
-              <Image alt="" fill src="/interface/paperclip.png" className={styles.imgDecorative} />
+              <Image alt="" width="55" height="115" src="/interface/paperclip.png" className={styles.imgDecorative} />
             </div>
           </div>
         </div>
