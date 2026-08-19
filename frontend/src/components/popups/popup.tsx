@@ -62,7 +62,7 @@ function PopupShell({ title, children, footer, onClose }: PopupShellProps) {
   }
 
   const content = (
-    <div className="fixed top-0 left-0 size-full bg-black/50 z-100" onClick={handleBackdropClick}>
+    <div className="fixed top-0 left-0 size-full bg-black/50 z-99" onClick={handleBackdropClick}>
       <dialog className="block mx-auto mt-50 w-[495px] h-[330px] bg-off-white p-6 shadow-lg/50">
         <article className="relative size-full border-dark-brown border-2 flex flex-col items-center">
           <header className="absolute -top-6 w-fit bg-off-white p-2">
