@@ -77,8 +77,11 @@
   align-items: center;
   justify-content: center;
   border: none;
-  padding: 0;
+  padding: 8px 16px;
+  box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.25);
   cursor: pointer;
+  color: #fff;
+  white-space: nowrap;
 }
 
 .deleteBtn {
@@ -89,25 +92,6 @@
 .signOutBtn {
   background-color: #5e503f;
   inset: 93.68% 49.68% -6.14% 11.56%;
-}
-
-.btnSvg {
-  position: absolute;
-  inset: 0 -2.21% -11.27% -2.21%;
-  display: block;
-}
-
-.deleteBtnLabel,
-.signOutBtnLabel {
-  position: relative;
-  z-index: 1;
-  word-break: break-word;
-  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
-  font-size: 16px;
-  text-align: center;
-  color: #fff;
-  white-space: nowrap;
-  line-height: normal;
 }
 
 /* ── Preferences ── */
@@ -124,8 +108,6 @@
   align-items: center;
   padding-left: 13.32px;
   word-break: break-word;
-  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
-  font-size: 12px;
   font-weight: normal;
   color: #d9d9d9;
   line-height: normal;
@@ -167,8 +149,6 @@
   align-items: center;
   padding-left: 9px;
   word-break: break-word;
-  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
-  font-size: 12px;
   font-weight: normal;
   color: #d9d9d9;
   white-space: nowrap;
@@ -185,8 +165,6 @@
 .emailLabel {
   position: absolute;
   word-break: break-word;
-  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
-  font-size: 12px;
   color: #5e503f;
   line-height: normal;
   inset: 12.81% 44.75% 84.39% 39.83%;
@@ -194,8 +172,6 @@
 
 .emailValue {
   position: absolute;
-  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
-  font-size: 18px;
   color: #000;
   line-height: normal;
   inset: 15.96% 4.5% 80% 39.83%;
@@ -216,8 +192,6 @@
 .passwordLabel {
   position: absolute;
   word-break: break-word;
-  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
-  font-size: 12px;
   color: #5e503f;
   line-height: normal;
   inset: 22.46% 3.64% 74.74% 39.83%;
@@ -227,8 +201,6 @@
 .passwordValue {
   position: absolute;
   word-break: break-word;
-  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
-  font-size: 16px;
   color: #000;
   line-height: normal;
   inset: 26.14% 3.64% 70.18% 39.83%;
@@ -335,28 +307,6 @@
   position: relative;
 }
 
-/* ── Edit profile icon ── */
-
-.editProfileOuter {
-  position: absolute;
-  aspect-ratio: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  left: 28.48%;
-  right: 66.32%;
-  top: 140px;
-  container-type: size;
-}
-
-.editProfileRotate {
-  flex: none;
-  height: hypot(12.8955cqw, 87.1045cqh);
-  width: hypot(87.1045cqw, -12.8955cqh);
-  rotate: -8.42deg;
-  position: relative;
-}
-
 /* ── Spine ── */
 
 .spineOuter {
@@ -384,8 +334,6 @@
 .spineText {
   position: relative;
   word-break: break-word;
-  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
-  font-size: 20px;
   color: #5e503f;
   text-align: center;
   white-space: nowrap;
@@ -446,6 +394,7 @@
   width: 396px;
   background-color: #d9d9d9;
   border: 1px solid #5e503f;
+  color:#5e503f;
 }
 
 .prefTabPaper {
