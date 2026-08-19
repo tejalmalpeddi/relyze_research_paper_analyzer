@@ -212,13 +212,13 @@
   }
 
   h3 {
-    font-size: var(--text-base);
+    font-size: var(--text-sm);
     font-weight: var(--font-weight-medium);
     line-height: 1.5;
   }
 
   h4 {
-    font-size: var(--text-base);
+    font-size: var(--text-sm);
     font-weight: var(--font-weight-medium);
     line-height: 1.5;
   }
