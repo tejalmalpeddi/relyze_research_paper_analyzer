@@ -15,6 +15,7 @@
   width: 100%;
   gap: 0.75rem;
   text-align: center;
+  padding: 1rem;
 }
 
 /* Buttons "hang" off the bottom edge of the card: anchored to the card's

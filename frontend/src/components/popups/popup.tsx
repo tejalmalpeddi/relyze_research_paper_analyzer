@@ -229,6 +229,7 @@ function AuthSuccessPopup({
 // -----------------------------------------------------------------------
 
 function SignOutPopup({ onClose }: { onClose: () => void }) {
+  const router = useRouter();
   const [stage, setStage] = useState<'confirm' | 'done'>('confirm');
   const {logout} = useAuth();
 
@@ -239,7 +240,16 @@ function SignOutPopup({ onClose }: { onClose: () => void }) {
   }
 
   if (stage === 'done') {
-    return <AuthSuccessPopup title="Signed Out" onClose={onClose} />;
+    return (
+      <PopupShell title="Signed Out" onClose={onClose}>
+        <button type="button" className={styles.buttonNeutral} onClick={onClose}>
+          Log In to Another Account
+        </button>
+        <button type="button" className={styles.buttonNeutral} onClick={() => router.push('/')}>
+          Return to Home Page
+        </button>
+      </PopupShell>
+    );
   }
 
   return (
