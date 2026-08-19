@@ -676,9 +676,18 @@ function ConfirmPasswordPopup({
       title="Confirm Password"
       onClose={onClose}
       footer={
-        <button type="submit" form="confirm-password-form" className={styles.buttonNeutral}>
+        <menu className={styles.buttonRow}>
+          <li>
+            <button type="button" className={styles.buttonNeutral} onClick={onClose}>
+              Cancel
+            </button>
+          </li>
+          <li>
+            <button type="submit" form="confirm-password-form" className={styles.buttonNeutral}>
           Confirm
-        </button>
+            </button>
+          </li>
+        </menu>
       }
     >
       <form id="confirm-password-form" className={styles.form} onSubmit={handleSubmit}>
