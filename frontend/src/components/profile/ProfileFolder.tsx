@@ -112,7 +112,7 @@ export default function ProfileFolder({
           <button type="button" className={styles.deleteBtn} onClick={onDeleteAccount}>
             <svg className={styles.btnSvg} fill="none" preserveAspectRatio="none" viewBox="0 0 189 79" aria-hidden="true">
               <g filter="url(#delete-btn-shadow)">
-                <path d="M4 0H185V71H4V0Z" fill="#C1666B" />
+                <path className={styles.deleteBtnFill} d="M4 0H185V71H4V0Z" fill="#C1666B" />
               </g>
               <defs>
                 <filter colorInterpolationFilters="sRGB" filterUnits="userSpaceOnUse" height="79" id="delete-btn-shadow" width="189" x="0" y="0">
@@ -133,7 +133,7 @@ export default function ProfileFolder({
           <button type="button" className={styles.signOutBtn} onClick={onSignOut}>
             <svg className={styles.btnSvg} fill="none" preserveAspectRatio="none" viewBox="0 0 189 79" aria-hidden="true">
               <g filter="url(#signout-btn-shadow)">
-                <path d="M4 0H185V71H4V0Z" fill="#5E503F" />
+                <path className={styles.signOutBtnFill} d="M4 0H185V71H4V0Z" fill="#5E503F" />
               </g>
               <defs>
                 <filter colorInterpolationFilters="sRGB" filterUnits="userSpaceOnUse" height="79" id="signout-btn-shadow" width="189" x="0" y="0">

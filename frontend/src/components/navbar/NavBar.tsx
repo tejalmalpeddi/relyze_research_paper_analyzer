@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import styles from './NavBar.module.css';
 
 interface NavTab {
@@ -20,6 +20,8 @@ const NAV_TABS: NavTab[] = [
 
 const PROFILE_TAB: NavTab = { label: 'Profile', href: '/profile' };
 const MENU_TABS = [...NAV_TABS, PROFILE_TAB];
+const PAPER_SPECIFIC_HREFS = new Set(['/mindmap', '/background', '/paperview']);
+export const NAVIGATION_INTENT_EVENT = 'relyze:navigation-intent';
 
 // Pixel positions from design (assumes 1440px wide container) — used by the "full" horizontal layout.
 // Anchored from the RIGHT edge so tabs track the screen edge as it shrinks.
@@ -74,12 +76,41 @@ export default function NavBar({
   );
   const inactiveTabs = MENU_TABS.filter((tab) => tab.href !== resolvedActiveTab);
 
+  useEffect(() => {
+    function handleNavigationIntent(event: Event) {
+      const customEvent = event as CustomEvent<{ href?: string }>;
+      if (typeof customEvent.detail?.href !== 'string') return;
+
+      setPendingActiveTab({
+        href: customEvent.detail.href.split('?')[0],
+        fromPath: currentPathname,
+      });
+    }
+
+    window.addEventListener(NAVIGATION_INTENT_EVENT, handleNavigationIntent);
+    return () => window.removeEventListener(NAVIGATION_INTENT_EVENT, handleNavigationIntent);
+  }, [currentPathname]);
+
+  function hrefWithCurrentPaperId(href: string) {
+    if (PAPER_SPECIFIC_HREFS.has(href) === false || typeof window === 'undefined') {
+      return href;
+    }
+
+    const currentPaperId = new URLSearchParams(window.location.search).get('id');
+    if (currentPaperId === null) {
+      return href;
+    }
+
+    return `${href}?id=${encodeURIComponent(currentPaperId)}`;
+  }
+
   function handleNavClick(href: string) {
     setPendingActiveTab({ href, fromPath: currentPathname });
+    const nextHref = hrefWithCurrentPaperId(href);
     if (onTabClick) {
-      onTabClick(href);
+      onTabClick(nextHref);
     } else {
-      router.push(href);
+      router.push(nextHref);
     }
     setIsSplitMenuOpen(false);
   }

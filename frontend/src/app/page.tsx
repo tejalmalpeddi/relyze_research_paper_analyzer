@@ -126,11 +126,11 @@ export default function HomePage() {
   // setSelectedFileName runs). Same "flex h-screen flex-col" full-page
   // layout trick as the Mind Map page
   return (
-    <main className="flex min-h-screen flex-col">
+    <main className="flex min-h-screen flex-col overflow-x-clip">
 
       {/* The main wood-desk hero area. */}
       <section
-        className="h-[90vh] max-h-[700px] w-full bg-cover bg-center shadow-xl/50 flex items-center justify-center gap-10 pt-[5%]"
+        className="relative left-1/2 h-[90vh] max-h-[700px] w-screen -translate-x-1/2 bg-cover bg-center shadow-xl/50 flex items-center justify-center gap-10 pt-[5%]"
         style={{ backgroundImage: "url('/background/wood.png')" }}
       >
         {/* The "Visualize your research, your way" card.*/}
@@ -195,6 +195,7 @@ export default function HomePage() {
       {/* The "Previous Papers" section -- entirely built and data-fetched
           inside History.tsx.*/}
       <PreviousPapersSection />
+      <div className="drawer-bottom-rail pointer-events-none fixed bottom-0 left-0 z-[60] h-16 w-full" aria-hidden="true"></div>
 
       {uploadPopup?.stage === "uploading" && (
         <Popup

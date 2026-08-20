@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useHistoryEntry } from "@/lib/useHistoryEntry";
+import { useDocumentScrollLock } from "@/lib/useDocumentScrollLock";
 import { KeywordsFolder } from "@/components/background/KeywordsFolder";
 
 const MindMapView = dynamic(
@@ -30,6 +31,7 @@ export default function BackgroundPage() {
 
 function BackgroundPageContent() {
   const { isLoading, matchedEntry, loadErrorMessage, notFoundMessage } = useHistoryEntry();
+  useDocumentScrollLock();
 
   const containerRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
@@ -100,7 +102,7 @@ function BackgroundPageContent() {
         <>
           <DragDivider onMouseDown={handleDividerMouseDown} />
           <div
-            className="flex shrink-0 items-center justify-center bg-cover bg-center p-8 shadow-[0_4px_4px_rgba(0,0,0,0.25)]"
+            className="flex shrink-0 items-end justify-center bg-cover bg-center px-8 pt-8 pb-0 shadow-[0_4px_4px_rgba(0,0,0,0.25)]"
             style={{ width: `${folderPanelPercent}%`, backgroundImage: "url(/background/wood.png)" }}
           >
             <KeywordsFolder entry={matchedEntry} />

@@ -79,6 +79,10 @@
   border: none;
   padding: 0;
   cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    filter 160ms ease,
+    transform 160ms ease;
 }
 
 .deleteBtn {
@@ -95,6 +99,36 @@
   position: absolute;
   inset: 0 -2.21% -11.27% -2.21%;
   display: block;
+  overflow: visible;
+}
+
+.deleteBtnFill,
+.signOutBtnFill {
+  transition: fill 160ms ease;
+}
+
+.deleteBtn:hover,
+.deleteBtn:focus-visible {
+  background-color: #d27c80;
+  filter: drop-shadow(0 8px 7px rgba(0, 0, 0, 0.35));
+  transform: translateY(-1px);
+}
+
+.deleteBtn:hover .deleteBtnFill,
+.deleteBtn:focus-visible .deleteBtnFill {
+  fill: #d27c80;
+}
+
+.signOutBtn:hover,
+.signOutBtn:focus-visible {
+  background-color: #7a6a56;
+  filter: drop-shadow(0 8px 7px rgba(0, 0, 0, 0.35));
+  transform: translateY(-1px);
+}
+
+.signOutBtn:hover .signOutBtnFill,
+.signOutBtn:focus-visible .signOutBtnFill {
+  fill: #7a6a56;
 }
 
 .deleteBtnLabel,
