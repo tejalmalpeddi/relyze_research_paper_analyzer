@@ -1,13 +1,14 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { fetchReferenceById, ApiError } from '@/lib/api';
 import { ReferenceEntry } from '@/lib/types';
 import { useHistoryEntry } from "@/lib/useHistoryEntry";
 import styles from './page.module.css';
+import { useAuth } from '@/app/auth/auth-query';
 
 export default function CitationPage() {
   return (
@@ -26,10 +27,10 @@ export default function CitationPage() {
 function CitationsView() {
   const router = useRouter();
   const { matchedEntry } = useHistoryEntry();
+  const { isAuthenticated } = useAuth();
 
   const [referencesData, setReferencesData] = useState<ReferenceEntry | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isLoggedOut, setIsLoggedOut] = useState(false);
   const [loadErrorMessage, setLoadErrorMessage] = useState<string | null>(null);
 
   let currentDocumentId = matchedEntry?.id || null;
@@ -45,11 +46,11 @@ function CitationsView() {
       .then((data) => {
         setReferencesData(data);
         setLoadErrorMessage(null);
-        setIsLoggedOut(false);
+        // setIsLoggedOut(false);
       })
       .catch((error) => {
         if (error instanceof ApiError && error.status === 401) {
-          setIsLoggedOut(true);
+          // setIsLoggedOut(true);
         } else if (error instanceof Error) {
           setLoadErrorMessage(error.message);
         } else {
@@ -61,35 +62,34 @@ function CitationsView() {
       });
   }, [currentDocumentId]);
 
-  if (isLoggedOut) {
-    return (
-      <div >
-        <span >You are currently logged out, nothing to display!</span>
-        <button
-          type="button"
-          onClick={() => router.push('/profile')}
-          className="shrink-0 rounded-sm bg-[#5b4636] px-4 py-1.5 font-serif text-xs font-semibold text-white"
-        >
-          Sign In
-        </button>
-      </div>
-    );
-  }
-
   return (
-    <div className={styles.container}  style={{
-                    backgroundImage: "url(/background/corkboard.jpg)",
-                }}>
+    <div className={styles.container} style={{
+      backgroundImage: "url(/background/corkboard.jpg)",
+    }}>
       <h1 className="text-xl text-stone-200">Relevant Papers</h1>
-
-      {!currentDocumentId && (
-        <p className="text-stone-300">
-          Please select a document to display its relevant papers.
-        </p>
-      )}
 
       {isLoading && (
         <p className="text-stone-400">Loading relevant papers...</p>
+      )}
+
+      {!isLoading && !isAuthenticated && (
+        <div>
+          <br />
+          <span className="text-xl text-stone-400 pr-4">You are currently logged out, nothing to display!</span>
+          <button
+            type="button"
+            onClick={() => router.push('/profile')}
+            className="shrink-0 rounded-sm bg-[#5b4636] px-4 py-1.5 font-serif text-xs font-semibold text-white"
+          >
+            Sign In
+          </button>
+        </div>
+      )}
+
+      {!currentDocumentId && isAuthenticated && (
+        <p className="text-stone-400">
+          Please select a document to display its relevant papers.
+        </p>
       )}
 
       {loadErrorMessage && (
@@ -104,7 +104,28 @@ function CitationsView() {
             {referencesData.title}
           </h2>
           <div className="prose prose-invert max-w-none text-stone-300">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={{
+
+              strong({ children, ...props }) {
+                return <span {...props}>{children}</span>;
+              },
+              b({ children, ...props }) {
+                return <span {...props}>{children}</span>;
+              },
+              a({ node, children, href, ...props }) {
+                return (
+                  <a
+                    href={href}
+                    style={{ color: '#4281a4' }}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    {...props}
+                  >
+                    {children}
+                  </a>
+                );
+              }
+            }}>
               {referencesData.markdown_content || "No references in this paper."}
             </ReactMarkdown>
           </div>
