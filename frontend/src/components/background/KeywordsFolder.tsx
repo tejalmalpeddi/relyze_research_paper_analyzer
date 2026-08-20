@@ -92,14 +92,36 @@ function VocabularyCard({ item }: { item: KeywordSummary }) {
 }
 
 function RelatedInfoCard({ item }: { item: RelatedInfoSummary }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
   return (
-    <div className="mb-2 border border-[#5e503f] bg-[#d9d9d9] px-4 py-3">
-      <h3 className="font-serif text-[20px] font-normal leading-[26px] text-black">
-        {item.title}
-      </h3>
-      <p className="mt-2 font-serif text-[16px] leading-[21px] text-black">
-        {item.summary || "No generated summary was saved for this related item yet."}
-      </p>
+    <div className="mb-2 border border-[#5e503f] bg-[#d9d9d9]">
+      <button
+        type="button"
+        onClick={() => setIsExpanded((expanded) => !expanded)}
+        aria-expanded={isExpanded}
+        className="flex w-full cursor-pointer items-center justify-between gap-3 px-4 py-3 text-left font-serif text-[20px] font-normal leading-[26px] text-black"
+      >
+        <span>{item.title}</span>
+        <svg
+          width="23"
+          height="7"
+          viewBox="0 0 23 7"
+          fill="none"
+          className={isExpanded ? "shrink-0 rotate-180" : "shrink-0"}
+          aria-hidden="true"
+        >
+          <path d="M1 1L11.5 6L22 1" stroke="#5E503F" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+      </button>
+
+      {isExpanded === true && (
+        <div className="px-4 pb-4">
+          <p className="font-serif text-[16px] leading-[21px] text-black">
+            {item.summary || "No generated summary was saved for this related item yet."}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -179,7 +201,7 @@ const FOLDERS: FolderSpec[] = [
     color: "#927E67",
     labelColor: "#D9D9D9",
     topFraction: 0,
-    labelLeftFraction: 0.12,
+    labelLeftFraction: 0.08,
   },
   {
     key: "related",
@@ -201,6 +223,8 @@ const FOLDERS: FolderSpec[] = [
   },
 ];
 
+const OPEN_FOLDER_PUSH_PERCENT = 44;
+
 export function KeywordsFolder({ entry }: KeywordsFolderProps) {
   const [activeTab, setActiveTab] = useState<FolderKey | null>(null);
 
@@ -208,20 +232,19 @@ export function KeywordsFolder({ entry }: KeywordsFolderProps) {
   const groupedKeywords = useMemo(() => groupByFirstLetter(keywords), [keywords]);
   const relatedInfo = useMemo(() => collectRelatedInfo(entry), [entry]);
   const images = entry.images ?? entry.background?.images ?? [];
+  const activeFolderIndex = FOLDERS.findIndex((folder) => folder.key === activeTab);
 
   return (
     <div
       className="relative w-full shrink-0"
       style={{ maxWidth: "42rem", aspectRatio: `${STACK_WIDTH} / ${STACK_HEIGHT}` }}
     >
-      <svg viewBox={STACK_VIEWBOX} className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden="true">
-        {FOLDERS.map((folder) => (
-          <path key={folder.key} d={folder.path} fill={folder.color} />
-        ))}
-      </svg>
-
       {FOLDERS.map((folder, index) => {
         const isActive = activeTab === folder.key;
+        const isBelowActiveFolder = activeFolderIndex !== -1 && index > activeFolderIndex;
+        const pushedTranslatePercent = isBelowActiveFolder ? OPEN_FOLDER_PUSH_PERCENT : 0;
+        const activeContentBottomPadding =
+          activeFolderIndex !== -1 ? `${(FOLDERS.length - activeFolderIndex - 1) * 9}rem` : undefined;
         const nextFolder = FOLDERS[index + 1];
         const closedHeightPercent =
           nextFolder !== undefined ? (nextFolder.topFraction - folder.topFraction) * 100 : undefined;
@@ -229,94 +252,106 @@ export function KeywordsFolder({ entry }: KeywordsFolderProps) {
         return (
           <div
             key={folder.key}
-            className="absolute inset-x-3 overflow-hidden rounded-sm"
+            className="pointer-events-none absolute inset-0 transition-transform duration-500 ease-out"
             style={{
-              top: `${folder.topFraction * 100}%`,
-              bottom: isActive || closedHeightPercent === undefined ? "0.75rem" : undefined,
-              height: isActive || closedHeightPercent === undefined ? undefined : `${closedHeightPercent}%`,
-              zIndex: isActive ? 10 : index,
+              transform: `translateY(${pushedTranslatePercent}%)`,
+              zIndex: isBelowActiveFolder ? 30 + index : isActive ? 10 : index,
             }}
           >
-            {isActive === false && (
-              <button
-                type="button"
-                onClick={() => setActiveTab(folder.key)}
-                aria-label={`Open ${folder.label} folder`}
-                className="flex h-full w-full cursor-pointer items-start justify-start pt-4 font-serif text-[20px] font-normal leading-[26px]"
-                style={{ color: folder.labelColor, paddingLeft: `${folder.labelLeftFraction * 100}%` }}
-              >
-                {folder.label}
-              </button>
-            )}
+            <svg viewBox={STACK_VIEWBOX} className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden="true">
+              <path d={folder.path} fill={folder.color} />
+            </svg>
 
-            {isActive === true && (
-              <div className="flex h-full w-full flex-col bg-[#d9d9d9] text-left">
-                <div className="flex items-center justify-between px-6 py-4 font-serif text-[20px] font-normal leading-[26px] text-[#5e503f]">
-                  <span>{folder.label}</span>
+            <div
+              className="pointer-events-auto absolute inset-x-3 overflow-hidden rounded-sm transition-[bottom,height] duration-500 ease-out"
+              style={{
+                top: `${folder.topFraction * 100}%`,
+                bottom: isActive || closedHeightPercent === undefined ? "0.75rem" : undefined,
+                height: isActive || closedHeightPercent === undefined ? undefined : `${closedHeightPercent}%`,
+              }}
+            >
+              {isActive === false && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab(folder.key)}
+                  aria-label={`Open ${folder.label} folder`}
+                  className="flex h-full w-full cursor-pointer items-start justify-start pt-4 font-serif text-[20px] font-normal leading-[26px]"
+                  style={{ color: folder.labelColor, paddingLeft: `${folder.labelLeftFraction * 100}%` }}
+                >
+                  {folder.label}
+                </button>
+              )}
+
+              {isActive === true && (
+                <div className="flex h-full w-full flex-col text-left">
                   <button
                     type="button"
                     onClick={() => setActiveTab(null)}
                     aria-label={`Close ${folder.label} folder`}
-                    className="cursor-pointer leading-none"
+                    className="flex cursor-pointer items-start justify-start pt-4 font-serif text-[20px] font-normal leading-[26px]"
+                    style={{ color: folder.labelColor, paddingLeft: `${folder.labelLeftFraction * 100}%` }}
                   >
-                    ×
+                    {folder.label}
                   </button>
-                </div>
 
-                <div className="flex-1 overflow-y-auto">
-                  {folder.key === "keywords" && (
-                    keywords.length === 0 ? (
-                      <p className="px-6 py-3 font-serif text-base text-[#5e503f]">
-                        No keywords found for this paper.
-                      </p>
-                    ) : (
-                      groupedKeywords.map(([letter, terms]) => (
-                        <div key={letter} className="px-6 pt-3">
-                          <div className="mb-2 bg-[#5e503f] px-2 py-1 font-serif text-base font-semibold text-[#d9d9d9]">
-                            {letter}
+                  <div
+                    className="mt-4 min-h-0 flex-1 overflow-y-auto bg-[#d9d9d9] pt-4"
+                    style={{ paddingBottom: activeContentBottomPadding }}
+                  >
+                    {folder.key === "keywords" && (
+                      keywords.length === 0 ? (
+                        <p className="px-6 py-3 font-serif text-base text-[#5e503f]">
+                          No keywords found for this paper.
+                        </p>
+                      ) : (
+                        groupedKeywords.map(([letter, terms]) => (
+                          <div key={letter} className="px-6 pt-3">
+                            <div className="mb-2 bg-[#5e503f] px-2 py-1 font-serif text-base font-semibold text-[#d9d9d9]">
+                              {letter}
+                            </div>
+                            {terms.map((keyword) => (
+                              <VocabularyCard key={keyword.term} item={keyword} />
+                            ))}
                           </div>
-                          {terms.map((keyword) => (
-                            <VocabularyCard key={keyword.term} item={keyword} />
+                        ))
+                      )
+                    )}
+
+                    {folder.key === "related" && (
+                      relatedInfo.length === 0 ? (
+                        <p className="px-6 py-3 font-serif text-base text-[#5e503f]">
+                          No related info found for this paper.
+                        </p>
+                      ) : (
+                        <div className="px-6 pt-3">
+                          {relatedInfo.map((item) => (
+                            <RelatedInfoCard key={item.title} item={item} />
                           ))}
                         </div>
-                      ))
-                    )
-                  )}
+                      )
+                    )}
 
-                  {folder.key === "related" && (
-                    relatedInfo.length === 0 ? (
-                      <p className="px-6 py-3 font-serif text-base text-[#5e503f]">
-                        No related info found for this paper.
-                      </p>
-                    ) : (
-                      <div className="px-6 pt-3">
-                        {relatedInfo.map((item) => (
-                          <RelatedInfoCard key={item.title} item={item} />
-                        ))}
-                      </div>
-                    )
-                  )}
-
-                  {folder.key === "images" && (
-                    images.length === 0 ? (
-                      <p className="px-6 py-3 font-serif text-base text-[#5e503f]">
-                        No extracted images found for this paper.
-                      </p>
-                    ) : (
-                      <div className="px-6 pt-3">
-                        {images.map((image, index) => (
-                          <ImageCard
-                            key={`${image.storage_path ?? image.file_name ?? "image"}-${index}`}
-                            image={image}
-                            index={index}
-                          />
-                        ))}
-                      </div>
-                    )
-                  )}
+                    {folder.key === "images" && (
+                      images.length === 0 ? (
+                        <p className="px-6 py-3 font-serif text-base text-[#5e503f]">
+                          No extracted images found for this paper.
+                        </p>
+                      ) : (
+                        <div className="px-6 pt-3">
+                          {images.map((image, index) => (
+                            <ImageCard
+                              key={`${image.storage_path ?? image.file_name ?? "image"}-${index}`}
+                              image={image}
+                              index={index}
+                            />
+                          ))}
+                        </div>
+                      )
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         );
       })}

@@ -27,6 +27,7 @@ import { fetchHistoryList, renameHistory, ApiError } from "@/lib/api";
 import { useAuth } from '@/app/auth/auth-query';
 import Popup from "@/components/popups/popup";
 import useScrollJack from "./home/scrolljack";
+import { NAVIGATION_INTENT_EVENT } from "@/components/navbar/NavBar";
 
 // ---------------------------------------------------------------------
 // tagColorFor
@@ -79,54 +80,72 @@ function FiltersPanel({
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <form className="relative inline-flex flex-col w-[50%] max-w-[300px] z-50">
+    <form className="group relative inline-flex flex-col w-[50%] max-w-[300px] z-50">
       <button
         type="button"
         onClick={() => setExpanded((prev) => !prev)}
-        className="inline-flex items-center justify-between bg-off-white p-4"
+        className="relative z-30 inline-flex items-center justify-between bg-off-white p-4 transition duration-200 hover:bg-white hover:shadow-md"
       >
         <h2>Filters</h2>
         <img src="/icons/filter.svg" alt="Filter icon" className="size-8 object-contain" />
       </button>
 
-      {expanded && (
-        <div className="absolute top-[100%] drop-shadow-lg/50 w-full">
-          <ul className="bg-white px-4 pt-2 pb-4 w-full">
-            {availableFilterTags.length === 0 ? (
-              <li className="my-2 text-sm text-stone-500">No filters yet.</li>
-            ) : (
-              availableFilterTags.map((tag) => {
-                // Spelled out instead of a ternary: is this specific tag
-                // currently checked?
-                let isChecked: boolean;
-                if (selectedFilterTags.has(tag) === true) {
-                  isChecked = true;
-                } else {
-                  isChecked = false;
-                }
+      <div
+        className={
+          expanded
+            ? "pointer-events-none absolute top-[100%] z-0 w-full opacity-0"
+            : "pointer-events-none absolute top-[100%] z-0 w-full -translate-y-2 opacity-0 transition duration-300 ease-out group-hover:translate-y-0 group-hover:opacity-100"
+        }
+        aria-hidden="true"
+      >
+        <div className="h-4 bg-white" />
+        <img src="/interface/torn-paper.svg" alt="" />
+      </div>
 
-                return (
-                  <li key={tag}>
-                    <button
-                      type="button"
-                      onClick={() => onToggleFilterTag(tag)}
-                      className="w-full inline-flex items-center gap-3 my-2 cursor-pointer"
-                    >
-                      <span className="flex h-5 w-5 items-center justify-center border border-stone-500">
-                        {isChecked === true && (
-                          <Image src="/icons/check-mark.svg" alt="checkmark" width={12} height={12} />
-                        )}
-                      </span>
-                      {tag}
-                    </button>
-                  </li>
-                );
-              })
-            )}
-          </ul>
-          <img src="/interface/torn-paper.svg" alt="Torn paper" />
-        </div>
-      )}
+      <div
+        className={
+          expanded
+            ? "absolute top-[100%] z-20 w-full max-h-[min(22rem,60vh)] origin-top translate-y-0 scale-100 overflow-y-auto overscroll-contain opacity-100 drop-shadow-lg/50 transition duration-500 ease-out"
+            : "pointer-events-none absolute top-[100%] z-20 w-full max-h-[min(22rem,60vh)] origin-top -translate-y-8 scale-95 overflow-y-auto overscroll-contain opacity-0 drop-shadow-lg/50 transition duration-300 ease-in"
+        }
+        aria-hidden={!expanded}
+        onWheel={(event) => event.stopPropagation()}
+      >
+        <ul className="bg-white px-4 pt-2 pb-4 w-full">
+          {availableFilterTags.length === 0 ? (
+            <li className="my-2 text-sm text-stone-500">No filters yet.</li>
+          ) : (
+            availableFilterTags.map((tag) => {
+              // Spelled out instead of a ternary: is this specific tag
+              // currently checked?
+              let isChecked: boolean;
+              if (selectedFilterTags.has(tag) === true) {
+                isChecked = true;
+              } else {
+                isChecked = false;
+              }
+
+              return (
+                <li key={tag}>
+                  <button
+                    type="button"
+                    onClick={() => onToggleFilterTag(tag)}
+                    className="w-full inline-flex items-center gap-3 my-2 cursor-pointer"
+                  >
+                    <span className="flex h-5 w-5 items-center justify-center border border-stone-500">
+                      {isChecked === true && (
+                        <Image src="/icons/check-mark.svg" alt="checkmark" width={12} height={12} />
+                      )}
+                    </span>
+                    {tag}
+                  </button>
+                </li>
+              );
+            })
+          )}
+        </ul>
+        <img src="/interface/torn-paper.svg" alt="Torn paper" />
+      </div>
     </form>
   );
 }
@@ -182,7 +201,11 @@ function PaperCard({ entry, onDeleted, onRenamed }: PaperCardProps) {
   // a "?id=" query parameter on the URL. See app/mindmap/page.tsx for how
   // that id is read back out and turned into a real map on screen.
   function handleRedirectButtonClick() {
-    router.push(`/mindmap?id=${entry.id}`);
+    const href = `/mindmap?id=${entry.id}`;
+    window.dispatchEvent(
+      new CustomEvent(NAVIGATION_INTENT_EVENT, { detail: { href } })
+    );
+    router.push(href);
   }
 
   // Not implemented yet -- there's no backend route for renaming a saved
@@ -423,6 +446,13 @@ export default function PreviousPapersSection() {
     });
   }
 
+  function handleSignInClick() {
+    window.dispatchEvent(
+      new CustomEvent(NAVIGATION_INTENT_EVENT, { detail: { href: "/profile" } })
+    );
+    router.push("/profile");
+  }
+
 
   // Every unique filter tag across every currently-loaded paper, used to
   // build the FiltersPanel's checkbox list. Recomputed only when
@@ -450,7 +480,7 @@ export default function PreviousPapersSection() {
   }, [entries, selectedFilterTags]);
 
   return (
-      <section className="h-[80vh] p-20 pt-0">
+      <section className="relative z-0 h-[80vh] p-20 pt-0">
         <header className="flex justify-between mb-12">
           <h2 className="text-white pt-[2rem]">Previous Papers</h2>
           <FiltersPanel
@@ -492,7 +522,7 @@ export default function PreviousPapersSection() {
               </p>
               <button
                 type="button"
-                onClick={() => router.push("/profile")}
+                onClick={handleSignInClick}
                 className="bg-off-white px-6 py-2"
               >
                 Sign In

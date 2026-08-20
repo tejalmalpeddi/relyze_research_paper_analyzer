@@ -6,6 +6,7 @@ import ProfileFolder, { Difficulty, ProfilePreference } from '@/components/profi
 import Popup from '@/components/popups/popup';
 import styles from './page.module.css';
 import { useAuth } from '@/app/auth/auth-query';
+import { useDocumentScrollLock } from '@/lib/useDocumentScrollLock';
 
 const DESIGN_VIEWPORT_WIDTH = 1440;
 const FOLDER_DESKTOP_LEFT = 421;
@@ -70,6 +71,8 @@ function getProfileImage(metadata: Record<string, unknown> | undefined) {
 }
 
 function ProfilePageContent() {
+  useDocumentScrollLock();
+
   const [folderLeft, setFolderLeft] = useState(421);
   const [paperTitles, setPaperTitles] = useState<string[]>([]);
   const { user, isLoading, isAuthenticated, editUser, logout, deleteUser } = useAuth();
