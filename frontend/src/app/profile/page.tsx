@@ -54,7 +54,7 @@ function getProfileImage(metadata: Record<string, unknown> | undefined) {
   return typeof metadata?.avatar_url === 'string' ? metadata.avatar_url : undefined;
 }
 
-export default function ProfilePage() {
+function ProfilePageContent() {
   useDocumentScrollLock();
 
   const [folderLeft, setFolderLeft] = useState(421);
@@ -167,5 +167,11 @@ export default function ProfilePage() {
         <Popup type="confirmPassword" onClose={() => setActivePopup(null)} />
       )}
     </main>
+  );
+}
+
+export default function ProfilePage() {
+  return (
+      <ProfilePageContent />
   );
 }
