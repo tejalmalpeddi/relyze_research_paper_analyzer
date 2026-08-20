@@ -143,8 +143,7 @@ function DifficultySelectPopup({
 
   function goTo(path: string) {
     // TODO: persist the chosen difficulty for `paperId` before navigating.
-    // TODO: double check these route paths match your actual app routes.
-    router.push(path);
+    router.push(`${path}?id=${encodeURIComponent(paperId)}`);
   }
 
   return (
@@ -684,7 +683,7 @@ function ConfirmPasswordPopup({
           </li>
           <li>
             <button type="submit" form="confirm-password-form" className={styles.buttonNeutral}>
-          Confirm
+              Confirm
             </button>
           </li>
         </menu>

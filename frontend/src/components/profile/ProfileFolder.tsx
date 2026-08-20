@@ -66,11 +66,45 @@ export default function ProfileFolder({
           <div className={styles.paperSurface} />
 
           <button type="button" className={styles.deleteBtn} onClick={onDeleteAccount}>
-            Delete Account
+            <svg className={styles.btnSvg} fill="none" preserveAspectRatio="none" viewBox="0 0 189 79" aria-hidden="true">
+              <g filter="url(#delete-btn-shadow)">
+                <path className={styles.deleteBtnFill} d="M4 0H185V71H4V0Z" fill="#C1666B" />
+              </g>
+              <defs>
+                <filter colorInterpolationFilters="sRGB" filterUnits="userSpaceOnUse" height="79" id="delete-btn-shadow" width="189" x="0" y="0">
+                  <feFlood floodOpacity="0" result="BackgroundImageFix" />
+                  <feColorMatrix in="SourceAlpha" result="hardAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" />
+                  <feOffset dy="4" />
+                  <feGaussianBlur stdDeviation="2" />
+                  <feComposite in2="hardAlpha" operator="out" />
+                  <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0" />
+                  <feBlend in2="BackgroundImageFix" mode="normal" result="effect1_dropShadow" />
+                  <feBlend in="SourceGraphic" in2="effect1_dropShadow" mode="normal" result="shape" />
+                </filter>
+              </defs>
+            </svg>
+            <span className={styles.deleteBtnLabel}>Delete Account</span>
           </button>
 
           <button type="button" className={styles.signOutBtn} onClick={onSignOut}>
-            Sign Out
+            <svg className={styles.btnSvg} fill="none" preserveAspectRatio="none" viewBox="0 0 189 79" aria-hidden="true">
+              <g filter="url(#signout-btn-shadow)">
+                <path className={styles.signOutBtnFill} d="M4 0H185V71H4V0Z" fill="#5E503F" />
+              </g>
+              <defs>
+                <filter colorInterpolationFilters="sRGB" filterUnits="userSpaceOnUse" height="79" id="signout-btn-shadow" width="189" x="0" y="0">
+                  <feFlood floodOpacity="0" result="BackgroundImageFix" />
+                  <feColorMatrix in="SourceAlpha" result="hardAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" />
+                  <feOffset dy="4" />
+                  <feGaussianBlur stdDeviation="2" />
+                  <feComposite in2="hardAlpha" operator="out" />
+                  <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0" />
+                  <feBlend in2="BackgroundImageFix" mode="normal" result="effect1_dropShadow" />
+                  <feBlend in="SourceGraphic" in2="effect1_dropShadow" mode="normal" result="shape" />
+                </filter>
+              </defs>
+            </svg>
+            <span className={styles.signOutBtnLabel}>Sign Out</span>
           </button>
 
           <section aria-labelledby={`${emailFieldId}-prefs-heading`}>

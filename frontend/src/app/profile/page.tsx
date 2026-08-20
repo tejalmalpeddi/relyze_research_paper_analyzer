@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import Image from 'next/image';
 import ProfileFolder, { ProfilePreference } from '@/components/profile/ProfileFolder';
 import Popup from '@/components/popups/popup';
 import styles from './page.module.css';
 import { useAuth } from '@/app/auth/auth-query';
+import { useDocumentScrollLock } from '@/lib/useDocumentScrollLock';
 
 const DESIGN_VIEWPORT_WIDTH = 1440;
 const FOLDER_DESKTOP_LEFT = 421;
@@ -22,14 +22,6 @@ interface HistoryTitle {
 // user isn't authenticated, independent of anything the user clicked.
 type ActivePopup = 'signOutConfirm' | 'deleteAccountConfirm' | 'confirmPassword' | null;
 
-function WoodBackground() {
-  return (
-    <div className={styles.woodBg}>
-      <Image alt="" className={styles.woodBgImg} fill priority sizes="100vw" src="/background/wood.png" />
-    </div>
-  );
-}
-
 function getSavedPreferences(metadata: Record<string, unknown> | undefined): ProfilePreference[] {
   if (!Array.isArray(metadata?.preferences)) return [];
 
@@ -37,7 +29,7 @@ function getSavedPreferences(metadata: Record<string, unknown> | undefined): Pro
     .map((pref) => {
       if (!pref || typeof pref !== 'object') return null;
 
-      const { title, difficulty } = pref as Record<string, unknown>;
+      const { title } = pref as Record<string, unknown>;
       if (typeof title !== 'string') return null;
 
       return {
@@ -52,7 +44,6 @@ function getProfilePreferences(metadata: Record<string, unknown> | undefined, ti
   if (!titles.length) return savedPreferences;
 
   return titles.map((title) => {
-    const savedPreference = savedPreferences.find((pref) => pref.title === title);
     return {
       title,
     };
@@ -64,9 +55,11 @@ function getProfileImage(metadata: Record<string, unknown> | undefined) {
 }
 
 export default function ProfilePage() {
+  useDocumentScrollLock();
+
   const [folderLeft, setFolderLeft] = useState(421);
   const [paperTitles, setPaperTitles] = useState<string[]>([]);
-  const { user, isLoading, isAuthenticated, editUser, logout, deleteUser } = useAuth();
+  const { user, isLoading, isAuthenticated } = useAuth();
   const metadata = useMemo(() => user?.raw_user_meta_data ?? {}, [user?.raw_user_meta_data]);
   const preferences = useMemo(() => getProfilePreferences(metadata, paperTitles), [metadata, paperTitles]);
 
@@ -135,32 +128,32 @@ export default function ProfilePage() {
     <main className={styles.page}>
       <div className={styles.folderWrapper} style={{ left: folderLeft }}>
         <div className={styles.folderRotate}>
-            <ProfileFolder
-              isOpen={isAuthenticated}
-              email={isAuthenticated ? (user?.email || "Guest (Anonymous)") : ""}
-              profileSrc={getProfileImage(metadata)}
-              preferences={user ? preferences : []}
-              onDeleteAccount={async () => {
-                // Opens the confirm/delete popup instead of deleting
-                // directly -- it collects and verifies the password
-                // itself, then calls the real deleteUser().
-                setActivePopup('deleteAccountConfirm');
-              }}
-              onPasswordEditClick={() => {
-                // Opens Confirm Password, which (on success) leads to New
-                // Password and saves the real new password itself via
-                // useAuth's editUser(). ProfileFolder no longer collects
-                // or displays the real password at all.
-                setActivePopup('confirmPassword');
-              }}
-              onSignOut={async () => {
-                setActivePopup('signOutConfirm');
-              }}
-            />
+          <ProfileFolder
+            isOpen={isAuthenticated}
+            email={isAuthenticated ? (user?.email || "Guest (Anonymous)") : ""}
+            profileSrc={getProfileImage(metadata)}
+            preferences={user ? preferences : []}
+            onDeleteAccount={async () => {
+              // Opens the confirm/delete popup instead of deleting
+              // directly -- it collects and verifies the password
+              // itself, then calls the real deleteUser().
+              setActivePopup('deleteAccountConfirm');
+            }}
+            onPasswordEditClick={() => {
+              // Opens Confirm Password, which (on success) leads to New
+              // Password and saves the real new password itself via
+              // useAuth's editUser(). ProfileFolder no longer collects
+              // or displays the real password at all.
+              setActivePopup('confirmPassword');
+            }}
+            onSignOut={async () => {
+              setActivePopup('signOutConfirm');
+            }}
+          />
         </div>
       </div>
 
-      {showLogin && <Popup type="login" onClose={() => setActivePopup(null)} />}
+      {showLogin && <Popup type="login" onClose={() => setLoginDismissed(true)} />}
 
       {activePopup === 'signOutConfirm' && (
         <Popup type="signOutConfirm" onClose={() => setActivePopup(null)} />

@@ -6,6 +6,7 @@
 import { Suspense } from "react";
 import dynamic from "next/dynamic";
 import { useHistoryEntry } from "@/lib/useHistoryEntry";
+import { useDocumentScrollLock } from "@/lib/useDocumentScrollLock";
 
 
 const MindMapView = dynamic(
@@ -29,6 +30,7 @@ export default function MindMapPage() {
 
 function MindMapPageContent() {
   const { isLoading, matchedEntry, loadErrorMessage, notFoundMessage } = useHistoryEntry();
+  useDocumentScrollLock();
 
   return (
     <div className="flex h-screen flex-col">

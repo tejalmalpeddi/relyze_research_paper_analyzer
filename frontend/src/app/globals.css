@@ -193,6 +193,7 @@
   body {
     @apply bg-background text-foreground;
     font-family: 'EB Garamond', serif;
+    overflow-x: clip;
   }
 
   html {
@@ -212,13 +213,13 @@
   }
 
   h3 {
-    font-size: var(--text-sm);
+    font-size: var(--text-lg);
     font-weight: var(--font-weight-medium);
     line-height: 1.5;
   }
 
   h4 {
-    font-size: var(--text-sm);
+    font-size: var(--text-base);
     font-weight: var(--font-weight-medium);
     line-height: 1.5;
   }
@@ -245,10 +246,17 @@
 /* Home Page */
 
 .drawer-bg {
-  border-image-source: url('/background/drawer.png');
-  border-image-slice: 15 fill;
-  border-style: solid;
-  border-width: 15;
+  background-image: url('/background/drawer.png');
+  background-position: bottom;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+.drawer-bottom-rail {
+  background-image: url('/background/drawer.png');
+  background-position: bottom;
+  background-size: cover;
+  background-repeat: no-repeat;
 }
 
 @keyframes mind-map-edge-expand {

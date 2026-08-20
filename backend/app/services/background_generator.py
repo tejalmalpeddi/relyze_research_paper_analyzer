@@ -50,6 +50,22 @@ def _dedupe(items: list[str]) -> list[str]:
     return unique_items
 
 
+def _term_key(value: str) -> str:
+    return " ".join(value.lower().replace("-", " ").replace("_", " ").split())
+
+
+def _subcategory_names(subcategories: list) -> set[str]:
+    return {
+        _term_key(sub.name)
+        for sub in subcategories
+        if _clean_string(getattr(sub, "name", ""))
+    }
+
+
+def _exclude_terms(items: list[str], excluded_terms: set[str]) -> list[str]:
+    return [item for item in items if _term_key(item) not in excluded_terms]
+
+
 def _summary_item(title: str, summary: str, title_key: str) -> dict:
     return {
         title_key: title.strip(),
@@ -111,14 +127,16 @@ def _fallback_background(
     nlp_data: dict,
     images: Optional[list[dict]] = None,
 ) -> dict:
+    excluded_keyword_terms = _subcategory_names(subcategories)
     important_subcategories = sorted(
         subcategories,
         key=lambda sub: sub.importance,
         reverse=True,
     )[:5]
 
-    keyword_terms = _dedupe(
-        nlp_data.get("all_key_terms", []) + _prerequisite_terms(subcategories)
+    keyword_terms = _exclude_terms(
+        _dedupe(nlp_data.get("all_key_terms", []) + _prerequisite_terms(subcategories)),
+        excluded_keyword_terms,
     )[:MAX_KEY_TERMS]
 
     content = {
@@ -248,11 +266,17 @@ def _normalize_background_content(
     content: dict,
     file_name: str,
     source_images: Optional[list[dict]] = None,
+    excluded_keyword_terms: Optional[set[str]] = None,
 ) -> dict:
     if not isinstance(content, dict):
         return _fallback_background(file_name, [], {}, source_images)
 
-    keywords = _normalize_summary_items(content.get("keywords"), "term")[:MAX_KEY_TERMS]
+    excluded_keyword_terms = excluded_keyword_terms or set()
+    keywords = [
+        keyword
+        for keyword in _normalize_summary_items(content.get("keywords"), "term")
+        if _term_key(keyword["term"]) not in excluded_keyword_terms
+    ][:MAX_KEY_TERMS]
     related_info = _normalize_summary_items(
         content.get("related_info") or content.get("related_information"),
         "title",
@@ -298,14 +322,21 @@ def generate_background_content(
     try:
         from groq import Groq
 
+        excluded_keyword_terms = _subcategory_names(subcategories)
         client = Groq(api_key=os.getenv("GROQ_API_KEY"))
         messages = [
             {
                 "role": "system",
                 "content": (
                     "Generate reader-prep background content for a research paper. "
-                    "Use only the supplied paper text, subcategories, and NLP terms. "
-                    "Focus on key terms and related context a reader should know before reading. "
+                    "Use only the supplied paper text, NLP terms, and limited mind-map context. "
+                    "The keywords list must be a separate vocabulary analysis, not a copy "
+                    "of the mind map. Choose important technical terms, methods, variables, "
+                    "datasets, named entities, metrics, or domain jargon that appear in the "
+                    "paper text and help a reader understand the paper. "
+                    "Do not use any excluded keyword terms, and do not use broad section or "
+                    "topic titles as keywords. Use mind_map_topics only to avoid repetition "
+                    "and to inform related_info. "
                     "Do not summarize the whole paper or add unsupported outside facts. "
                     "Return valid JSON with exactly these keys: title, keywords, "
                     "related_info, images, source_pages. "
@@ -324,8 +355,12 @@ def generate_background_content(
                     {
                         "file_name": file_name,
                         "paper_text": _page_context(pages),
-                        "subcategories": _subcategory_context(subcategories),
-                        "keywords": nlp_data.get("all_key_terms", [])[:20],
+                        "mind_map_topics": _subcategory_context(subcategories),
+                        "excluded_keyword_terms": sorted(excluded_keyword_terms),
+                        "candidate_keywords_from_nlp": _exclude_terms(
+                            nlp_data.get("all_key_terms", [])[:40],
+                            excluded_keyword_terms,
+                        )[:20],
                         "images": _image_context(images or []),
                         "domain": nlp_data.get("domain"),
                     }
@@ -357,6 +392,14 @@ def generate_background_content(
                 raw_text = raw_text[4:]
             raw_text = raw_text.strip()
 
-        return _normalize_background_content(json.loads(raw_text), file_name, images)
+        normalized = _normalize_background_content(
+            json.loads(raw_text),
+            file_name,
+            images,
+            excluded_keyword_terms,
+        )
+        if not normalized.get("keywords"):
+            return _fallback_background(file_name, subcategories, nlp_data, images)
+        return normalized
     except Exception:
         return _fallback_background(file_name, subcategories, nlp_data, images)
