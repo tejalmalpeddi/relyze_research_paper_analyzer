@@ -1,13 +1,11 @@
 'use client';
 
-import { KeyboardEvent, useId } from 'react';
+import { useId } from 'react';
 import Image from 'next/image';
 import styles from './ProfileFolder.module.css';
 
-export type Difficulty = 'Beginner' | 'Intermediate' | 'Advanced';
 export interface ProfilePreference {
   title: string;
-  difficulty: Difficulty;
 }
 
 const FOLDER_BACK_PATH =
@@ -16,50 +14,10 @@ const FOLDER_BACK_PATH =
 const FOLDER_FRONT_PATH =
   'M0.92884 0C76.101 0.378806 155.124 0.359509 231.146 0.414938L460.202 0.56122C473.299 5.53197 480.952 12.5094 487.949 29.1835L488.382 121.756C488.62 172.671 489.003 214.513 489.232 214.737C510.278 226.785 517.283 233.327 522.406 255.917L522.574 471.426C522.761 711.313 523.086 690.796 518.964 699.119C515.056 707.008 506.417 713.742 497.849 715.575C494.624 716.266 459.346 716.38 247.537 716.389L0.979437 716.399C3.4032 477.738 -2.08187 238.611 0.92884 0Z';
 
-const INDICATOR_INSETS: Record<Difficulty, { inset: string }> = {
-  Beginner:     { inset: '4px calc(66.66% + 4px) 4px 4px' },
-  Intermediate: { inset: '4px calc(33.33% - 1px) 4px calc(33.33% - 1px)' },
-  Advanced:     { inset: '4px 4px 4px calc(66.66% + 4px)' },
-};
-
-const BUTTON_INSETS: Record<Difficulty, { inset: string }> = {
-  Beginner:     { inset: '0 66.66% 0 0' },
-  Intermediate: { inset: '0 33.33% 0 33.33%' },
-  Advanced:     { inset: '0 0 0 66.66%' },
-};
-
 // Never the real password -- always exactly 8 literal asterisks, regardless
 // of the actual password's length. This field is display-only; the real
 // value is never sent to or rendered by this component at all.
 const MASKED_PASSWORD = '********';
-
-function DifficultySelect({
-  value,
-  onChange,
-}: {
-  value: Difficulty;
-  onChange: (d: Difficulty) => void;
-}) {
-  return (
-    <div className={styles.difficultyOuter} data-name="Difficulty Select">
-      <div className={styles.difficultyPill}>
-        <div className={styles.difficultyBg} />
-        <div className={styles.difficultyIndicator} style={INDICATOR_INSETS[value]} />
-        {(Object.keys(INDICATOR_INSETS) as Difficulty[]).map((d) => (
-          <button
-            key={d}
-            className={styles.difficultyBtn}
-            style={{ ...BUTTON_INSETS[d], color: value === d ? '#0a0908' : '#d9d9d9' }}
-            type="button"
-            onClick={() => onChange(d)}
-          >
-            <p className={styles.difficultyBtnText}>{d}</p>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 interface PreferenceTabProps {
   title: string;
@@ -80,7 +38,6 @@ interface ProfileFolderProps {
   profileSrc?: string;
   preferences?: ProfilePreference[];
   onPasswordEditClick?: () => void;
-  onPreferenceDifficultyChange?: (index: number, difficulty: Difficulty) => void;
   onSignOut?: () => void | Promise<void>;
   onDeleteAccount?: () => void | Promise<void>;
 }
@@ -91,7 +48,6 @@ export default function ProfileFolder({
   profileSrc,
   preferences = [],
   onPasswordEditClick,
-  onPreferenceDifficultyChange,
   onSignOut,
   onDeleteAccount,
 }: ProfileFolderProps) {
@@ -152,9 +108,9 @@ export default function ProfileFolder({
           </button>
 
           <section aria-labelledby={`${emailFieldId}-prefs-heading`}>
-            <h2 id={`${emailFieldId}-prefs-heading`} className={styles.prefsHeaderLabel}>
+            <h3 id={`${emailFieldId}-prefs-heading`} className={styles.prefsHeaderLabel}>
               Papers
-            </h2>
+            </h3>
             <div className={styles.scrollFrame} data-name="scroll frame">
               <ul className={styles.scrollContent}>
                 {preferences.map((pref, i) => (
@@ -168,18 +124,18 @@ export default function ProfileFolder({
           </section>
 
           <section aria-labelledby={`${emailFieldId}-account-heading`}>
-            <h2 id={`${emailFieldId}-account-heading`} className={styles.accountHeaderLabel}>
+            <h3 id={`${emailFieldId}-account-heading`} className={styles.accountHeaderLabel}>
               Account
-            </h2>
+            </h3>
 
             <span className={styles.emailBox} />
-            <h3 className={styles.emailLabel}>Email</h3>
+            <h4 className={styles.emailLabel}>Email</h4>
             <p className={styles.emailValue}>
               {email}
             </p>
 
             <span className={styles.passwordBox} />
-            <h3 className={styles.passwordLabel}>Password</h3>
+            <h4 className={styles.passwordLabel}>Password</h4>
             {/* Display-only -- always exactly 8 asterisks, never the real
                 password, never editable inline. Editing happens entirely
                 through the Confirm Password / New Password popups,
@@ -213,20 +169,14 @@ export default function ProfileFolder({
 
           <div className={styles.paperclipOuter}>
             <div className={styles.paperclipRotate}>
-              <Image alt="" fill src="/interface/paperclip.png" className={styles.imgDecorative} />
-            </div>
-          </div>
-
-          <div className={styles.editProfileOuter}>
-            <div className={styles.editProfileRotate}>
-              <Image alt="Edit profile picture" className={styles.editIconImg} fill sizes="32px" src="/icons/pencil.svg" />
+              <Image alt="" width="55" height="115" src="/interface/paperclip.png" className={styles.imgDecorative} />
             </div>
           </div>
         </div>
 
         <div className={styles.spineOuter}>
           <div className={styles.spineRotate}>
-            <p className={styles.spineText}>Account Settings</p>
+            <h2 className={styles.spineText}>Account Settings</h2>
           </div>
         </div>
       </div>

@@ -62,7 +62,7 @@ function PopupShell({ title, children, footer, onClose }: PopupShellProps) {
   }
 
   const content = (
-    <div className="fixed top-0 left-0 size-full bg-black/50" onClick={handleBackdropClick}>
+    <div className="fixed top-0 left-0 size-full bg-black/50 z-99" onClick={handleBackdropClick}>
       <dialog className="block mx-auto mt-50 w-[495px] h-[330px] bg-off-white p-6 shadow-lg/50">
         <article className="relative size-full border-dark-brown border-2 flex flex-col items-center">
           <header className="absolute -top-6 w-fit bg-off-white p-2">
@@ -228,6 +228,7 @@ function AuthSuccessPopup({
 // -----------------------------------------------------------------------
 
 function SignOutPopup({ onClose }: { onClose: () => void }) {
+  const router = useRouter();
   const [stage, setStage] = useState<'confirm' | 'done'>('confirm');
   const {logout} = useAuth();
 
@@ -238,7 +239,16 @@ function SignOutPopup({ onClose }: { onClose: () => void }) {
   }
 
   if (stage === 'done') {
-    return <AuthSuccessPopup title="Signed Out" onClose={onClose} />;
+    return (
+      <PopupShell title="Signed Out" onClose={onClose}>
+        <button type="button" className={styles.buttonNeutral} onClick={onClose}>
+          Log In to Another Account
+        </button>
+        <button type="button" className={styles.buttonNeutral} onClick={() => router.push('/')}>
+          Return to Home Page
+        </button>
+      </PopupShell>
+    );
   }
 
   return (
@@ -665,9 +675,18 @@ function ConfirmPasswordPopup({
       title="Confirm Password"
       onClose={onClose}
       footer={
-        <button type="submit" form="confirm-password-form" className={styles.buttonNeutral}>
-          Confirm
-        </button>
+        <menu className={styles.buttonRow}>
+          <li>
+            <button type="button" className={styles.buttonNeutral} onClick={onClose}>
+              Cancel
+            </button>
+          </li>
+          <li>
+            <button type="submit" form="confirm-password-form" className={styles.buttonNeutral}>
+              Confirm
+            </button>
+          </li>
+        </menu>
       }
     >
       <form id="confirm-password-form" className={styles.form} onSubmit={handleSubmit}>
