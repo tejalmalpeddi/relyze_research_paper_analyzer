@@ -346,8 +346,7 @@
    container-type context, so the outer (the container) and inner (the
    thing reading that container's size) have to be two separate elements
    for this specific technique to work. Same reasoning applies to
-   .profileCardOuter/.profileCardRotate and .editProfileOuter/.editProfileRotate
-   above/below. */
+   .profileCardOuter/.profileCardRotate above. */
 
 .paperclipOuter {
   position: absolute;
@@ -366,28 +365,6 @@
   height: hypot(22.6616cqw, 96.1887cqh);
   width: hypot(77.3384cqw, -3.81134cqh);
   rotate: -6.15deg;
-  position: relative;
-}
-
-/* ── Edit profile icon ── */
-
-.editProfileOuter {
-  position: absolute;
-  aspect-ratio: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  left: 28.48%;
-  right: 66.32%;
-  top: 140px;
-  container-type: size;
-}
-
-.editProfileRotate {
-  flex: none;
-  height: hypot(12.8955cqw, 87.1045cqh);
-  width: hypot(87.1045cqw, -12.8955cqh);
-  rotate: -8.42deg;
   position: relative;
 }
 
@@ -480,6 +457,7 @@
   width: 396px;
   background-color: #d9d9d9;
   border: 1px solid #5e503f;
+  color: #5e503f;
 }
 
 .prefTabPaper {
