@@ -98,6 +98,11 @@ function ringPoint(center: { x: number; y: number }, angleDeg: number, radius: n
 
 type ActiveTool = 'none' | 'highlighter' | 'pencil' | 'eraser';
 
+type ChatMessage = {
+  role: 'user' | 'assistant';
+  content: string;
+};
+
 // ---------------------------------------------------------------------------
 // Text-offset <-> DOM Range helpers, used for both saving a highlight
 // (selection -> offsets) and redrawing one (offsets -> selection). Both
@@ -434,6 +439,10 @@ function PaperContentView({ document: paperDocument }: PaperContentViewProps) {
   const [highlighterColor, setHighlighterColor] = useState(DEFAULT_HIGHLIGHTER_COLOR);
   const [pencilColor, setPencilColor] = useState(DEFAULT_PENCIL_COLOR);
 
+const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+const [displayMessages, setDisplayMessages] = useState<ChatMessage[]>([]);
+const [isChatLoading, setIsChatLoading] = useState(false);
+
   // A stroke currently being drawn (pointer down but not yet lifted) --
   // local only, not saved until pointer-up.
   const [inProgressStroke, setInProgressStroke] = useState<StrokePoint[] | null>(null);
@@ -736,8 +745,14 @@ function PaperContentView({ document: paperDocument }: PaperContentViewProps) {
       </section>
       <section className={styles.corkPanel} aria-label="Interactive paper workspace">
         <Image alt="" className={styles.corkboardImage} src="/background/corkboard.jpg" fill sizes="50vw" priority />
-        <InsightPanel />
-        <BottomChatBar />
+        <InsightPanel messages={displayMessages} isLoading={isChatLoading} />
+        <BottomChatBar
+            documentId={paperDocument.id}
+            history={chatHistory}
+            onHistoryChange={setChatHistory}
+            onDisplayChange={setDisplayMessages}
+            onLoadingChange={setIsChatLoading}
+/>
       </section>
     </>
   );
@@ -776,27 +791,114 @@ function DifficultySelect() {
   );
 }
 
-function InsightPanel() {
+interface InsightPanelProps {
+  messages: ChatMessage[];
+  isLoading: boolean;
+}
+
+function InsightPanel({ messages, isLoading }: InsightPanelProps) {
   return (
     <aside className={styles.insightPanel} aria-label="Paper assistant">
-      <div className={styles.userMessage}>This is a chat message from the user.</div>
-      <div className={styles.answerCard}>
-        Lorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem
-        placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar
-        vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere.
-        Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.
-      </div>
+      {messages.map((message, index) =>
+        message.role === 'user' ? (
+          <div key={index} className={styles.userMessage}>
+            {message.content}
+          </div>
+        ) : (
+          <div key={index} className={styles.answerCard}>
+            {message.content}
+          </div>
+        )
+      )}
+
+      {isLoading && (
+        <div className={styles.answerCard}>
+          Thinking...
+        </div>
+      )}
     </aside>
   );
 }
 
-function BottomChatBar() {
+function BottomChatBar({
+  documentId,
+  history,
+  onHistoryChange,
+  onDisplayChange,
+  onLoadingChange,
+}: BottomChatBarProps) {
+
   const [chatMessage, setChatMessage] = useState('');
   const [isSendActive, setIsSendActive] = useState(false);
 
-  function sendMessage() {
-    if (chatMessage.trim()) {
-      setChatMessage('');
+  async function sendMessage() {
+    const trimmedMessage = chatMessage.trim();
+
+    if (!trimmedMessage) return;
+
+    const previousHistory = history;
+
+    const userMessage: ChatMessage = {
+      role: 'user',
+      content: trimmedMessage,
+    };
+
+    onDisplayChange([userMessage]);
+
+    onHistoryChange((previous) => [...previous, userMessage]);
+    setChatMessage('');
+    onLoadingChange(true);
+
+    try {
+      const response = await fetch(
+        `http://localhost:8000/chat/${documentId}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            message: trimmedMessage,
+            history: previousHistory,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Chat request failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      const assistantMessage: ChatMessage = {
+        role: 'assistant',
+        content: data.answer,
+      };
+
+        onDisplayChange([
+            userMessage,
+            assistantMessage,
+            ]);
+
+
+
+      onHistoryChange((previous) => [
+        ...previous,
+        assistantMessage,
+      ]);
+    } catch (error) {
+      console.error(error);
+
+      onHistoryChange((previous) => [
+        ...previous,
+        {
+          role: 'assistant',
+          content: 'Sorry, something went wrong while answering that question.',
+        },
+      ]);
+    } finally {
+      onLoadingChange(false);
     }
   }
 
@@ -813,8 +915,9 @@ function BottomChatBar() {
             onChange={(event) => setChatMessage(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === 'Enter') {
-                sendMessage();
-              }
+                  event.preventDefault();
+                  void sendMessage();
+            }
             }}
           />
         </label>
@@ -825,7 +928,7 @@ function BottomChatBar() {
             type="button"
             aria-label="Send message"
             data-active={isSendActive}
-            onClick={sendMessage}
+            onClick={() => void sendMessage()}
             onMouseEnter={() => setIsSendActive(true)}
             onMouseLeave={() => setIsSendActive(false)}
             onMouseDown={() => setIsSendActive(true)}

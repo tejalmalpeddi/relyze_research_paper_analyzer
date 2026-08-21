@@ -14,6 +14,11 @@ from app.routers.documents import router as documents_router
 from app.core.auth import verify_cookie
 from pydantic import BaseModel
 from content_gen.nlp_transformer_method.pipeline import run_pipeline
+
+from app.routers.chatbot import router as chatbot_router
+from app.routers.documents import router as documents_router
+from app.routers.subcategories import router as subcategories_router
+
 import torch._dynamo
 
 torch._dynamo.config.suppress_errors = True
@@ -53,6 +58,7 @@ app.include_router(auth_router)
 app.include_router(sticky_router)
 app.include_router(subcategories_router)
 app.include_router(documents_router)
+app.include_router(chatbot_router)
 
 
 @app.get("/")
