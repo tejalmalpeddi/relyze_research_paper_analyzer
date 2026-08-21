@@ -4,8 +4,6 @@ import { useEffect, useState, type FormEvent, type MouseEvent, type ReactNode } 
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import DifficultySelect, { type Difficulty } from '@/components/difficulty-select/DifficultySelect';
-// popup.tsx itself has no self-reference to fix here -- the "/components/popups/popup"
-// path is what OTHER files (like profile/page.tsx) import this file as.
 import styles from './popup.module.css';
 import {deleteHistory, cancelUpload} from '@/lib/api'
 import {useAuth} from '@/app/auth/auth-query'
@@ -14,7 +12,18 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // -----------------------------------------------------------------------
 // Shared shell — the white card + inner border + header/body/footer slots.
-// Every variation below renders through this.
+//
+// IMPORTANT: PopupShell must be called directly by whichever component
+// OWNS a multi-view flow (see AuthFlowPopup below), not by each
+// individual view. If two different views are two different component
+// FUNCTIONS that each separately call <PopupShell>, switching between
+// them makes React unmount the old PopupShell (and its portal + backdrop
+// <div>) entirely and mount a brand new one -- which is what caused the
+// backdrop to visibly flicker when switching e.g. Login -> Create
+// Account. As long as the SAME <PopupShell> element (same type, same
+// position in the tree) is returned across a state change -- only its
+// props (title/children/footer) differing -- React reuses the existing
+// DOM node instead, and there's nothing to flicker.
 //
 // `body` (the <section>) owns ALL centering/positioning of its children:
 // it centers everything as a group by default. Individual popups never set
@@ -26,20 +35,15 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // Popups that need a centered button instead (Signed Out / Account Deleted)
 // just pass it as a child instead of as `footer`.
 //
-// `onClose` is required here now: clicking anywhere outside the card (the
-// full-screen backdrop) closes the popup. That's detected by checking that
-// the click target IS the backdrop itself, not something inside the card —
-// clicks inside the card bubble up with a different target and never
-// trigger it.
+// `onClose` is optional: when provided, clicking anywhere outside the card
+// (the full-screen backdrop) closes the popup. When omitted (see
+// UploadingPopup), the backdrop click does nothing.
 // -----------------------------------------------------------------------
 
 interface PopupShellProps {
   title: string;
   children: ReactNode;
   footer?: ReactNode;
-  // Optional now: when omitted, clicking the backdrop does nothing --
-  // used by UploadingPopup, where "Cancel Upload" is meant to be the only
-  // way to close it.
   onClose?: () => void;
 }
 
@@ -50,10 +54,7 @@ function PopupShell({ title, children, footer, onClose }: PopupShellProps) {
   // those create a new containing block that would otherwise trap this
   // "fixed" backdrop inside that ancestor instead of the real screen.
   const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => setMounted(true));
-    return () => cancelAnimationFrame(frame);
-  }, []);
+  useEffect(() => setMounted(true), []);
 
   function handleBackdropClick(e: MouseEvent<HTMLDivElement>) {
     if (e.target === e.currentTarget) {
@@ -63,7 +64,7 @@ function PopupShell({ title, children, footer, onClose }: PopupShellProps) {
 
   const content = (
     <div className="fixed top-0 left-0 size-full bg-black/50 z-99" onClick={handleBackdropClick}>
-      <dialog className="block mx-auto mt-50 w-[495px] h-[330px] bg-off-white p-6 shadow-lg/50">
+      <dialog className="static block mx-auto mt-50 w-[495px] h-[330px] bg-off-white p-6 shadow-lg/50">
         <article className="relative size-full border-dark-brown border-2 flex flex-col items-center">
           <header className="absolute -top-6 w-fit bg-off-white p-2">
             <h2>{title}</h2>
@@ -82,14 +83,7 @@ function PopupShell({ title, children, footer, onClose }: PopupShellProps) {
 }
 
 // -----------------------------------------------------------------------
-// Uploading / Difficulty Select
-//
-// These are two independent, plain entry points now -- unlike before,
-// there's no internal polling or self-managed transition between them.
-// The real "upload finished" signal is importPdf() resolving in whatever
-// page triggers the upload (e.g. the homepage) -- that page is what
-// decides when to stop rendering type="uploading" and start rendering
-// type="difficultySelect" instead. See PopupProps/the dispatcher below.
+// Uploading
 // -----------------------------------------------------------------------
 
 function UploadingPopup({
@@ -131,6 +125,10 @@ function UploadingPopup({
   );
 }
 
+// -----------------------------------------------------------------------
+// Difficulty Select
+// -----------------------------------------------------------------------
+
 function DifficultySelectPopup({
   paperId,
   onClose,
@@ -142,8 +140,19 @@ function DifficultySelectPopup({
   const [difficulty, setDifficulty] = useState<Difficulty>('Beginner');
 
   function goTo(path: string) {
-    // TODO: persist the chosen difficulty for `paperId` before navigating.
-    router.push(`${path}?id=${encodeURIComponent(paperId)}`);
+    // TODO: persist the chosen difficulty for `paperId` server-side too,
+    // once that's wired up.
+    // TODO: double check these route paths match your actual app routes.
+    router.push(path);
+  }
+
+  function goToMindMap() {
+    // Passes the chosen difficulty (lowercased to match the Mind Map
+    // page's own DifficultyLevel type) and the paper id along via the
+    // URL, so the Mind Map page can read them straight out of
+    // useSearchParams() instead of needing some other shared-state
+    // mechanism across the navigation.
+    router.push(`/mindmap?id=${paperId}&difficulty=${difficulty.toLowerCase()}`);
   }
 
   return (
@@ -153,7 +162,7 @@ function DifficultySelectPopup({
       footer={
         <menu className={styles.buttonRow}>
           <li>
-            <button type="button" className={styles.buttonNeutral} onClick={() => goTo('/mindmap')}>
+            <button type="button" className={styles.buttonNeutral} onClick={goToMindMap}>
               Mind Map
             </button>
           </li>
@@ -170,7 +179,7 @@ function DifficultySelectPopup({
         </menu>
       }
     >
-      <p>How familiar are you with this paper&apos;s topic?</p>
+      <p>How familiar are you with this paper's topic?</p>
       <DifficultySelect value={difficulty} onChange={setDifficulty} />
       {difficulty == 'Beginner' && (
         <p className={styles.blurb}>
@@ -192,39 +201,12 @@ function DifficultySelectPopup({
 }
 
 // -----------------------------------------------------------------------
-// Success screens shared by the auth flow AND sign-out/delete-account — a
-// title, an optional message pinned under it, and a centered "Return to
-// Home" button. Used for "Login Successful!" / "Account Created!" /
-// "Email Sent!" / "Password Changed!" / "Signed Out" / "Account Deleted".
-// -----------------------------------------------------------------------
-
-function AuthSuccessPopup({
-  title,
-  message,
-  buttonText = 'Return to Home',
-  onClose,
-}: {
-  title: string;
-  message?: string;
-  buttonText?: string;
-  onClose: () => void;
-}) {
-  const router = useRouter();
-
-  return (
-    <PopupShell title={title} onClose={onClose}>
-      {message && <p className={styles.topText}>{message}</p>}
-      <button type="button" className={styles.buttonNeutral} onClick={() => router.push('/')}>
-        {buttonText}
-      </button>
-    </PopupShell>
-  );
-}
-
-// -----------------------------------------------------------------------
 // Sign out / Delete account — each manages its own confirm -> done stage
-// internally, since that's how the mockup groups them. Every child here is
-// a plain flow child; the body centers them, nothing sets its own position.
+// internally. Both branches return <PopupShell> directly (not delegating
+// to a separately-named component that itself calls PopupShell), so
+// switching stages is a normal prop update, not an unmount/remount --
+// same reasoning as the big comment on PopupShell above, just already
+// satisfied here without needing the AuthFlowPopup-style split.
 // -----------------------------------------------------------------------
 
 function SignOutPopup({ onClose }: { onClose: () => void }) {
@@ -233,14 +215,13 @@ function SignOutPopup({ onClose }: { onClose: () => void }) {
   const {logout} = useAuth();
 
   async function handleSignOut() {
-    // TODO: verify logout works
     await logout();
     setStage('done');
   }
 
   if (stage === 'done') {
     return (
-      <PopupShell title="Signed Out" onClose={onClose}>
+      <PopupShell title="Account Deleted" onClose={onClose}>
         <button type="button" className={styles.buttonNeutral} onClick={onClose}>
           Log In to Another Account
         </button>
@@ -285,9 +266,6 @@ function DeleteAccountPopup({ onClose }: { onClose: () => void }) {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError('');
-    // Only the actual network call is inside try/catch — if it succeeds,
-    // moving to the "done" stage happens unconditionally afterward, so a
-    // problem there can never get mislabeled as "Incorrect password."
     try {
       await deleteUser({email: user?.email || "", password: password});
     } catch {
@@ -298,12 +276,6 @@ function DeleteAccountPopup({ onClose }: { onClose: () => void }) {
   }
 
   if (stage === 'done') {
-    // Two stacked buttons rather than the shared single-button
-    // AuthSuccessPopup: "Log In to Another Account" just closes this popup
-    // (onClose) -- since the user is unauthenticated again at this point,
-    // the parent page's own login-gate picks up automatically once nothing
-    // else is open, rather than this popup needing to know how to open the
-    // login popup itself.
     return (
       <PopupShell title="Account Deleted" onClose={onClose}>
         <button type="button" className={styles.buttonNeutral} onClick={onClose}>
@@ -377,7 +349,11 @@ function DeletePaperPopup({
     setError('');
     setIsDeleting(true);
     try {
-      await deleteHistory(paperId);
+      // deleteHistory expects a numeric id -- paperId comes in as a
+      // string here for consistency with the other popup props (e.g.
+      // difficultySelect's paperId), so it's converted right at the call
+      // site instead.
+      await deleteHistory(Number(paperId));
     } catch (err) {
       setIsDeleting(false);
       setError(err instanceof Error ? err.message : 'Something went wrong while deleting.');
@@ -430,16 +406,16 @@ function DeletePaperPopup({
 }
 
 // -----------------------------------------------------------------------
-// Account / auth forms — each <form> only holds its fields (plain flow
-// content the body centers as a group). Instructions/errors use
-// `.topText` to pin themselves under the title instead. The submit button
-// lives in the hanging footer and is wired to the form via `form=`.
+// Account / auth forms.
 //
-// Login <-> Create Account <-> Forgot Password <-> Confirm Password <->
-// New Password (and the success screens each of those lands on) are all
-// reachable from one another; `AuthFlowPopup` below owns that navigation
-// internally so the parent only ever renders one entry point and never
-// has to react to where the user ends up inside the flow.
+// These are now "Body"-only components: no PopupShell, no footer, no
+// onClose. AuthFlowPopup (below) is the single owner of ONE PopupShell
+// instance for the whole Login <-> Create Account <-> Forgot Password <->
+// Confirm Password <-> New Password flow (plus each one's success
+// screen) -- it computes the title and footer per view itself and just
+// swaps which Body renders as PopupShell's children. That's what fixes
+// the flicker: same PopupShell element across every view change, only
+// its props differ.
 //
 // Every handleSubmit below follows the same shape: only the actual network
 // call sits inside try/catch. The "on success" callback is called
@@ -447,12 +423,10 @@ function DeletePaperPopup({
 // that callback gets mislabeled as an auth failure.
 // -----------------------------------------------------------------------
 
-function CreateAccountPopup({
-  onClose,
+function CreateAccountBody({
   onAccountCreated,
   onLogin,
 }: {
-  onClose: () => void;
   onAccountCreated: () => void;
   onLogin: () => void;
 }) {
@@ -492,46 +466,34 @@ function CreateAccountPopup({
   }
 
   return (
-    <PopupShell
-      title="Create Account"
-      onClose={onClose}
-      footer={
-        <button type="submit" form="create-account-form" className={styles.buttonNeutral}>
-          Create Account
+    <form id="create-account-form" className={styles.form} onSubmit={handleSubmit}>
+      {error && <p className={`${styles.topText} ${styles.error}`}>{error}</p>}
+      <label className={styles.field}>
+        Email
+        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+      </label>
+      <label className={styles.field}>
+        Password
+        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+      </label>
+      <label className={styles.field}>
+        Confirm Password
+        <input type="password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} required />
+      </label>
+      <p className={styles.linkRow}>
+        <button type="button" className={styles.linkBrown} onClick={onLogin}>
+          Log in to existing account
         </button>
-      }
-    >
-      <form id="create-account-form" className={styles.form} onSubmit={handleSubmit}>
-        {error && <p className={`${styles.topText} ${styles.error}`}>{error}</p>}
-        <label className={styles.field}>
-          Email
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        </label>
-        <label className={styles.field}>
-          Password
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-        </label>
-        <label className={styles.field}>
-          Confirm Password
-          <input type="password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} required />
-        </label>
-        <p className={styles.linkRow}>
-          <button type="button" className={styles.linkBrown} onClick={onLogin}>
-            Log in to existing account
-          </button>
-        </p>
-      </form>
-    </PopupShell>
+      </p>
+    </form>
   );
 }
 
-function LoginPopup({
-  onClose,
+function LoginBody({
   onForgotPassword,
   onCreateAccount,
   onLoginSuccess,
 }: {
-  onClose: () => void;
   onForgotPassword: () => void;
   onCreateAccount: () => void;
   onLoginSuccess: () => void;
@@ -554,44 +516,32 @@ function LoginPopup({
   }
 
   return (
-    <PopupShell
-      title="Log In"
-      onClose={onClose}
-      footer={
-        <button type="submit" form="login-form" className={styles.buttonNeutral}>
-          Log In
+    <form id="login-form" className={styles.form} onSubmit={handleSubmit}>
+      {error && <p className={`${styles.topText} ${styles.error}`}>{error}</p>}
+      <label className={styles.field}>
+        Email
+        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+      </label>
+      <label className={styles.field}>
+        Password
+        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+      </label>
+      <p className={styles.linkRow}>
+        <button type="button" className={styles.link} onClick={onForgotPassword}>
+          Forgot password?
         </button>
-      }
-    >
-      <form id="login-form" className={styles.form} onSubmit={handleSubmit}>
-        {error && <p className={`${styles.topText} ${styles.error}`}>{error}</p>}
-        <label className={styles.field}>
-          Email
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        </label>
-        <label className={styles.field}>
-          Password
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-        </label>
-        <p className={styles.linkRow}>
-          <button type="button" className={styles.link} onClick={onForgotPassword}>
-            Forgot password?
-          </button>
-          <button type="button" className={styles.linkBrown} onClick={onCreateAccount}>
-            Create account
-          </button>
-        </p>
-      </form>
-    </PopupShell>
+        <button type="button" className={styles.linkBrown} onClick={onCreateAccount}>
+          Create account
+        </button>
+      </p>
+    </form>
   );
 }
 
-function ForgotPasswordPopup({
-  onClose,
+function ForgotPasswordBody({
   onEmailSent,
   onReturnToLogin,
 }: {
-  onClose: () => void;
   onEmailSent: () => void;
   onReturnToLogin: () => void;
 }) {
@@ -617,42 +567,26 @@ function ForgotPasswordPopup({
   }
 
   return (
-    <PopupShell
-      title="Forgot Password"
-      onClose={onClose}
-      footer={
-        <button type="submit" form="forgot-password-form" className={styles.buttonNeutral}>
-          Send Reset Link
+    <form id="forgot-password-form" className={styles.form} onSubmit={handleSubmit}>
+      {error ? (
+        <p className={`${styles.topText} ${styles.error}`}>{error}</p>
+      ) : (
+        <p className={styles.topText}>Enter your email and we will send a password reset link.</p>
+      )}
+      <label className={styles.field}>
+        Email
+        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+      </label>
+      <p className={styles.linkRow}>
+        <button type="button" className={styles.linkBrown} onClick={onReturnToLogin}>
+          Return to Log In
         </button>
-      }
-    >
-      <form id="forgot-password-form" className={styles.form} onSubmit={handleSubmit}>
-        {error ? (
-          <p className={`${styles.topText} ${styles.error}`}>{error}</p>
-        ) : (
-          <p className={styles.topText}>Enter your email and we will send a password reset link.</p>
-        )}
-        <label className={styles.field}>
-          Email
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        </label>
-        <p className={styles.linkRow}>
-          <button type="button" className={styles.linkBrown} onClick={onReturnToLogin}>
-            Return to Log In
-          </button>
-        </p>
-      </form>
-    </PopupShell>
+      </p>
+    </form>
   );
 }
 
-function ConfirmPasswordPopup({
-  onClose,
-  onConfirmed,
-}: {
-  onClose: () => void;
-  onConfirmed: () => void;
-}) {
+function ConfirmPasswordBody({ onConfirmed }: { onConfirmed: () => void }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const {user, login} = useAuth();
@@ -671,46 +605,21 @@ function ConfirmPasswordPopup({
   }
 
   return (
-    <PopupShell
-      title="Confirm Password"
-      onClose={onClose}
-      footer={
-        <menu className={styles.buttonRow}>
-          <li>
-            <button type="button" className={styles.buttonNeutral} onClick={onClose}>
-              Cancel
-            </button>
-          </li>
-          <li>
-            <button type="submit" form="confirm-password-form" className={styles.buttonNeutral}>
-              Confirm
-            </button>
-          </li>
-        </menu>
-      }
-    >
-      <form id="confirm-password-form" className={styles.form} onSubmit={handleSubmit}>
-        {error ? (
-          <p className={`${styles.topText} ${styles.error}`}>{error}</p>
-        ) : (
-          <p className={styles.topText}>Enter your current password in order to change it.</p>
-        )}
-        <label className={styles.field}>
-          Password
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-        </label>
-      </form>
-    </PopupShell>
+    <form id="confirm-password-form" className={styles.form} onSubmit={handleSubmit}>
+      {error ? (
+        <p className={`${styles.topText} ${styles.error}`}>{error}</p>
+      ) : (
+        <p className={styles.topText}>Enter your current password in order to change it.</p>
+      )}
+      <label className={styles.field}>
+        Password
+        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+      </label>
+    </form>
   );
 }
 
-function NewPasswordPopup({
-  onClose,
-  onPasswordChanged,
-}: {
-  onClose: () => void;
-  onPasswordChanged: () => void;
-}) {
+function NewPasswordBody({ onPasswordChanged }: { onPasswordChanged: () => void }) {
   const [password, setPassword] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
   const [error, setError] = useState('');
@@ -734,27 +643,39 @@ function NewPasswordPopup({
   }
 
   return (
-    <PopupShell
-      title="New Password"
-      onClose={onClose}
-      footer={
-        <button type="submit" form="new-password-form" className={styles.buttonNeutral}>
-          Change Password
-        </button>
-      }
-    >
-      <form id="new-password-form" className={styles.form} onSubmit={handleSubmit}>
-        {error && <p className={`${styles.topText} ${styles.error}`}>{error}</p>}
-        <label className={styles.field}>
-          Password
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-        </label>
-        <label className={styles.field}>
-          Confirm Password
-          <input type="password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} required />
-        </label>
-      </form>
-    </PopupShell>
+    <form id="new-password-form" className={styles.form} onSubmit={handleSubmit}>
+      {error && <p className={`${styles.topText} ${styles.error}`}>{error}</p>}
+      <label className={styles.field}>
+        Password
+        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+      </label>
+      <label className={styles.field}>
+        Confirm Password
+        <input type="password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} required />
+      </label>
+    </form>
+  );
+}
+
+// Shared by every "success" view below -- an optional message pinned
+// under the title, and a centered "Return to Home" (or custom-labeled)
+// button. Title itself is owned by AuthFlowPopup's per-view lookup.
+function AuthSuccessBody({
+  message,
+  buttonText = 'Return to Home',
+}: {
+  message?: string;
+  buttonText?: string;
+}) {
+  const router = useRouter();
+
+  return (
+    <>
+      {message && <p className={styles.topText}>{message}</p>}
+      <button type="button" className={styles.buttonNeutral} onClick={() => router.push('/')}>
+        {buttonText}
+      </button>
+    </>
   );
 }
 
@@ -769,71 +690,115 @@ type AuthView =
   | 'emailSent'
   | 'passwordChanged';
 
+const AUTH_VIEW_TITLES: Record<AuthView, string> = {
+  login: 'Log In',
+  createAccount: 'Create Account',
+  forgotPassword: 'Forgot Password',
+  confirmPassword: 'Confirm Password',
+  newPassword: 'New Password',
+  loginSuccess: 'Login Successful!',
+  accountCreated: 'Account Created!',
+  emailSent: 'Email Sent!',
+  passwordChanged: 'Password Changed!',
+};
+
 function AuthFlowPopup({ initialView, onClose }: { initialView: AuthView; onClose: () => void }) {
   const [view, setView] = useState<AuthView>(initialView);
 
+  let body: ReactNode;
+  let footer: ReactNode;
+
   switch (view) {
     case 'login':
-      return (
-        <LoginPopup
-          onClose={onClose}
+      body = (
+        <LoginBody
           onForgotPassword={() => setView('forgotPassword')}
           onCreateAccount={() => setView('createAccount')}
           onLoginSuccess={() => setView('loginSuccess')}
         />
       );
+      footer = (
+        <button type="submit" form="login-form" className={styles.buttonNeutral}>
+          Log In
+        </button>
+      );
+      break;
     case 'createAccount':
-      return (
-        <CreateAccountPopup
-          onClose={onClose}
+      body = (
+        <CreateAccountBody
           onAccountCreated={() => setView('accountCreated')}
           onLogin={() => setView('login')}
         />
       );
+      footer = (
+        <button type="submit" form="create-account-form" className={styles.buttonNeutral}>
+          Create Account
+        </button>
+      );
+      break;
     case 'forgotPassword':
-      return (
-        <ForgotPasswordPopup
-          onClose={onClose}
+      body = (
+        <ForgotPasswordBody
           onEmailSent={() => setView('emailSent')}
           onReturnToLogin={() => setView('login')}
         />
       );
-    case 'confirmPassword':
-      return <ConfirmPasswordPopup onClose={onClose} onConfirmed={() => setView('newPassword')} />;
-    case 'newPassword':
-      return (
-        <NewPasswordPopup onClose={onClose} onPasswordChanged={() => setView('passwordChanged')} />
+      footer = (
+        <button type="submit" form="forgot-password-form" className={styles.buttonNeutral}>
+          Send Reset Link
+        </button>
       );
+      break;
+    case 'confirmPassword':
+      body = <ConfirmPasswordBody onConfirmed={() => setView('newPassword')} />;
+      footer = (
+        <button type="submit" form="confirm-password-form" className={styles.buttonNeutral}>
+          Confirm
+        </button>
+      );
+      break;
+    case 'newPassword':
+      body = <NewPasswordBody onPasswordChanged={() => setView('passwordChanged')} />;
+      footer = (
+        <button type="submit" form="new-password-form" className={styles.buttonNeutral}>
+          Change Password
+        </button>
+      );
+      break;
     case 'loginSuccess':
-      return <AuthSuccessPopup title="Login Successful!" onClose={onClose} />;
+      body = <AuthSuccessBody />;
+      footer = undefined;
+      break;
     case 'accountCreated':
-      return (
-        <AuthSuccessPopup
-          title="Account Created!"
+      body = (
+        <AuthSuccessBody
           message="To get started, upload a PDF on the home page"
           buttonText="Get Started"
-          onClose={onClose}
         />
       );
+      footer = undefined;
+      break;
     case 'emailSent':
-      return (
-        <AuthSuccessPopup
-          title="Email Sent!"
-          message="Please check your email for instructions to reset your password."
-          onClose={onClose}
-        />
+      body = (
+        <AuthSuccessBody message="Please check your email for instructions to reset your password." />
       );
+      footer = undefined;
+      break;
     case 'passwordChanged':
-      return <AuthSuccessPopup title="Password Changed!" onClose={onClose} />;
+      body = <AuthSuccessBody />;
+      footer = undefined;
+      break;
   }
+
+  return (
+    <PopupShell title={AUTH_VIEW_TITLES[view]} onClose={onClose} footer={footer}>
+      {body}
+    </PopupShell>
+  );
 }
 
 // -----------------------------------------------------------------------
 // Dispatcher — <Popup type="login" ... /> picks the variation.
-//
-// Every entry point now requires `onClose`, since clicking outside any
-// popup closes it — including uploading/difficultySelect, which never
-// needed it before this.
 // -----------------------------------------------------------------------
 
 export type PopupProps =

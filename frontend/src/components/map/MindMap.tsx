@@ -26,6 +26,7 @@ import { HistoryEntry, MapNode, StickyNoteEntry } from "@/lib/types";
 import { StickyNoteNode, StickyNoteData } from "./StickyNote";
 import { StickyToolbar } from "./StickyNoteToolbar";
 import { fetchStickyNotes, createStickyNotes, editStickyNotes, clearStickyNotes } from "@/lib/api";
+import DifficultySelect, { type Difficulty } from "@/components/difficulty-select/DifficultySelect";
 
 const ebGaramond = EB_Garamond({
     weight: ["400"],
@@ -377,57 +378,14 @@ function PaperNode({ data }: NodeProps<PaperFlowNode>) {
 
 export type DifficultyLevel = "beginner" | "intermediate" | "advanced";
 
-function DifficultyToggle({
-    selectedLevel,
-    onSelectLevel,
-}: {
-    selectedLevel: DifficultyLevel;
-    onSelectLevel: (level: DifficultyLevel) => void;
-}) {
-    const levelOptions: { value: DifficultyLevel; label: string }[] = [
-        { value: "beginner", label: "Beginner" },
-        { value: "intermediate", label: "Intermediate" },
-        { value: "advanced", label: "Advanced" },
-    ];
-    const [hoveredLevel, setHoveredLevel] = useState<DifficultyLevel | null>(null);
-    const hoverLevel = hoveredLevel ?? selectedLevel;
-    const hoverIndex = levelOptions.findIndex((option) => option.value === hoverLevel);
-
-    return (
-        <div className="relative grid grid-cols-3 rounded-full bg-[#5b4636] p-1 font-serif text-sm">
-            <span
-                aria-hidden="true"
-                className="absolute bottom-1 top-1 rounded-full bg-[#d9b48f] transition-[left,opacity] duration-200 ease-out"
-                style={{
-                    left: `calc(0.25rem + ${hoverIndex * 33.333333}%)`,
-                    width: "calc(33.333333% - 0.5rem)",
-                    opacity: hoveredLevel !== null && hoveredLevel !== selectedLevel ? 0.3 : 0,
-                }}
-            />
-            {levelOptions.map((option) => {
-                const isSelected = option.value === selectedLevel;
-                const buttonClassName = isSelected
-                    ? "relative z-10 rounded-full bg-[#d9b48f] px-3 py-1 text-stone-900 font-medium"
-                    : "relative z-10 rounded-full px-3 py-1 text-stone-300 hover:text-white";
-
-                return (
-                    <button
-                        key={option.value}
-                        type="button"
-                        onMouseEnter={() => setHoveredLevel(option.value)}
-                        onMouseLeave={() => setHoveredLevel(null)}
-                        onFocus={() => setHoveredLevel(option.value)}
-                        onBlur={() => setHoveredLevel(null)}
-                        onClick={() => onSelectLevel(option.value)}
-                        className={buttonClassName}
-                    >
-                        {option.label}
-                    </button>
-                );
-            })}
-        </div>
-    );
+function toDifficulty(level: DifficultyLevel): Difficulty {
+  return (level.charAt(0).toUpperCase() + level.slice(1)) as Difficulty;
 }
+
+function toDifficultyLevel(difficulty: Difficulty): DifficultyLevel {
+  return difficulty.toLowerCase() as DifficultyLevel;
+}
+
 
 function ZoomControls() {
     const { zoomIn, zoomOut } = useReactFlow();
@@ -853,7 +811,10 @@ function MapCanvas({ entry }: MapCanvasProps) {
                 <Panel position="bottom-left" className="!z-[9999] pointer-events-auto">
                     <div className="flex items-center gap-4 bg-[#212327]/90 p-2 rounded-full border border-stone-700 backdrop-blur-md shadow-2xl">
                         <br />
-                        <DifficultyToggle selectedLevel={selectedLevel} onSelectLevel={setSelectedLevel} />
+                        <DifficultySelect
+                        value={toDifficulty(selectedLevel)}
+                        onChange={(next) => setSelectedLevel(toDifficultyLevel(next))}
+                        />
                         <StickyToolbar
                             activeColor={placingColor}
                             onSelectColor={(color) => setPlacingColor(color)}

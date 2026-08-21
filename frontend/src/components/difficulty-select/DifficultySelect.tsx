@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import styles from './DifficultySelect.module.css';
+import { useSearchParams } from "next/navigation";
 
 export type Difficulty = 'Beginner' | 'Intermediate' | 'Advanced';
 
@@ -31,6 +32,18 @@ interface DifficultySelectProps {
  * page via a wrapping element, so it stays reusable across pages.
  */
 export default function DifficultySelect({ value, onChange }: DifficultySelectProps) {
+  const searchParams = useSearchParams();
+
+  function getInitialDifficultyLevel(): Difficulty {
+    const raw = searchParams.get("difficulty");
+    if (raw === "Beginner" || raw === "Intermediate" || raw === "Advanced") {
+      return raw;
+    }
+    return "Beginner";
+  }
+
+  const [selectedLevel, setSelectedLevel] = useState<Difficulty>(getInitialDifficultyLevel);
+
   const [hoveredDifficulty, setHoveredDifficulty] = useState<Difficulty | null>(null);
   const hoverDifficulty = hoveredDifficulty ?? value;
 
