@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useState, useRef, useEffect } from "react";
 import { NodeProps, Node, useReactFlow } from "@xyflow/react";
-import { editStickyNotes, clearStickyNotes} from "@/lib/api";
+import { editStickyNotes, clearStickyNotes } from "@/lib/api";
 
 export interface StickyNoteData extends Record<string, unknown> {
     content: string;
@@ -79,7 +79,7 @@ export function StickyNoteNode({ id, data, selected }: NodeProps<StickyFlowNode>
                 }`}
         >
             <button type="button" onClick={handleTrashButtonClick} aria-label="Delete this sticky note" className="absolute bottom-3 right-3">
-                <Image style={{"filter":"brightness(100)"}} src="/icons/trash.svg" alt="Delete" width={15} height={15} />
+                <Image style={{ "filter": "brightness(100)" }} src="/icons/trash.svg" alt="Delete" width={15} height={15} />
             </button>
             {isEditing ? (
                 <textarea

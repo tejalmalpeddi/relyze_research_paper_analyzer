@@ -128,9 +128,9 @@ export interface HistoryEntry {
   filters: string[];
 
   keywords?: string[];
-  related_info?: string|null;
+  related_info?: string | null;
   images?: DocumentImage[];
-  background?: BackgroundContent|null;
+  background?: BackgroundContent | null;
 }
 
 // The shape needed to CREATE a new history row (used by createHistory in
@@ -164,7 +164,7 @@ export interface StickyNoteEdit {
 }
 
 export interface StickyNoteEntry {
-  id: string|number;
+  id: string | number;
   color: string;
   content: string;
   position_x: number;

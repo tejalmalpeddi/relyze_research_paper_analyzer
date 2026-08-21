@@ -9,13 +9,10 @@
 
 'use client';
 
-// import { AuthProvider } from './auth-query';
 import AuthTest from './auth-test';
 
 export default function AuthPage() {
   return (
-    // <AuthProvider>
-      <AuthTest />
-    // </AuthProvider>
+    <AuthTest />
   );
 }

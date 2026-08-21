@@ -46,11 +46,9 @@ function CitationsView() {
       .then((data) => {
         setReferencesData(data);
         setLoadErrorMessage(null);
-        // setIsLoggedOut(false);
       })
       .catch((error) => {
         if (error instanceof ApiError && error.status === 401) {
-          // setIsLoggedOut(true);
         } else if (error instanceof Error) {
           setLoadErrorMessage(error.message);
         } else {

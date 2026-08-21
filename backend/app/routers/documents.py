@@ -81,7 +81,7 @@ def _filter_references(row, document_id):
         if match:
             refs_text = markdown_content[match.end() :].strip()
             add_references = _add_references(refs_text)
-            
+
             response = (
                 supabase.table("documents")
                 .update({"references": add_references})
@@ -95,20 +95,18 @@ def _filter_references(row, document_id):
                 "markdown_content": add_references,
             }
 
-    # references
     return {
         "id": row.get("id"),
         "title": row.get("title"),
         "markdown_content": references or "No citations matched",
     }
-    
+
+
 def _add_references(raw_text):
     refs = [r.strip() for r in raw_text.split("\n") if r.strip()]
     linked_refs = []
-    
+
     for ref in refs:
-    # for x in range(4):
-        # ref = refs[x]
         has_link = bool(re.search(r"\[.*?\]\(.*?\)", ref))
         cleaned_ref = re.sub(r"\s+", " ", ref).strip()
         cleaned_ref = re.sub(r"\|", "", cleaned_ref).strip()
@@ -118,11 +116,11 @@ def _add_references(raw_text):
             continue
         url = "https://api.crossref.org/works"
         params = {
-            "query.bibliographic": cleaned_ref,  
+            "query.bibliographic": cleaned_ref,
             "rows": 1,
-            # "mailto": "your-email@example.com",  
+            # "mailto": "your-email@example.com",
         }
-        
+
         response = requests.get(url, params=params)
         link = None
         if response.status_code == 200:
@@ -184,12 +182,17 @@ def documents_get_by_id(document_id: str, user=Depends(verify_cookie)):
 
 @router.get("/references/{document_id}")
 def history_references_by_id(document_id: str, user=Depends(verify_cookie)):
-    response = supabase.table("documents").select().eq("id", document_id).eq("user_id", user.id).execute()
+    response = (
+        supabase.table("documents")
+        .select()
+        .eq("id", document_id)
+        .eq("user_id", user.id)
+        .execute()
+    )
     if not response.data:
         raise HTTPException(
             status_code=404, detail=f"Document with id '{document_id}' not found."
         )
-    # return response.data[0]
     return _filter_references(response.data[0], document_id)
 
 
