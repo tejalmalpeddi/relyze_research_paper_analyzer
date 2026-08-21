@@ -370,6 +370,8 @@
   top: 162px;
   width: min(412px, 68%);
   min-height: 252px;
+  max-height: calc(100% - 350px);
+  overflow-y: auto;
   padding: 42px 29px;
   background: #fff;
   color: #0a0908;
