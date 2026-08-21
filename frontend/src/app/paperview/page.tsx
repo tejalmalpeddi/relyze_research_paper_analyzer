@@ -55,13 +55,46 @@ const difficultyIndicatorStyles: Record<Difficulty, CSSProperties> = {
 const sendIconPath =
   'M10.9203 21.9688C10.6845 21.8957 10.3661 21.6493 10.2389 21.4416C10.1711 21.3309 10.0977 21.1259 10.0741 20.9811C10.037 20.7538 10.0093 17.7594 10.0442 17.7594C10.0676 17.7594 14.6287 19.3366 14.641 19.3489C14.6719 19.38 11.9289 21.7855 11.7603 21.8752C11.5438 21.9904 11.1363 22.0358 10.9203 21.9688ZM19.3579 19.9648C19.2142 19.9279 11.2846 17.191 11.2653 17.1716C11.2512 17.1574 17.7562 9.05109 19.1497 7.34636C19.3056 7.15561 19.4064 7.01619 19.3736 7.03653C19.3409 7.05688 17.0585 9.19166 14.3017 11.7805C11.5449 14.3693 9.27868 16.4874 9.2657 16.4874C9.25272 16.4874 7.9827 16.0537 6.44344 15.5235C3.29381 14.4387 3.35022 14.465 3.10794 13.9654C2.89365 13.5235 3.0063 12.961 3.37597 12.627C3.48187 12.5313 6.80892 10.7521 12.1489 7.93539C16.8801 5.43976 20.9249 3.30836 21.1373 3.19894C21.4813 3.02168 21.5551 3 21.8141 3C22.4809 3 23 3.50474 23 4.15319C23 4.26272 22.4981 7.67979 21.8848 11.7467C21.0387 17.3562 20.7483 19.1852 20.6818 19.3239C20.4557 19.7948 19.8457 20.0901 19.3579 19.9648Z';
 
-// Fixed colors for v1 -- no color-picker UI. Highlighter matches its own
-// icon's color; pencil uses a dark graphite tone (distinct from the
-// highlighter's reddish one) rather than reusing the pencil icon's
-// tip color, which happens to match the highlighter's.
-const HIGHLIGHTER_COLOR = '#C1666B';
-const PENCIL_COLOR = '#0A0908';
+// Swatch palette shared by the highlighter and pencil color pickers.
+// Highlighter defaults to the first swatch (its own icon's reddish
+// color); pencil defaults to a dark graphite tone that isn't part of the
+// palette, so a first-time user's pencil still looks like pencil until
+// they explicitly pick a color.
+const COLOR_PRESETS: { name: string; value: string }[] = [
+  { name: 'Red', value: '#C1666B' },
+  { name: 'Gold', value: '#D3B88C' },
+  { name: 'Green', value: '#6B8F71' },
+  { name: 'Blue', value: '#4C7A9C' },
+];
+const DEFAULT_HIGHLIGHTER_COLOR = COLOR_PRESETS[0].value;
+const DEFAULT_PENCIL_COLOR = '#0A0908';
 const PENCIL_WIDTH = 2.5;
+
+// Ring geometry for the color picker -- 4 swatches spaced 60deg apart
+// around a right-facing half-circle (top, upper-right, lower-right,
+// bottom), centered on the armed tool's icon. Angles are degrees
+// clockwise from due right (0deg), so -90/90 land straight up/down and
+// none of the 4 ever swing left of the tool's own center -- see
+// .colorRing's comment in page.module.css for why that matters.
+const RING_RADIUS = 70;
+const RING_ANGLES_DEG = [-90, -30, 30, 90];
+
+// Centers of the highlighter/pencil icon buttons, in the same
+// coordinate space as .tools (its own top-left is 0,0) -- derived from
+// .highlighterButton/.pencilButton's left/top/width/height in
+// page.module.css. Kept as plain constants rather than measured via
+// ref/getBoundingClientRect since the toolbar's layout is itself fixed
+// pixel positions, not something that reflows.
+const HIGHLIGHTER_RING_CENTER = { x: 28, y: 10 };
+const PENCIL_RING_CENTER = { x: 27, y: 125.75 };
+
+function ringPoint(center: { x: number; y: number }, angleDeg: number, radius: number) {
+  const angleRad = (angleDeg * Math.PI) / 180;
+  return {
+    x: center.x + radius * Math.cos(angleRad),
+    y: center.y + radius * Math.sin(angleRad),
+  };
+}
 
 type ActiveTool = 'none' | 'highlighter' | 'pencil' | 'eraser';
 
@@ -261,12 +294,69 @@ function ToolIcon({ type }: { type: 'highlighter' | 'pencil' | 'eraser' }) {
   );
 }
 
+// The ring of swatches that appears around whichever of
+// highlighter/pencil is currently armed. Each dot's position is a point
+// on a circle of RING_RADIUS around that tool's center, at one of
+// RING_ANGLES_DEG; the label (the selected swatch's name, rotated like a
+// margin note) sits at the same radius due right of center -- the gap
+// between the -30deg and 30deg swatches.
+interface ColorPickerProps {
+  color: string;
+  onSelect: (color: string) => void;
+  center: { x: number; y: number };
+}
+
+function ColorPicker({ color, onSelect, center }: ColorPickerProps) {
+  const selectedName = COLOR_PRESETS.find((preset) => preset.value === color)?.name ?? 'Custom';
+  // Sits further out than the swatches themselves (same angle, bigger
+  // radius) so it clears the two nearest ones (-30deg/30deg) instead of
+  // crowding into the gap between them.
+  const labelPoint = ringPoint(center, 0, RING_RADIUS + 22);
+
+  return (
+    <div className={styles.colorRing} aria-label="Color picker">
+      <span
+        className={styles.colorPickerLabel}
+        style={{ left: `${labelPoint.x}px`, top: `${labelPoint.y}px` }}
+      >
+        {selectedName}
+      </span>
+      {COLOR_PRESETS.map((preset, index) => {
+        const point = ringPoint(center, RING_ANGLES_DEG[index], RING_RADIUS);
+        return (
+          <button
+            key={preset.value}
+            type="button"
+            className={styles.colorSwatch}
+            data-selected={preset.value === color}
+            style={{ backgroundColor: preset.value, left: `${point.x}px`, top: `${point.y}px` }}
+            aria-label={`${preset.name} color`}
+            title={preset.name}
+            onClick={() => onSelect(preset.value)}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
 interface ToolsProps {
   activeTool: ActiveTool;
   onSelectTool: (tool: ActiveTool) => void;
+  highlighterColor: string;
+  onSelectHighlighterColor: (color: string) => void;
+  pencilColor: string;
+  onSelectPencilColor: (color: string) => void;
 }
 
-function Tools({ activeTool, onSelectTool }: ToolsProps) {
+function Tools({
+  activeTool,
+  onSelectTool,
+  highlighterColor,
+  onSelectHighlighterColor,
+  pencilColor,
+  onSelectPencilColor,
+}: ToolsProps) {
   function toggle(tool: ActiveTool) {
     onSelectTool(activeTool === tool ? 'none' : tool);
   }
@@ -282,6 +372,13 @@ function Tools({ activeTool, onSelectTool }: ToolsProps) {
       >
         <ToolIcon type="highlighter" />
       </button>
+      {activeTool === 'highlighter' && (
+        <ColorPicker
+          color={highlighterColor}
+          onSelect={onSelectHighlighterColor}
+          center={HIGHLIGHTER_RING_CENTER}
+        />
+      )}
       <button
         className={`${styles.toolButton} ${styles.pencilButton}`}
         type="button"
@@ -291,6 +388,13 @@ function Tools({ activeTool, onSelectTool }: ToolsProps) {
       >
         <ToolIcon type="pencil" />
       </button>
+      {activeTool === 'pencil' && (
+        <ColorPicker
+          color={pencilColor}
+          onSelect={onSelectPencilColor}
+          center={PENCIL_RING_CENTER}
+        />
+      )}
       <button
         className={styles.eraserButton}
         type="button"
@@ -327,6 +431,8 @@ function PaperContentView({ document: paperDocument }: PaperContentViewProps) {
   const [highlights, setHighlights] = useState<HighlightEntry[]>([]);
   const [strokes, setStrokes] = useState<StrokeEntry[]>([]);
   const [contentHeight, setContentHeight] = useState(0);
+  const [highlighterColor, setHighlighterColor] = useState(DEFAULT_HIGHLIGHTER_COLOR);
+  const [pencilColor, setPencilColor] = useState(DEFAULT_PENCIL_COLOR);
 
   // A stroke currently being drawn (pointer down but not yet lifted) --
   // local only, not saved until pointer-up.
@@ -447,7 +553,7 @@ function PaperContentView({ document: paperDocument }: PaperContentViewProps) {
       start_offset: Math.min(startOffset, endOffset),
       end_offset: Math.max(startOffset, endOffset),
       quote,
-      color: HIGHLIGHTER_COLOR,
+      color: highlighterColor,
     })
       .then((savedHighlight) => {
         setHighlights((previous) => [...previous, savedHighlight]);
@@ -520,7 +626,7 @@ function PaperContentView({ document: paperDocument }: PaperContentViewProps) {
     setInProgressStroke(null);
     createStroke(paperDocument.id, {
       points,
-      color: PENCIL_COLOR,
+      color: pencilColor,
       stroke_width: PENCIL_WIDTH,
     })
       .then((savedStroke) => {
@@ -555,7 +661,14 @@ function PaperContentView({ document: paperDocument }: PaperContentViewProps) {
   return (
     <>
       <section className={styles.paperPanel} aria-label="Paper preview">
-        <Tools activeTool={activeTool} onSelectTool={setActiveTool} />
+        <Tools
+          activeTool={activeTool}
+          onSelectTool={setActiveTool}
+          highlighterColor={highlighterColor}
+          onSelectHighlighterColor={setHighlighterColor}
+          pencilColor={pencilColor}
+          onSelectPencilColor={setPencilColor}
+        />
         <div className={styles.paperScroll}>
           <article ref={sheetRef} className={styles.paperSheet}>
             <div
@@ -609,7 +722,7 @@ function PaperContentView({ document: paperDocument }: PaperContentViewProps) {
               {inProgressStroke !== null && (
                 <path
                   d={pointsToPath(inProgressStroke)}
-                  stroke={PENCIL_COLOR}
+                  stroke={pencilColor}
                   strokeWidth={PENCIL_WIDTH}
                   fill="none"
                   strokeLinecap="round"

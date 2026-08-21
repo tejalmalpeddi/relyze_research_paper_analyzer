@@ -294,9 +294,12 @@
   top: -8px;
 }
 
+/* top pushed down from the old 82px -- leaves enough clearance above
+   for the highlighter's color ring (RING_RADIUS in page.tsx) to not
+   overlap this icon when open. */
 .pencilButton {
   left: 0;
-  top: 82px;
+  top: 110px;
   width: 54px;
   height: 31.5px;
 }
@@ -307,12 +310,64 @@
   overflow: visible;
 }
 
+/* top pushed down from the old 163px -- same reason as .pencilButton's
+   comment above, but clearing the pencil's own color ring instead. */
 .eraserButton {
   left: 0;
-  top: 163px;
+  top: 224px;
   width: 39.8px;
   height: 59.2px;
   background: transparent;
+}
+
+/* Swatch ring for the currently-armed tool -- see ColorPicker in
+   page.tsx. .colorRing fills the same absolute box the tool buttons
+   live in (.tools) so the swatches' own left/top (computed in JS from
+   an angle + radius around the tool's center) line up with the tool.
+   Only the right half-circle is used -- the tools sit flush against
+   .paperPanel's left edge (which clips overflow), so a swatch on the
+   left half would be cut off and unclickable. */
+.colorRing {
+  position: absolute;
+  inset: 0;
+  z-index: 13;
+  pointer-events: none;
+}
+
+.colorPickerLabel {
+  position: absolute;
+  transform: translate(-50%, -50%) rotate(180deg);
+  writing-mode: vertical-rl;
+  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
+  font-style: italic;
+  font-size: 15px;
+  letter-spacing: 0.03em;
+  color: #5b4636;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.colorSwatch {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid rgba(10, 9, 8, 0.15);
+  padding: 0;
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  transition: transform 150ms ease, border-color 150ms ease;
+}
+
+.colorSwatch:hover {
+  transform: translate(-50%, -50%) scale(1.15);
+}
+
+.colorSwatch[data-selected='true'] {
+  border-color: #0a0908;
+  transform: translate(-50%, -50%) scale(1.2);
 }
 
 .insightPanel {
