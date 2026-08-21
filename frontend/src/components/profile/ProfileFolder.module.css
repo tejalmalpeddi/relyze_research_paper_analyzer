@@ -79,6 +79,10 @@
   border: none;
   padding: 0;
   cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    filter 160ms ease,
+    transform 160ms ease;
 }
 
 .deleteBtn {
@@ -95,6 +99,36 @@
   position: absolute;
   inset: 0 -2.21% -11.27% -2.21%;
   display: block;
+  overflow: visible;
+}
+
+.deleteBtnFill,
+.signOutBtnFill {
+  transition: fill 160ms ease;
+}
+
+.deleteBtn:hover,
+.deleteBtn:focus-visible {
+  background-color: #d27c80;
+  filter: drop-shadow(0 8px 7px rgba(0, 0, 0, 0.35));
+  transform: translateY(-1px);
+}
+
+.deleteBtn:hover .deleteBtnFill,
+.deleteBtn:focus-visible .deleteBtnFill {
+  fill: #d27c80;
+}
+
+.signOutBtn:hover,
+.signOutBtn:focus-visible {
+  background-color: #7a6a56;
+  filter: drop-shadow(0 8px 7px rgba(0, 0, 0, 0.35));
+  transform: translateY(-1px);
+}
+
+.signOutBtn:hover .signOutBtnFill,
+.signOutBtn:focus-visible .signOutBtnFill {
+  fill: #7a6a56;
 }
 
 .deleteBtnLabel,
@@ -312,8 +346,7 @@
    container-type context, so the outer (the container) and inner (the
    thing reading that container's size) have to be two separate elements
    for this specific technique to work. Same reasoning applies to
-   .profileCardOuter/.profileCardRotate and .editProfileOuter/.editProfileRotate
-   above/below. */
+   .profileCardOuter/.profileCardRotate above. */
 
 .paperclipOuter {
   position: absolute;
@@ -332,28 +365,6 @@
   height: hypot(22.6616cqw, 96.1887cqh);
   width: hypot(77.3384cqw, -3.81134cqh);
   rotate: -6.15deg;
-  position: relative;
-}
-
-/* ── Edit profile icon ── */
-
-.editProfileOuter {
-  position: absolute;
-  aspect-ratio: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  left: 28.48%;
-  right: 66.32%;
-  top: 140px;
-  container-type: size;
-}
-
-.editProfileRotate {
-  flex: none;
-  height: hypot(12.8955cqw, 87.1045cqh);
-  width: hypot(87.1045cqw, -12.8955cqh);
-  rotate: -8.42deg;
   position: relative;
 }
 
@@ -446,6 +457,7 @@
   width: 396px;
   background-color: #d9d9d9;
   border: 1px solid #5e503f;
+  color: #5e503f;
 }
 
 .prefTabPaper {
