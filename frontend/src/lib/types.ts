@@ -42,25 +42,18 @@ export interface MapNode {
   };
 
   // The same explanation written at three difficulty levels, produced by
-  // the subcategory-generation pipeline (see backend/app/schemas/subcategories.py's
-  // ContentLevels). Optional because the root node doesn't have one --
-  // only `data.bullets` above. This is what the Beginner/Intermediate/
-  // Advanced toggle in MindMap.tsx switches between.
-  content?: {
-    beginner: string;
-    intermediate: string;
-    advanced: string;
-  };
+  // the subcategory-generation pipeline (see
+  // backend/app/schemas/subcategories.py's ContentLevels). Optional because the
+  // root node doesn't have one -- only `data.bullets` above. This is what the
+  // Beginner/Intermediate/ Advanced toggle in MindMap.tsx switches between.
+  content?: {beginner: string; intermediate: string; advanced: string;};
 
   // Extra per-node facts from the NLP/LLM pipeline (see pipeline.py's
   // build_map_json). Optional because the root node doesn't have one.
   // Only the fields actually used on the frontend are declared here --
   // the real object also carries source_text, source_page, importance,
   // prerequisites, params, and confidence, which nothing reads yet.
-  metadata?: {
-    related_terms?: string[];
-    tags?: string[];
-  };
+  metadata?: {related_terms?: string[]; tags?: string[];};
 }
 
 // One line connecting two nodes, exactly as stored inside a saved paper's
@@ -208,11 +201,7 @@ export interface DocumentEntry {
   // backend still returns it, but the Interactive Paper page renders
   // markdown_content instead -- raw_text has no paragraph/heading
   // structure, markdown_content does.
-  raw_text: {
-    file_name: string;
-    page_count: number;
-    pages: RawTextPage[];
-  };
+  raw_text: {file_name: string; page_count: number; pages: RawTextPage[];};
 
   // One continuous Markdown string for the whole paper (Docling). This
   // is what the Interactive Paper page actually renders.
@@ -279,4 +268,10 @@ export interface StrokePayload {
   color: string;
   stroke_width: number;
   created_at?: string;
+}
+
+export interface ReferenceEntry {
+  id: string;
+  title: string;
+  markdown_content: string;
 }

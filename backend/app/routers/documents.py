@@ -21,6 +21,8 @@
 #      because sticky notes belong to the Mind Map page, not this one --
 #      this file is everything the Interactive Paper page specifically
 #      needs.
+import re
+import requests
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
@@ -59,6 +61,82 @@ def _verify_document_owner(document_id: str, user_id: str):
         raise HTTPException(status_code=404, detail="Document not found.")
 
 
+def _filter_references(row, document_id):
+    # raw_text = row.get("raw_text")
+    # pages = [page["text"] for page in raw_text["pages"]]
+    # markdown_content = "".join(pages)
+    references = row.get("references")
+    if not references:
+        markdown_content = row.get("markdown_content")
+
+        if not markdown_content:
+            return {
+                "id": row.get("id"),
+                "title": row.get("title") or row.get("file_name") or "Untitled paper",
+                "markdown_content": "No citations found in paper",
+            }
+        pattern = r"(?:#+\s*|^(?=\n))\s*(?:References|Bibliography|Works Cited)\b"
+        match = re.search(pattern, markdown_content, re.IGNORECASE | re.MULTILINE)
+
+        if match:
+            refs_text = markdown_content[match.end() :].strip()
+            add_references = _add_references(refs_text)
+
+            response = (
+                supabase.table("documents")
+                .update({"references": add_references})
+                .eq("id", document_id)
+                .execute()
+            )
+
+            return {
+                "id": row.get("id"),
+                "title": row.get("title"),
+                "markdown_content": add_references,
+            }
+
+    return {
+        "id": row.get("id"),
+        "title": row.get("title"),
+        "markdown_content": references or "No citations matched",
+    }
+
+
+def _add_references(raw_text):
+    refs = [r.strip() for r in raw_text.split("\n") if r.strip()]
+    linked_refs = []
+
+    for ref in refs:
+        has_link = bool(re.search(r"\[.*?\]\(.*?\)", ref))
+        cleaned_ref = re.sub(r"\s+", " ", ref).strip()
+        cleaned_ref = re.sub(r"\|", "", cleaned_ref).strip()
+        cleaned_ref = re.sub(r"[\-\—]{3,}", "", cleaned_ref).strip()
+        if has_link:
+            linked_refs.append(f"* {cleaned_ref}")
+            continue
+        url = "https://api.crossref.org/works"
+        params = {
+            "query.bibliographic": cleaned_ref,
+            "rows": 1,
+            # "mailto": "your-email@example.com",
+        }
+
+        response = requests.get(url, params=params)
+        link = None
+        if response.status_code == 200:
+            items = response.json().get("message", {}).get("items", [])
+            if items:
+                doi = items[0].get("DOI")
+                if doi:
+                    link = f"https://doi.org/{doi}"
+            if link:
+                linked_refs.append(f"* [{cleaned_ref}]({link})")
+                print("[add references] SUCCESS", link, cleaned_ref)
+            else:
+                linked_refs.append(f"* {cleaned_ref}")
+                print("[add references] LINK NOT FOUND", link, cleaned_ref)
+    return "\n".join(linked_refs)
+
 # ---------------------------------------------------------------------------
 # Document reads
 # ---------------------------------------------------------------------------
@@ -94,8 +172,19 @@ def documents_get(user=Depends(verify_cookie)):
 
 @router.get("/documents/{document_id}")
 def documents_get_by_id(document_id: str, user=Depends(verify_cookie)):
+    response = _documents_query().eq("id", document_id).eq("user_id", user.id).execute()
+    if not response.data:
+        raise HTTPException(
+            status_code=404, detail=f"Document with id '{document_id}' not found."
+        )
+    return response.data[0]
+
+
+@router.get("/references/{document_id}")
+def history_references_by_id(document_id: str, user=Depends(verify_cookie)):
     response = (
-        _documents_query()
+        supabase.table("documents")
+        .select()
         .eq("id", document_id)
         .eq("user_id", user.id)
         .execute()
@@ -104,7 +193,7 @@ def documents_get_by_id(document_id: str, user=Depends(verify_cookie)):
         raise HTTPException(
             status_code=404, detail=f"Document with id '{document_id}' not found."
         )
-    return response.data[0]
+    return _filter_references(response.data[0], document_id)
 
 
 # ---------------------------------------------------------------------------
@@ -178,6 +267,7 @@ def _is_highlight_row(row: dict) -> bool:
 # text a highlight covers is indistinguishable from delete-and-recreate.
 # ---------------------------------------------------------------------------
 
+
 @router.post("/highlights/create/{document_id}", status_code=status.HTTP_201_CREATED)
 def highlights_create(
     document_id: str,
@@ -225,13 +315,13 @@ def highlights_get(document_id: str, user=Depends(verify_cookie)):
         .execute()
     )
     return [
-        _normalize_highlight_row(row)
-        for row in response.data
-        if _is_highlight_row(row)
+        _normalize_highlight_row(row) for row in response.data if _is_highlight_row(row)
     ]
 
 
-@router.delete("/highlights/{document_id}/{highlight_id}", status_code=status.HTTP_200_OK)
+@router.delete(
+    "/highlights/{document_id}/{highlight_id}", status_code=status.HTTP_200_OK
+)
 def highlights_delete(document_id: str, highlight_id: str, user=Depends(verify_cookie)):
     _verify_document_owner(document_id, user.id)
 
@@ -252,6 +342,7 @@ def highlights_delete(document_id: str, highlight_id: str, user=Depends(verify_c
 # Strokes -- freehand pencil drawing. No edit route: strokes are never
 # repositioned, only erased (DELETE below IS the eraser).
 # ---------------------------------------------------------------------------
+
 
 @router.post("/strokes/create/{document_id}", status_code=status.HTTP_201_CREATED)
 def strokes_create(
@@ -298,11 +389,7 @@ def strokes_get(document_id: str, user=Depends(verify_cookie)):
         .eq("annotation_type", STROKE_TYPE)
         .execute()
     )
-    return [
-        _normalize_stroke_row(row)
-        for row in response.data
-        if _is_stroke_row(row)
-    ]
+    return [_normalize_stroke_row(row) for row in response.data if _is_stroke_row(row)]
 
 
 @router.delete("/strokes/{document_id}/{stroke_id}", status_code=status.HTTP_200_OK)

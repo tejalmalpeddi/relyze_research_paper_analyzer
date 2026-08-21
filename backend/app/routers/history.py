@@ -80,10 +80,7 @@ def _keyword_terms(items):
             term = item.strip()
         elif isinstance(item, dict):
             term = _clean_string(
-                item.get("term")
-                or item.get("title")
-                or item.get("name")
-                or ""
+                item.get("term") or item.get("title") or item.get("name") or ""
             )
         else:
             continue
@@ -130,11 +127,7 @@ def _normalize_images(row_images, background_images):
     if normalized:
         return normalized
 
-    return [
-        image
-        for image in background_images
-        if isinstance(image, dict)
-    ]
+    return [image for image in background_images if isinstance(image, dict)]
 
 
 def _normalize_history_row(row):
@@ -201,12 +194,7 @@ def history_create(payload: HistoryCreate, user=Depends(verify_cookie)):
 
 @router.get("/search")
 def history_search(title: str, user=Depends(verify_cookie)):
-    response = (
-        _history_query()
-        .eq("user_id", user.id)
-        .eq("title", title)
-        .execute()
-    )
+    response = _history_query().eq("user_id", user.id).eq("title", title).execute()
     if not response.data:
         raise HTTPException(
             status_code=404, detail=f"History item with title '{title}' not found."
@@ -246,31 +234,15 @@ def history_get_latest(user=Depends(verify_cookie)):
 @router.get("")
 def history_get(user=Depends(verify_cookie)):
     response = (
-        _history_query()
-        .eq("user_id", user.id)
-        .order("created_at", desc=True)
-        .execute()
+        _history_query().eq("user_id", user.id).order("created_at", desc=True).execute()
     )
     return [_normalize_history_row(row) for row in response.data]
 
 
-@router.get("/{history_id}")
-def history_get_by_id(history_id: str, user=Depends(verify_cookie)):
-    response = (
-        _history_query()
-        .eq("id", history_id)
-        .eq("user_id", user.id)
-        .execute()
-    )
-    if not response.data:
-        raise HTTPException(
-            status_code=404, detail=f"History item with id '{history_id}' not found."
-        )
-    return _normalize_history_row(response.data[0])
-
-
 @router.put("/rename/{history_id}", status_code=status.HTTP_200_OK)
-def history_rename(history_id: str, payload: HistoryRename, user=Depends(verify_cookie)):
+def history_rename(
+    history_id: str, payload: HistoryRename, user=Depends(verify_cookie)
+):
     next_title = payload.title.strip()
     if not next_title:
         raise HTTPException(status_code=400, detail="Title cannot be empty.")
@@ -287,6 +259,17 @@ def history_rename(history_id: str, payload: HistoryRename, user=Depends(verify_
             status_code=404, detail=f"History item with id '{history_id}' not found."
         )
     return {"edited": True, "id": history_id}
+
+
+@router.get("/{history_id}")
+def history_get_by_id(history_id: str, user=Depends(verify_cookie)):
+    response = _history_query().eq("id", history_id).eq("user_id", user.id).execute()
+    if not response.data:
+        raise HTTPException(
+            status_code=404, detail=f"History item with id '{history_id}' not found."
+        )
+    return _normalize_history_row(response.data[0])
+
 
 @router.delete("/{history_id}", status_code=status.HTTP_200_OK)
 def history_delete(history_id: str, user=Depends(verify_cookie)):
