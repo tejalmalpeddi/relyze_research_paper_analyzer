@@ -24,6 +24,24 @@ IMAGE_OUTPUT_DIRECTORY = PARSER_DIRECTORY / "assets"
 
 
 
+def _strip_null_bytes(value):
+    """
+    Postgres refuses to store the \\u0000 (null) character in text/json
+    columns -- some PDFs (scanned pages, damaged fonts, odd encodings)
+    produce it in their extracted text, which otherwise makes the
+    documents.insert() in save_document() fail after all the parsing work
+    is done. Recurses through the raw-text/structured-document dicts and
+    the markdown string so no null byte reaches the database call.
+    """
+    if isinstance(value, str):
+        return value.replace("\x00", "")
+    if isinstance(value, dict):
+        return {key: _strip_null_bytes(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_strip_null_bytes(item) for item in value]
+    return value
+
+
 def extract_raw_text_from_pdf(pdf_path):
     pdf_document = pymupdf.open(pdf_path)
 
@@ -281,8 +299,11 @@ def parse_and_save_pdf(pdf_path, user_id=None, file_name=None):
     pdf_path = Path(pdf_path)
     stored_file_name = file_name or pdf_path.name
 
-    raw_text_data = extract_raw_text_from_pdf(pdf_path)
+    raw_text_data = _strip_null_bytes(extract_raw_text_from_pdf(pdf_path))
     markdown_document, structured_document, extracted_title = extract_structured_document(pdf_path)
+    markdown_document = _strip_null_bytes(markdown_document)
+    structured_document = _strip_null_bytes(structured_document)
+    extracted_title = _strip_null_bytes(extracted_title) if extracted_title else extracted_title
 
     title = extracted_title or Path(stored_file_name).stem.replace("_", " ").replace("-", " ").title()
 

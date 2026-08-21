@@ -23,10 +23,20 @@ sys.path.insert(0, str(ROOT_DIRECTORY / "parser"))
 
 from parser import parse_and_save_pdf
 
+# parser/assets/ is where extracted PDF images get saved -- it's
+# git-ignored (nothing in it is meant to be committed), so it simply
+# doesn't exist on a fresh checkout until someone's parsed a PDF with
+# images at least once. StaticFiles() raises immediately at startup if
+# its directory is missing, which crashed the ENTIRE backend on any
+# fresh clone -- creating it upfront (empty, if nothing's there yet)
+# means startup no longer depends on that having happened already.
+ASSETS_DIRECTORY = ROOT_DIRECTORY / "parser" / "assets"
+ASSETS_DIRECTORY.mkdir(parents=True, exist_ok=True)
+
 app = FastAPI(title="Relyze API")
 app.mount(
     "/assets",
-    StaticFiles(directory=str(ROOT_DIRECTORY / "parser" / "assets")),
+    StaticFiles(directory=str(ASSETS_DIRECTORY)),
     name="assets",
 )
 
