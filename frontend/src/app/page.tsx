@@ -141,7 +141,7 @@ export default function HomePage() {
 
       {/* The main wood-desk hero area. */}
       <section
-        className="relative left-1/2 h-[90vh] max-h-[700px] w-screen -translate-x-1/2 bg-cover bg-center shadow-xl/50 flex items-center justify-center gap-10 pt-[5%]"
+        className="relative left-1/2 h-[90vh] max-h-[700px] w-screen -translate-x-1/2 bg-cover bg-center shadow-xl/50 flex items-center justify-center gap-10 pt-[5%] z-10"
         style={{ backgroundImage: "url('/background/wood.png')" }}
       >
         {/* The "Visualize your research, your way" card.*/}
@@ -206,7 +206,6 @@ export default function HomePage() {
       {/* The "Previous Papers" section -- entirely built and data-fetched
           inside History.tsx.*/}
       <PreviousPapersSection />
-      <div className="drawer-bottom-rail pointer-events-none fixed bottom-0 left-0 z-[60] h-16 w-full" aria-hidden="true"></div>
 
       {uploadPopup?.stage === "uploading" && (
         <Popup
@@ -226,11 +225,11 @@ export default function HomePage() {
       )}
 
 
-      {/* Drawer Background */}
+      {/* Drawer Border */}
       {/* fixed to the bottom of the screen to give "pulling out drawer" effect */}
       {/* borders adapt to screen size */}
-      <div className="drawer-bg fixed bottom-0 left-0 w-full h-screen box-border -z-10"></div>
-
+      <div className="drawer-bg fixed bottom-0 left-0 w-full h-screen box-border"></div>
+      <div className="fixed bottom-0 left-0 w-full h-screen -z-10" style={{ backgroundImage: 'url("/background/wood.png")', backgroundPosition: 'bottom', backgroundSize: 'cover', backgroundRepeat: 'no-repeat', filter: 'brightness(50%)' }}></div>
     </main>
   );
 
