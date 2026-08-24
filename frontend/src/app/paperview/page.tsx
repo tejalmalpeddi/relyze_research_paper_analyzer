@@ -736,7 +736,6 @@ const [isChatLoading, setIsChatLoading] = useState(false);
         </div>
       </section>
       <section className={styles.corkPanel} aria-label="Interactive paper workspace">
-        <Image alt="" className={styles.corkboardImage} src="/background/corkboard.jpg" fill sizes="50vw" priority />
         <InsightPanel messages={displayMessages} isLoading={isChatLoading} />
         <BottomChatBar
             documentId={paperDocument.id}
@@ -760,20 +759,20 @@ function InsightPanel({ messages, isLoading }: InsightPanelProps) {
     <aside className={styles.insightPanel} aria-label="Paper assistant">
       {messages.map((message, index) =>
         message.role === 'user' ? (
-          <div key={index} className={styles.userMessage}>
+          <p key={index} className={styles.userMessage}>
             {message.content}
-          </div>
+          </p>
         ) : (
-          <div key={index} className={styles.answerCard}>
+          <p key={index} className={styles.answerCard}>
             {message.content}
-          </div>
+          </p>
         )
       )}
 
       {isLoading && (
-        <div className={styles.answerCard}>
+        <p className={styles.answerCard}>
           Thinking...
-        </div>
+        </p>
       )}
     </aside>
   );

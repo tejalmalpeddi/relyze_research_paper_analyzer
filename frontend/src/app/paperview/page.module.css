@@ -238,22 +238,11 @@
 
 .corkPanel {
   position: relative;
-  top: -146px;
-  height: calc(100% + 146px);
-  min-width: 0;
-  min-height: 0;
   overflow: hidden;
-  background: #b98659;
-}
-
-.corkboardImage {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center;
-  pointer-events: none;
+  background: url('/background/corkboard.jpg');
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .tools {
@@ -371,69 +360,37 @@
 }
 
 .insightPanel {
-  --chat-back-width: min(620px, calc(100% - 72px));
-  --chat-back-left: calc((100% - var(--chat-back-width)) / 2);
-  --chat-back-bottom: 168px;
-  --chat-back-padding: 32px;
-  --chat-box-shift-left: 36px;
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 130px;
-  bottom: 0;
-  z-index: 8;
-  min-height: 0;
-  pointer-events: none;
-}
-
-.insightPanel::before {
-  position: absolute;
-  left: var(--chat-back-left);
-  top: 0;
-  bottom: var(--chat-back-bottom);
-  width: var(--chat-back-width);
+  position: relative;
+  overflow-y: auto;
+  scrollbar-width: none;
+  display: block;
+  width: 80%;
+  height: 85%;
   background: #d9d9d9;
-  content: '';
 }
 
 .userMessage,
 .answerCard {
+  position: relative;
   pointer-events: auto;
+  width: fit-content;
+  max-width: 75%;
+  padding: 1rem;
+  margin: 1rem;
+  background: #fff;
+  color: #0a0908;
+  text-align: right;
+  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.25);
+
 }
 
 .userMessage {
-  position: absolute;
-  right: var(--chat-box-shift-left);
-  top: 51px;
-  display: grid;
-  place-items: center end;
-  width: min(264px, 42%);
-  min-height: 64px;
-  padding: 10px 22px;
-  background: #fff;
-  color: #0a0908;
-  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
-  font-size: 16px;
-  line-height: 1.2;
+  justify-self: end;
   text-align: right;
-  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.25);
 }
 
 .answerCard {
-  position: absolute;
-  left: calc(var(--chat-back-left) + 12px - var(--chat-box-shift-left));
-  top: 162px;
-  width: min(412px, 68%);
-  min-height: 252px;
-  max-height: calc(100% - 350px);
-  overflow-y: auto;
-  padding: 42px 29px;
-  background: #fff;
-  color: #0a0908;
-  font-family: var(--font-eb-garamond), 'EB Garamond', serif;
-  font-size: 16px;
-  line-height: 1.3;
-  box-shadow: 0 4px 4px rgba(0, 0, 0, 0.25);
+  justify-self: start;
 }
 
 .bottomChatBar {
@@ -534,24 +491,8 @@
     height: 650px;
   }
 
-  .corkPanel {
-    top: 0;
-    height: 660px;
-  }
-
   .tools {
     display: none;
-  }
-
-  .insightPanel {
-    --chat-back-width: calc(100% - 48px);
-    --chat-back-left: 24px;
-    --chat-back-padding: 28px;
-    right: 0;
-    left: 0;
-    top: 0;
-    width: auto;
-    height: 100%;
   }
 }
 
