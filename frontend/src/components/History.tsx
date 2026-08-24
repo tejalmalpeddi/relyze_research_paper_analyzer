@@ -105,19 +105,19 @@ function FiltersPanel({
       <div
         className={
           expanded
-            ? "absolute top-[100%] z-20 w-full max-h-[min(22rem,60vh)] origin-top translate-y-0 scale-100 overflow-y-auto overscroll-contain opacity-100 drop-shadow-lg/50 transition duration-500 ease-out"
-            : "pointer-events-none absolute top-[100%] z-20 w-full max-h-[min(22rem,60vh)] origin-top -translate-y-8 scale-95 overflow-y-auto overscroll-contain opacity-0 drop-shadow-lg/50 transition duration-300 ease-in"
+            ? "absolute top-[100%] z-20 w-full origin-top translate-y-0 scale-100 opacity-100 drop-shadow-lg/50 transition duration-500 ease-out"
+            : "pointer-events-none absolute top-[100%] z-20 w-full origin-top -translate-y-8 scale-95 opacity-0 drop-shadow-lg/50 transition duration-300 ease-in"
         }
         aria-hidden={!expanded}
-        onWheel={(event) => event.stopPropagation()}
       >
-        <ul className="bg-white px-4 pt-2 pb-4 w-full">
+        <ul
+          className="bg-white px-4 pt-2 pb-4 w-full max-h-[min(22rem,60vh)] overflow-y-auto overscroll-contain"
+          onWheel={(event) => event.stopPropagation()}
+        >
           {availableFilterTags.length === 0 ? (
             <li className="my-2 text-sm text-stone-500">No filters yet.</li>
           ) : (
             availableFilterTags.map((tag) => {
-              // Spelled out instead of a ternary: is this specific tag
-              // currently checked?
               let isChecked: boolean;
               if (selectedFilterTags.has(tag) === true) {
                 isChecked = true;
