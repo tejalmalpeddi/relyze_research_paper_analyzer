@@ -7,6 +7,7 @@ import DifficultySelect, { type Difficulty } from '@/components/difficulty-selec
 import styles from './popup.module.css';
 import {deleteHistory, cancelUpload} from '@/lib/api'
 import {useAuth} from '@/app/auth/auth-query'
+import { NAVIGATION_INTENT_EVENT } from '../navbar/NavBar';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -152,7 +153,27 @@ function DifficultySelectPopup({
     // URL, so the Mind Map page can read them straight out of
     // useSearchParams() instead of needing some other shared-state
     // mechanism across the navigation.
-    router.push(`/mindmap?id=${paperId}&difficulty=${difficulty.toLowerCase()}`);
+    const href = `/mindmap?id=${paperId}&difficulty=${difficulty.toLowerCase()}`;
+    window.dispatchEvent(
+      new CustomEvent(NAVIGATION_INTENT_EVENT, { detail: { href } })
+    );
+    router.push(href);
+  }
+
+  function goToBackground() {
+    const href = `/background`;
+    window.dispatchEvent(
+      new CustomEvent(NAVIGATION_INTENT_EVENT, { detail: { href } })
+    );
+    router.push(href);
+  }
+
+  function goToPaperview() {
+    const href = `/paperview`;
+    window.dispatchEvent(
+      new CustomEvent(NAVIGATION_INTENT_EVENT, { detail: { href } })
+    );
+    router.push(href);
   }
 
   return (
@@ -167,12 +188,12 @@ function DifficultySelectPopup({
             </button>
           </li>
           <li>
-            <button type="button" className={styles.buttonNeutral} onClick={() => goTo('/background')}>
+            <button type="button" className={styles.buttonNeutral} onClick={goToBackground}>
               Background
             </button>
           </li>
           <li>
-            <button type="button" className={styles.buttonNeutral} onClick={() => goTo('/paperview')}>
+            <button type="button" className={styles.buttonNeutral} onClick={goToPaperview}>
               Interactive Paper
             </button>
           </li>
