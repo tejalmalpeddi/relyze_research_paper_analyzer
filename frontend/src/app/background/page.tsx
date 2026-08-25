@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { useHistoryEntry } from "@/lib/useHistoryEntry";
 import { useDocumentScrollLock } from "@/lib/useDocumentScrollLock";
 import { KeywordsFolder } from "@/components/background/KeywordsFolder";
+import type { DifficultyLevel } from "@/components/map/MindMap";
 
 const MindMapView = dynamic(
   () => import("@/components/map/MindMap").then((module) => ({ default: module.MindMapView })),
@@ -36,6 +37,7 @@ function BackgroundPageContent() {
   const containerRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
   const [folderPanelPercent, setFolderPanelPercent] = useState(DEFAULT_FOLDER_PANEL_PERCENT);
+  const [selectedLevel, setSelectedLevel] = useState<DifficultyLevel>("beginner");
 
   const handleDividerMouseDown = useCallback((event: React.MouseEvent) => {
     event.preventDefault();
@@ -95,7 +97,13 @@ function BackgroundPageContent() {
           </div>
         )}
 
-        {matchedEntry !== null && <MindMapView entry={matchedEntry} />}
+        {matchedEntry !== null && (
+          <MindMapView
+            entry={matchedEntry}
+            selectedLevel={selectedLevel}
+            onSelectLevel={setSelectedLevel}
+          />
+        )}
       </div>
 
       {matchedEntry !== null && (
@@ -105,7 +113,7 @@ function BackgroundPageContent() {
             className="flex shrink-0 items-end justify-center bg-cover bg-center px-8 pt-8 pb-0 shadow-[0_4px_4px_rgba(0,0,0,0.25)]"
             style={{ width: `${folderPanelPercent}%`, backgroundImage: "url(/background/wood.png)" }}
           >
-            <KeywordsFolder entry={matchedEntry} />
+            <KeywordsFolder entry={matchedEntry} difficultyLevel={selectedLevel} />
           </div>
         </>
       )}

@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from typing import Optional
 
 from app.schemas.background import BackgroundContent
@@ -11,6 +12,7 @@ MAX_IMAGE_ITEMS = 8
 SUMMARY_SENTENCE_LIMIT = 2
 DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b"
 DEFAULT_GROQ_FALLBACK_MODELS = "qwen/qwen3.6-27b"
+MAX_KEYWORD_WORDS = 5
 
 
 def _page_context(pages: list[dict]) -> str:
@@ -54,6 +56,69 @@ def _term_key(value: str) -> str:
     return " ".join(value.lower().replace("-", " ").replace("_", " ").split())
 
 
+def _clean_keyword_term(value) -> str:
+    term = _clean_string(value)
+    term = re.sub(r"\s+", " ", term).strip(" -*•:;,.()[]{}")
+    words = re.findall(r"[A-Za-z0-9]+(?:[-'][A-Za-z0-9]+)?", term)
+    lower = term.lower()
+    first_word = words[0].lower() if words else ""
+    last_word = words[-1].lower() if words else ""
+
+    if (
+        not term
+        or len(words) == 0
+        or len(words) > MAX_KEYWORD_WORDS
+        or "@" in term
+        or re.search(r"https?://|www\.", term, flags=re.IGNORECASE)
+        or re.search(r"\w+-\s+\w+", term)
+        or any(mark in term for mark in (".", "?", "!"))
+        or "nlp analysis" in lower
+        or (len(words) > 2 and first_word in {"a", "an", "the", "this", "that"})
+        or last_word in {"is", "are", "was", "were", "has", "have", "ensures", "includes", "shows"}
+    ):
+        return ""
+
+    return term.title()
+
+
+def _clean_keyword_summary(value: str) -> str:
+    summary = _clean_string(value)
+    lower = summary.lower()
+    if "nlp analysis" in lower or "key concept surfaced" in lower:
+        return ""
+    return summary
+
+
+def _keyword_items_from_subcategories(subcategories: list, excluded_terms: Optional[set[str]] = None) -> list[dict]:
+    keywords = []
+    seen = set()
+    excluded_terms = excluded_terms or set()
+
+    important_subcategories = sorted(
+        subcategories,
+        key=lambda sub: sub.importance,
+        reverse=True,
+    )
+
+    for sub in important_subcategories:
+        term = _clean_keyword_term(getattr(sub, "name", ""))
+        summary = _clean_keyword_summary(
+            getattr(sub.content, "intermediate", "")
+            or getattr(sub.content, "beginner", "")
+            or getattr(sub.content, "advanced", "")
+        )
+        key = _term_key(term)
+
+        if term and summary and key not in seen and key not in excluded_terms:
+            keywords.append(_summary_item(term, summary, "term"))
+            seen.add(key)
+
+        if len(keywords) >= MAX_KEY_TERMS:
+            break
+
+    return keywords
+
+
 def _subcategory_names(subcategories: list) -> set[str]:
     return {
         _term_key(sub.name)
@@ -63,13 +128,20 @@ def _subcategory_names(subcategories: list) -> set[str]:
 
 
 def _exclude_terms(items: list[str], excluded_terms: set[str]) -> list[str]:
-    return [item for item in items if _term_key(item) not in excluded_terms]
+    return [
+        term
+        for item in items
+        if (term := _clean_keyword_term(item)) and _term_key(term) not in excluded_terms
+    ]
 
 
 def _summary_item(title: str, summary: str, title_key: str) -> dict:
+    if title_key == "term":
+        title = _clean_keyword_term(title)
+
     return {
         title_key: title.strip(),
-        "summary": summary.strip(),
+        "summary": _clean_keyword_summary(summary).strip(),
     }
 
 
@@ -127,34 +199,20 @@ def _fallback_background(
     nlp_data: dict,
     images: Optional[list[dict]] = None,
 ) -> dict:
-    excluded_keyword_terms = _subcategory_names(subcategories)
     important_subcategories = sorted(
         subcategories,
         key=lambda sub: sub.importance,
         reverse=True,
     )[:5]
 
-    keyword_terms = _exclude_terms(
-        _dedupe(nlp_data.get("all_key_terms", []) + _prerequisite_terms(subcategories)),
-        excluded_keyword_terms,
-    )[:MAX_KEY_TERMS]
-
     content = {
         "title": (
             file_name.replace(".pdf", "").replace("-", " ").replace("_", " ").title()
         ),
-        "keywords": [
-            _summary_item(
-                term,
-                (
-                    f"{term} is a key concept surfaced from this paper's NLP "
-                    "analysis. Review it before reading so the paper's terminology "
-                    "is easier to follow."
-                ),
-                "term",
-            )
-            for term in keyword_terms
-        ],
+        "keywords": _keyword_items_from_subcategories(
+            subcategories,
+            {_term_key(file_name.replace(".pdf", "").replace("-", " ").replace("_", " "))},
+        ),
         "related_info": [
             _summary_item(sub.name, sub.content.intermediate, "title")
             for sub in important_subcategories
@@ -191,6 +249,9 @@ def _normalize_summary_items(items, title_key: str) -> list[dict]:
             )
         else:
             continue
+
+        if title_key == "term":
+            title = _clean_keyword_term(title)
 
         key = title.lower()
         if title and key not in seen:
@@ -322,7 +383,7 @@ def generate_background_content(
     try:
         from groq import Groq
 
-        excluded_keyword_terms = _subcategory_names(subcategories)
+        excluded_keyword_terms = set()
         client = Groq(api_key=os.getenv("GROQ_API_KEY"))
         messages = [
             {
@@ -334,6 +395,12 @@ def generate_background_content(
                     "of the mind map. Choose important technical terms, methods, variables, "
                     "datasets, named entities, metrics, or domain jargon that appear in the "
                     "paper text and help a reader understand the paper. "
+                    "Each keyword term must be 1-5 words with each word capitalized, and look "
+                    "like a true key term, not a sentence or long phrase. "
+                    "Prefer specific mind-map concept names and related technical terms. "
+                    "Do not include emails, URLs, author/contact text, or "
+                    "internal labels such as NLP analysis. "
+                    "Never mention NLP analysis in keyword summaries. "
                     "Do not use any excluded keyword terms, and do not use broad section or "
                     "topic titles as keywords. Use mind_map_topics only to avoid repetition "
                     "and to inform related_info. "
@@ -397,6 +464,10 @@ def generate_background_content(
             file_name,
             images,
             excluded_keyword_terms,
+        )
+        normalized["keywords"] = _keyword_items_from_subcategories(
+            subcategories,
+            {_term_key(file_name.replace(".pdf", "").replace("-", " ").replace("_", " "))},
         )
         if not normalized.get("keywords"):
             return _fallback_background(file_name, subcategories, nlp_data, images)
