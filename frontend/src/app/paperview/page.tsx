@@ -763,6 +763,15 @@ interface BottomChatBarProps {
 }
 
 function InsightPanel({ messages, isLoading }: InsightPanelProps) {
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'end',
+    });
+  }, [messages, isLoading]);
+
   return (
     <aside className={styles.insightPanel} aria-label="Paper assistant">
       {messages.map((message, index) =>
@@ -782,6 +791,8 @@ function InsightPanel({ messages, isLoading }: InsightPanelProps) {
           Thinking...
         </p>
       )}
+
+      <div ref={bottomRef} />
     </aside>
   );
 }
@@ -809,7 +820,7 @@ function BottomChatBar({
       content: trimmedMessage,
     };
 
-    onDisplayChange([userMessage]);
+    onDisplayChange((previous) => [...previous, userMessage,].slice(-10));
 
     onHistoryChange((previous) => [...previous, userMessage]);
     setChatMessage('');
@@ -842,10 +853,7 @@ function BottomChatBar({
         content: data.answer,
       };
 
-        onDisplayChange([
-            userMessage,
-            assistantMessage,
-            ]);
+        onDisplayChange((previous) => [...previous, assistantMessage,].slice(-10));
 
 
 
