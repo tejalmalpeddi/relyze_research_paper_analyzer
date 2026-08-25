@@ -35,6 +35,13 @@ class UserLogin(BaseModel):
 class UserEdit(BaseModel):
     email: Optional[EmailStr] = None
     password: Optional[str] = None
+
+class UserPasswordResetRequest(BaseModel):
+    email: EmailStr
+    
+class UserPasswordCode(BaseModel):
+    email: EmailStr
+    token: str
     
 class StickyNotesCreate(BaseModel):
     color: str

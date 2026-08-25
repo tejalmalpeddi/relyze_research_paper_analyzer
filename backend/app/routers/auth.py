@@ -1,4 +1,4 @@
-from app.schemas.schemas import UserCreate, UserLogin, UserEdit
+from app.schemas.schemas import UserCreate, UserLogin, UserEdit, UserPasswordResetRequest, UserPasswordCode
 from app.core.db import supabase, new_auth_client
 from fastapi import APIRouter, HTTPException, Depends, status, Response
 from app.core.auth import verify_cookie, set_session_cookies, clear_session_cookies
@@ -97,3 +97,35 @@ def login_anonymous(response: Response):
         return {"user": res.user}
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Anonymous login failed: {str(e)}")
+    
+@router.post("/forgot-password-request")
+def forgot_password(payload: UserPasswordResetRequest):
+    try:
+        auth_client = new_auth_client()
+        auth_client.auth.reset_password_for_email(
+            payload.email,
+        )
+        return {"message": "If this email is registered, a password reset code has been sent."}
+    except Exception as e:
+        print("SUPABASE ERROR:", type(e), str(e))
+        raise HTTPException(status_code=400, detail=str(e))
+    
+@router.post("/recovery-code")
+def reset_password(payload: UserPasswordCode, response: Response):
+    try:
+        auth_client = new_auth_client()
+        res = auth_client.auth.verify_otp({
+            "email": payload.email,
+            "token": payload.token,
+            "type": "recovery"
+        })
+        if not res or not res.user:
+            raise HTTPException(status_code=401, detail="Unauthorized: Invalid or expired reset code.")
+  
+        if res.session:
+            set_session_cookies(response, res.session.access_token, res.session.refresh_token)
+
+        return {"message": "Logged In Successfully Through Reset Code"}
+        
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))

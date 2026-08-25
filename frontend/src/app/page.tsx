@@ -25,7 +25,7 @@ import PreviousPapersSection from "@/components/History";
 import Popup from "@/components/popups/popup";
 import { importPdf, ApiError } from "@/lib/api";
 import VisualizeBlurb from "@/components/home/visualizeblurb";
-import { useAuth } from "./auth/auth-query";
+import { useAuth } from '@/app/auth/auth-query';
 
 // Which popup (if any) the upload flow currently needs shown. "uploading"
 // needs its own uploadId (for the future cancelUpload() call) and the

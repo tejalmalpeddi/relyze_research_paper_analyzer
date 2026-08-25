@@ -484,8 +484,9 @@ function CreateAccountPopup({
       // afterward with the same credentials to get the user signed in
       // right away instead of leaving them signed-up-but-logged-out.
       await login({email: email, password: password});
-    } catch {
-      setError('Invalid email.');
+    } catch (e: any){
+      const errorMessage = e instanceof Error ? e.message : 'An unexpected error occurred; please try again.';
+      setError(errorMessage);
       return;
     }
     onAccountCreated();
@@ -607,10 +608,10 @@ function ForgotPasswordPopup({
       return;
     }
     try {
-      // TODO: verify if implementation is correct
       await requestPasswordReset(email);
-    } catch {
-      setError('Invalid email.');
+    } catch (e: any){
+      const errorMessage = e instanceof Error ? e.message : 'An unexpected error occurred; please try again.';
+      setError(errorMessage);
       return;
     }
     onEmailSent();
@@ -622,7 +623,7 @@ function ForgotPasswordPopup({
       onClose={onClose}
       footer={
         <button type="submit" form="forgot-password-form" className={styles.buttonNeutral}>
-          Send Reset Link
+          Send Reset Code
         </button>
       }
     >
@@ -630,7 +631,7 @@ function ForgotPasswordPopup({
         {error ? (
           <p className={`${styles.topText} ${styles.error}`}>{error}</p>
         ) : (
-          <p className={styles.topText}>Enter your email and we will send a password reset link.</p>
+          <p className={styles.topText}>Enter your email and we will send a password reset code.</p>
         )}
         <label className={styles.field}>
           Email
@@ -641,6 +642,64 @@ function ForgotPasswordPopup({
             Return to Log In
           </button>
         </p>
+      </form>
+    </PopupShell>
+  );
+}
+
+function EmailSentResetCodePopup({
+  onClose,
+  newPasswordChange,
+}: {
+  onClose: () => void;
+  newPasswordChange: () => void;
+}) {
+  const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
+  const [error, setError] = useState('');
+  const {recoveryCode} = useAuth();
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError('');
+    if (!EMAIL_RE.test(email)) {
+      setError('Invalid email.');
+      return;
+    }
+    try {
+      await recoveryCode(email, code);
+    } catch (e: any){
+      const errorMessage = e instanceof Error ? e.message : 'An unexpected error occurred; please try again.';
+      setError(errorMessage);
+      return;
+    }
+    newPasswordChange();
+  }
+
+  return (
+    <PopupShell
+      title="Email Sent!"
+      onClose={onClose}
+      footer={
+        <button type="submit" form="email-sent-password-form" className={styles.buttonNeutral}>
+          Reset Password
+        </button>
+      }
+    >
+      <form id="email-sent-password-form" className={styles.form} onSubmit={handleSubmit}>
+        {error ? (
+          <p className={`${styles.topText} ${styles.error}`}>{error}</p>
+        ) : (
+          <p className={styles.topText}>Check your email for your access code.</p>
+        )}
+        <label className={styles.field}>
+          Email
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        </label>
+        <label className={styles.field}>
+          Access Code
+          <input type="text" value={code} onChange={(e) => setCode(e.target.value)} required />
+        </label>
       </form>
     </PopupShell>
   );
@@ -661,7 +720,6 @@ function ConfirmPasswordPopup({
     e.preventDefault();
     setError('');
     try {
-      // TODO: verify that it logs in w current password
       await login({email: user?.email || "", password: password});
     } catch {
       setError('Incorrect password.');
@@ -726,8 +784,9 @@ function NewPasswordPopup({
     try {
       // Updates the password for the currently logged-in user.
       await editUser({password: password});
-    } catch {
-      setError('Could not update password. Please try again.');
+    } catch (e: any){
+      const errorMessage = e instanceof Error ? e.message : 'Could not update password. Please try again.';
+      setError(errorMessage);
       return;
     }
     onPasswordChanged();
@@ -817,10 +876,9 @@ function AuthFlowPopup({ initialView, onClose }: { initialView: AuthView; onClos
       );
     case 'emailSent':
       return (
-        <AuthSuccessPopup
-          title="Email Sent!"
-          message="Please check your email for instructions to reset your password."
+        <EmailSentResetCodePopup
           onClose={onClose}
+          newPasswordChange={() => setView('newPassword')}
         />
       );
     case 'passwordChanged':

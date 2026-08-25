@@ -73,7 +73,7 @@ def _filter_references(row, document_id):
             return {
                 "id": row.get("id"),
                 "title": row.get("title") or row.get("file_name") or "Untitled paper",
-                "markdown_content": "No citations found in paper",
+                "markdown_content": "Unfortunately, no citations were matched in this paper; please to refer to the pdf.",
             }
         pattern = r"(?:#+\s*|^(?=\n))\s*(?:References|Bibliography|Works Cited)\b"
         match = re.search(pattern, markdown_content, re.IGNORECASE | re.MULTILINE)
@@ -98,7 +98,7 @@ def _filter_references(row, document_id):
     return {
         "id": row.get("id"),
         "title": row.get("title"),
-        "markdown_content": references or "No citations matched",
+        "markdown_content": references or "No citations matched; please to manually refer pdf.",
     }
 
 
