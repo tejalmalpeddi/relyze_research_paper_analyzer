@@ -380,7 +380,6 @@
   margin: 1rem;
   background: #fff;
   color: #0a0908;
-  text-align: right;
   box-shadow: 0 4px 4px rgba(0, 0, 0, 0.25);
 
 }
@@ -392,6 +391,7 @@
 
 .answerCard {
   justify-self: start;
+  text-align: left;
 }
 
 .bottomChatBar {
