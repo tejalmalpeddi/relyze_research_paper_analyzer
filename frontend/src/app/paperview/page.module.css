@@ -363,7 +363,8 @@
   position: relative;
   overflow-y: auto;
   scrollbar-width: none;
-  display: block;
+  display: grid;
+  align-content: start;
   width: 80%;
   height: 85%;
   background: #d9d9d9;

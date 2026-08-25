@@ -754,6 +754,14 @@ interface InsightPanelProps {
   isLoading: boolean;
 }
 
+interface BottomChatBarProps {
+  documentId: string;
+  history: ChatMessage[];
+  onHistoryChange: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
+  onDisplayChange: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
+  onLoadingChange: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
 function InsightPanel({ messages, isLoading }: InsightPanelProps) {
   return (
     <aside className={styles.insightPanel} aria-label="Paper assistant">
@@ -865,6 +873,7 @@ function BottomChatBar({
           <input
             className={styles.chatInput}
             type="text"
+            aria-label="Ask about this paper"
             value={chatMessage}
             onChange={(event) => setChatMessage(event.target.value)}
             onKeyDown={(event) => {
