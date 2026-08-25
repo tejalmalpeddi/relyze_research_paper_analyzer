@@ -228,7 +228,7 @@ export default function HomePage() {
       {/* Drawer Border */}
       {/* fixed to the bottom of the screen to give "pulling out drawer" effect */}
       {/* borders adapt to screen size */}
-      <div className="drawer-bg fixed bottom-0 left-0 w-full h-screen box-border"></div>
+      <div className="drawer-bg pointer-events-none fixed bottom-0 left-0 w-full h-screen box-border"></div>
       <div className="fixed bottom-0 left-0 w-full h-screen -z-10" style={{ backgroundImage: 'url("/background/wood.png")', backgroundPosition: 'bottom', backgroundSize: 'cover', backgroundRepeat: 'no-repeat', filter: 'brightness(50%)' }}></div>
     </main>
   );
