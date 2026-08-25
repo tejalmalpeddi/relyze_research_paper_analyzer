@@ -246,17 +246,10 @@
 /* Home Page */
 
 .drawer-bg {
-  background-image: url('/background/drawer.png');
-  background-position: bottom;
-  background-size: cover;
-  background-repeat: no-repeat;
-}
-
-.drawer-bottom-rail {
-  background-image: url('/background/drawer.png');
-  background-position: bottom;
-  background-size: cover;
-  background-repeat: no-repeat;
+  border-image-source: url('/background/drawer.png');
+  border-image-slice: 15 fill;
+  border-style: solid;
+  border-width: 15;
 }
 
 @keyframes mind-map-edge-expand {
