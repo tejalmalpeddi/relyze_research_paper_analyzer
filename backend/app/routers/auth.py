@@ -107,7 +107,6 @@ def forgot_password(payload: UserPasswordResetRequest):
         )
         return {"message": "If this email is registered, a password reset code has been sent."}
     except Exception as e:
-        print("SUPABASE ERROR:", type(e), str(e))
         raise HTTPException(status_code=400, detail=str(e))
     
 @router.post("/recovery-code")
@@ -125,7 +124,7 @@ def reset_password(payload: UserPasswordCode, response: Response):
         if res.session:
             set_session_cookies(response, res.session.access_token, res.session.refresh_token)
 
-        return {"message": "Logged In Successfully Through Reset Code"}
+        return {"message": "Logged in successfully through reset code"}
         
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

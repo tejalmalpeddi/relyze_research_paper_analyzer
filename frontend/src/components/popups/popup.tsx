@@ -611,8 +611,7 @@ function ForgotPasswordPopup({
       await requestPasswordReset(email);
     } catch (e: any){
       const errorMessage = e instanceof Error ? e.message : 'An unexpected error occurred; please try again.';
-      setError(errorMessage);
-      return;
+      console.log(errorMessage);
     }
     onEmailSent();
   }
