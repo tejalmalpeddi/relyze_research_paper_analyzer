@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from typing import Optional
 
 from app.schemas.background import BackgroundContent
@@ -11,6 +12,7 @@ MAX_IMAGE_ITEMS = 8
 SUMMARY_SENTENCE_LIMIT = 2
 DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b"
 DEFAULT_GROQ_FALLBACK_MODELS = "qwen/qwen3.6-27b"
+MAX_KEYWORD_WORDS = 5
 
 
 def _page_context(pages: list[dict]) -> str:
@@ -54,6 +56,69 @@ def _term_key(value: str) -> str:
     return " ".join(value.lower().replace("-", " ").replace("_", " ").split())
 
 
+def _clean_keyword_term(value) -> str:
+    term = _clean_string(value)
+    term = re.sub(r"\s+", " ", term).strip(" -*•:;,.()[]{}")
+    words = re.findall(r"[A-Za-z0-9]+(?:[-'][A-Za-z0-9]+)?", term)
+    lower = term.lower()
+    first_word = words[0].lower() if words else ""
+    last_word = words[-1].lower() if words else ""
+
+    if (
+        not term
+        or len(words) == 0
+        or len(words) > MAX_KEYWORD_WORDS
+        or "@" in term
+        or re.search(r"https?://|www\.", term, flags=re.IGNORECASE)
+        or re.search(r"\w+-\s+\w+", term)
+        or any(mark in term for mark in (".", "?", "!"))
+        or "nlp analysis" in lower
+        or (len(words) > 2 and first_word in {"a", "an", "the", "this", "that"})
+        or last_word in {"is", "are", "was", "were", "has", "have", "ensures", "includes", "shows"}
+    ):
+        return ""
+
+    return term.title()
+
+
+def _clean_keyword_summary(value: str) -> str:
+    summary = _clean_string(value)
+    lower = summary.lower()
+    if "nlp analysis" in lower or "key concept surfaced" in lower:
+        return ""
+    return summary
+
+
+def _keyword_items_from_subcategories(subcategories: list, excluded_terms: Optional[set[str]] = None) -> list[dict]:
+    keywords = []
+    seen = set()
+    excluded_terms = excluded_terms or set()
+
+    important_subcategories = sorted(
+        subcategories,
+        key=lambda sub: sub.importance,
+        reverse=True,
+    )
+
+    for sub in important_subcategories:
+        term = _clean_keyword_term(getattr(sub, "name", ""))
+        summary = _clean_keyword_summary(
+            getattr(sub.content, "intermediate", "")
+            or getattr(sub.content, "beginner", "")
+            or getattr(sub.content, "advanced", "")
+        )
+        key = _term_key(term)
+
+        if term and summary and key not in seen and key not in excluded_terms:
+            keywords.append(_summary_item(term, summary, "term"))
+            seen.add(key)
+
+        if len(keywords) >= MAX_KEY_TERMS:
+            break
+
+    return keywords
+
+
 def _subcategory_names(subcategories: list) -> set[str]:
     return {
         _term_key(sub.name)
@@ -63,22 +128,68 @@ def _subcategory_names(subcategories: list) -> set[str]:
 
 
 def _exclude_terms(items: list[str], excluded_terms: set[str]) -> list[str]:
-    return [item for item in items if _term_key(item) not in excluded_terms]
+    return [
+        term
+        for item in items
+        if (term := _clean_keyword_term(item)) and _term_key(term) not in excluded_terms
+    ]
 
 
 def _summary_item(title: str, summary: str, title_key: str) -> dict:
+    if title_key == "term":
+        title = _clean_keyword_term(title)
+
     return {
         title_key: title.strip(),
-        "summary": summary.strip(),
+        "summary": _clean_keyword_summary(summary).strip(),
     }
 
 
 def _image_title(image: dict, index: int) -> str:
-    return (
-        _clean_string(image.get("file_name"))
-        or _clean_string(image.get("storage_path"))
-        or f"Image {index + 1}"
-    )
+    page_number = image.get("page_number")
+    if page_number is not None:
+        return f"Figure {index + 1} On Page {page_number}"
+    return f"Figure {index + 1}"
+
+
+def _image_context_summary(image: dict, subcategories: list, index: int) -> str:
+    page_number = image.get("page_number")
+    page_subcategories = [
+        sub
+        for sub in subcategories
+        if getattr(sub, "sourcePage", None) == page_number
+    ]
+
+    if page_subcategories:
+        primary_subcategory = sorted(
+            page_subcategories,
+            key=lambda sub: sub.importance,
+            reverse=True,
+        )[0]
+        return (
+            f"This figure appears near the discussion of {primary_subcategory.name}. "
+            f"It should be read alongside that section's explanation: "
+            f"{primary_subcategory.content.intermediate}"
+        )
+
+    return ""
+
+
+def _clean_image_summary(summary: str, image: dict, index: int) -> str:
+    cleaned = _clean_string(summary)
+    lower = cleaned.lower()
+    file_name = _clean_string(image.get("file_name")).lower()
+
+    if (
+        not cleaned
+        or "extracted visual" in lower
+        or "file metadata" in lower
+        or "storage" in lower
+        or (file_name and file_name in lower)
+    ):
+        return ""
+
+    return cleaned
 
 
 def _image_context(images: list[dict]) -> list[dict]:
@@ -94,17 +205,16 @@ def _image_context(images: list[dict]) -> list[dict]:
     ]
 
 
-def _image_summary_item(image: dict, summary: str, index: int) -> dict:
+def _image_summary_item(image: dict, summary: str, index: int, subcategories: Optional[list] = None) -> dict:
+    cleaned_summary = _clean_image_summary(summary, image, index)
+
     return {
         "file_name": image.get("file_name"),
         "storage_path": image.get("storage_path"),
         "page_number": image.get("page_number"),
         "image_type": image.get("image_type"),
-        "summary": summary.strip()
-        or (
-            f"{_image_title(image, index)} is an extracted visual from this paper. "
-            "Use its page and file metadata to review the figure alongside the text."
-        ),
+        "summary": cleaned_summary
+        or _image_context_summary(image, subcategories or [], index),
     }
 
 
@@ -127,40 +237,26 @@ def _fallback_background(
     nlp_data: dict,
     images: Optional[list[dict]] = None,
 ) -> dict:
-    excluded_keyword_terms = _subcategory_names(subcategories)
     important_subcategories = sorted(
         subcategories,
         key=lambda sub: sub.importance,
         reverse=True,
     )[:5]
 
-    keyword_terms = _exclude_terms(
-        _dedupe(nlp_data.get("all_key_terms", []) + _prerequisite_terms(subcategories)),
-        excluded_keyword_terms,
-    )[:MAX_KEY_TERMS]
-
     content = {
         "title": (
             file_name.replace(".pdf", "").replace("-", " ").replace("_", " ").title()
         ),
-        "keywords": [
-            _summary_item(
-                term,
-                (
-                    f"{term} is a key concept surfaced from this paper's NLP "
-                    "analysis. Review it before reading so the paper's terminology "
-                    "is easier to follow."
-                ),
-                "term",
-            )
-            for term in keyword_terms
-        ],
+        "keywords": _keyword_items_from_subcategories(
+            subcategories,
+            {_term_key(file_name.replace(".pdf", "").replace("-", " ").replace("_", " "))},
+        ),
         "related_info": [
             _summary_item(sub.name, sub.content.intermediate, "title")
             for sub in important_subcategories
         ],
         "images": [
-            _image_summary_item(image, "", index)
+            _image_summary_item(image, "", index, subcategories)
             for index, image in enumerate(_image_context(images or []))
         ],
         "source_pages": sorted(
@@ -192,6 +288,9 @@ def _normalize_summary_items(items, title_key: str) -> list[dict]:
         else:
             continue
 
+        if title_key == "term":
+            title = _clean_keyword_term(title)
+
         key = title.lower()
         if title and key not in seen:
             normalized.append(_summary_item(title, summary, title_key))
@@ -200,7 +299,7 @@ def _normalize_summary_items(items, title_key: str) -> list[dict]:
     return normalized
 
 
-def _normalize_image_items(items, source_images: list[dict]) -> list[dict]:
+def _normalize_image_items(items, source_images: list[dict], subcategories: Optional[list] = None) -> list[dict]:
     source_lookup = {}
     for index, image in enumerate(_image_context(source_images)):
         for key in (
@@ -250,14 +349,14 @@ def _normalize_image_items(items, source_images: list[dict]) -> list[dict]:
         if identifier in seen:
             continue
 
-        normalized.append(_image_summary_item(source_image, summary, source_index))
+        normalized.append(_image_summary_item(source_image, summary, source_index, subcategories))
         seen.add(identifier)
 
     if normalized:
         return normalized[:MAX_IMAGE_ITEMS]
 
     return [
-        _image_summary_item(image, "", index)
+        _image_summary_item(image, "", index, subcategories)
         for index, image in enumerate(_image_context(source_images))
     ]
 
@@ -267,6 +366,7 @@ def _normalize_background_content(
     file_name: str,
     source_images: Optional[list[dict]] = None,
     excluded_keyword_terms: Optional[set[str]] = None,
+    subcategories: Optional[list] = None,
 ) -> dict:
     if not isinstance(content, dict):
         return _fallback_background(file_name, [], {}, source_images)
@@ -287,7 +387,7 @@ def _normalize_background_content(
         or file_name.replace(".pdf", "").replace("-", " ").replace("_", " ").title(),
         "keywords": keywords,
         "related_info": related_info,
-        "images": _normalize_image_items(content.get("images"), source_images or []),
+        "images": _normalize_image_items(content.get("images"), source_images or [], subcategories),
         "source_pages": content.get("source_pages") or [],
     }
     return BackgroundContent(**normalized).model_dump()
@@ -322,7 +422,7 @@ def generate_background_content(
     try:
         from groq import Groq
 
-        excluded_keyword_terms = _subcategory_names(subcategories)
+        excluded_keyword_terms = set()
         client = Groq(api_key=os.getenv("GROQ_API_KEY"))
         messages = [
             {
@@ -334,6 +434,12 @@ def generate_background_content(
                     "of the mind map. Choose important technical terms, methods, variables, "
                     "datasets, named entities, metrics, or domain jargon that appear in the "
                     "paper text and help a reader understand the paper. "
+                    "Each keyword term must be 1-5 words with each word capitalized, and look "
+                    "like a true key term, not a sentence or long phrase. "
+                    "Prefer specific mind-map concept names and related technical terms. "
+                    "Do not include emails, URLs, author/contact text, or "
+                    "internal labels such as NLP analysis. "
+                    "Never mention NLP analysis in keyword summaries. "
                     "Do not use any excluded keyword terms, and do not use broad section or "
                     "topic titles as keywords. Use mind_map_topics only to avoid repetition "
                     "and to inform related_info. "
@@ -344,7 +450,10 @@ def generate_background_content(
                     "term and summary. related_info must be an array of objects "
                     "with exactly: title and summary. images must be an array "
                     "of objects with exactly: file_name, storage_path, "
-                    "page_number, image_type, and summary. Every summary must be brief, "
+                    "page_number, image_type, and summary. Image summaries must explain "
+                    "what the visual likely represents or contributes in the context of "
+                    "the paper. Do not describe image file names, storage paths, file "
+                    "formats, extraction, or metadata. Every summary must be brief, "
                     f"no more than {SUMMARY_SENTENCE_LIMIT} sentences. "
                     "Return ONLY valid JSON, no markdown fences or commentary."
                 ),
@@ -397,6 +506,11 @@ def generate_background_content(
             file_name,
             images,
             excluded_keyword_terms,
+            subcategories,
+        )
+        normalized["keywords"] = _keyword_items_from_subcategories(
+            subcategories,
+            {_term_key(file_name.replace(".pdf", "").replace("-", " ").replace("_", " "))},
         )
         if not normalized.get("keywords"):
             return _fallback_background(file_name, subcategories, nlp_data, images)

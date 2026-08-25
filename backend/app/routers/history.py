@@ -41,6 +41,38 @@ def _clean_string(value):
     return value.strip() if isinstance(value, str) else ""
 
 
+def _clean_keyword_term(value):
+    term = _clean_string(value)
+    words = term.split()
+    lower = term.lower()
+    first_word = words[0].lower() if words else ""
+    last_word = words[-1].lower() if words else ""
+
+    if (
+        not term
+        or len(words) > 5
+        or "@" in term
+        or "nlp analysis" in lower
+        or "- " in term
+        or "http://" in lower
+        or "https://" in lower
+        or "www." in lower
+        or (len(words) > 2 and first_word in {"a", "an", "the", "this", "that"})
+        or last_word in {"is", "are", "was", "were", "has", "have", "ensures", "includes", "shows"}
+    ):
+        return ""
+
+    return " ".join(word.capitalize() for word in words)
+
+
+def _clean_keyword_summary(value):
+    summary = _clean_string(value)
+    lower = summary.lower()
+    if "nlp analysis" in lower or "key concept surfaced" in lower:
+        return ""
+    return summary
+
+
 def _normalize_summary_items(items, title_key):
     normalized = []
     seen = set()
@@ -62,6 +94,10 @@ def _normalize_summary_items(items, title_key):
             )
         else:
             continue
+
+        if title_key == "term":
+            title = _clean_keyword_term(title)
+            summary = _clean_keyword_summary(summary)
 
         key = title.lower()
         if title and key not in seen:
@@ -85,6 +121,7 @@ def _keyword_terms(items):
         else:
             continue
 
+        term = _clean_keyword_term(term)
         key = term.lower()
         if term and key not in seen:
             terms.append(term)

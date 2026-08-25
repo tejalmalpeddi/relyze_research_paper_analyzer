@@ -45,6 +45,19 @@ export function backendAssetUrl(path: string | undefined): string | null {
   return `${API_URL}/${path}`;
 }
 
+export function backendImagePreviewUrl(path: string | undefined): string | null {
+  if (!path) return null;
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+
+  const extension = path.split("?")[0].split("#")[0].split(".").pop()?.toLowerCase();
+  if (!["jpx", "jp2", "j2k", "jpf", "jpm", "mj2"].includes(extension ?? "")) {
+    return backendAssetUrl(path);
+  }
+
+  const assetPath = path.startsWith("/assets/") ? path.slice("/assets/".length) : path.replace(/^\/+/, "");
+  return `${API_URL}/asset-preview/${assetPath.split("/").map(encodeURIComponent).join("/")}`;
+}
+
 // A regular Error, plus the HTTP status code that caused it. Callers
 // (like History.tsx) can check err.status === 401 to tell "you're not
 // logged in" apart from every other kind of failure, without having to

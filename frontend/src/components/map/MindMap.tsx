@@ -487,9 +487,11 @@ const edgeTypes = {
 
 interface MapCanvasProps {
     entry: HistoryEntry;
+    selectedLevel?: DifficultyLevel;
+    onSelectLevel?: (level: DifficultyLevel) => void;
 }
 
-function MapCanvas({ entry }: MapCanvasProps) {
+function MapCanvas({ entry, selectedLevel: controlledLevel, onSelectLevel }: MapCanvasProps) {
     const rawNodes = useMemo(() => entry.map_json.nodes as RawNode[], [entry]);
     const edges = useMemo(() => entry.map_json.edges as Edge[], [entry]);
 
@@ -513,7 +515,9 @@ function MapCanvas({ entry }: MapCanvasProps) {
     }, [rawNodes, edges]);
 
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
-    const [selectedLevel, setSelectedLevel] = useState<DifficultyLevel>("beginner");
+    const [internalSelectedLevel, setInternalSelectedLevel] = useState<DifficultyLevel>("beginner");
+    const selectedLevel = controlledLevel ?? internalSelectedLevel;
+    const setSelectedLevel = onSelectLevel ?? setInternalSelectedLevel;
     const [renderedVisibleIds, setRenderedVisibleIds] = useState<Set<string>>(() => new Set(rootIds));
     const [expandingEdgeIds, setExpandingEdgeIds] = useState<Set<string>>(new Set());
     const [retractingEdgeIds, setRetractingEdgeIds] = useState<Set<string>>(new Set());
@@ -869,14 +873,16 @@ function MapCanvas({ entry }: MapCanvasProps) {
 
 interface MindMapViewProps {
     entry: HistoryEntry;
+    selectedLevel?: DifficultyLevel;
+    onSelectLevel?: (level: DifficultyLevel) => void;
 }
 
-export function MindMapView({ entry }: MindMapViewProps) {
+export function MindMapView({ entry, selectedLevel, onSelectLevel }: MindMapViewProps) {
     return (
         <div className="flex h-full w-full flex-col">
             <div className="flex-1">
                 <ReactFlowProvider key={entry.id}>
-                    <MapCanvas entry={entry} />
+                    <MapCanvas entry={entry} selectedLevel={selectedLevel} onSelectLevel={onSelectLevel} />
                 </ReactFlowProvider>
             </div>
         </div>

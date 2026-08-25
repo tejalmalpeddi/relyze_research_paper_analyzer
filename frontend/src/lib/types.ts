@@ -53,7 +53,7 @@ export interface MapNode {
   // Only the fields actually used on the frontend are declared here --
   // the real object also carries source_text, source_page, importance,
   // prerequisites, params, and confidence, which nothing reads yet.
-  metadata?: {related_terms?: string[]; tags?: string[];};
+  metadata?: {related_terms?: string[]; tags?: string[]; source_page?: number | null;};
 }
 
 // One line connecting two nodes, exactly as stored inside a saved paper's
