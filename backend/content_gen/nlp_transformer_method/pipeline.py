@@ -22,6 +22,23 @@ _supabase: Client = create_client(
 
 
 
+def _strip_null_bytes(value):
+    """
+    Postgres rejects the null character (\x00) in text/json columns.
+    LLM-generated content (map_json, background_content, etc.) can contain
+    it, which otherwise makes the documents.update() in save_results()
+    fail after the whole pipeline has already run. Recurses through
+    dicts/lists so no null byte reaches the database call.
+    """
+    if isinstance(value, str):
+        return value.replace("\x00", "")
+    if isinstance(value, dict):
+        return {key: _strip_null_bytes(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_strip_null_bytes(item) for item in value]
+    return value
+
+
 def fetch_document(document_id: str) -> dict:
     """
     Reads from documents table.
@@ -75,7 +92,7 @@ def save_results(
         if isinstance(term, str) and term.strip():
             keyword_terms.append(term.strip())
 
-    response = _supabase.table("documents").update({
+    update_payload = _strip_null_bytes({
         "title":           title,
         "map_json":        map_json,
         "filters":         filters,
@@ -83,7 +100,14 @@ def save_results(
         "related_info":    json.dumps(background_content, indent=2),
         "structured_data": structured_data,
         "status":          "completed",
-    }).eq("id", document_id).execute()
+    })
+
+    response = (
+        _supabase.table("documents")
+        .update(update_payload)
+        .eq("id", document_id)
+        .execute()
+    )
 
     if not response.data:
         raise ValueError(f"Document {document_id} could not be updated")

@@ -28,6 +28,7 @@ import {
   HighlightPayload,
   StrokeEntry,
   StrokePayload,
+  ReferenceEntry
 } from "./types";
 //generic type ^^ later comes in to play 
 
@@ -42,6 +43,19 @@ export function backendAssetUrl(path: string | undefined): string | null {
   if (path.startsWith("http://") || path.startsWith("https://")) return path;
   if (path.startsWith("/")) return `${API_URL}${path}`;
   return `${API_URL}/${path}`;
+}
+
+export function backendImagePreviewUrl(path: string | undefined): string | null {
+  if (!path) return null;
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+
+  const extension = path.split("?")[0].split("#")[0].split(".").pop()?.toLowerCase();
+  if (!["jpx", "jp2", "j2k", "jpf", "jpm", "mj2"].includes(extension ?? "")) {
+    return backendAssetUrl(path);
+  }
+
+  const assetPath = path.startsWith("/assets/") ? path.slice("/assets/".length) : path.replace(/^\/+/, "");
+  return `${API_URL}/asset-preview/${assetPath.split("/").map(encodeURIComponent).join("/")}`;
 }
 
 // A regular Error, plus the HTTP status code that caused it. Callers
@@ -347,4 +361,11 @@ export async function deleteStroke(documentId: string, strokeId: string): Promis
     credentials: "include",
   });
   return handleResponse<{ deleted: boolean; id: string }>(response);
+}
+
+export async function fetchReferenceById(documentId: string): Promise<ReferenceEntry> {
+  const response = await fetch(`${API_URL}/references/${documentId}`, { 
+    credentials: "include",
+  });
+  return handleResponse<ReferenceEntry>(response);
 }

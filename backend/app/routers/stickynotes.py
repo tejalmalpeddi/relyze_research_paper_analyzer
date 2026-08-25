@@ -63,7 +63,9 @@ def sticky_notes_get(document_id: str, user=Depends(verify_cookie)):
 
 
 @router.post("/clear/{document_id}/{sticky_notes_id}", status_code=status.HTTP_200_OK)
-def sticky_notes_clear(sticky_notes_id: str, document_id: str, user=Depends(verify_cookie)):
+def sticky_notes_clear(
+    sticky_notes_id: str, document_id: str, user=Depends(verify_cookie)
+):
     _verify_document_owner(document_id, user.id)
     response = (
         supabase.table("sticky_notes")

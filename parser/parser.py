@@ -7,7 +7,7 @@ os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 import pymupdf
 from docling.document_converter import DocumentConverter
 
-from database import connect_to_supabase, save_document
+from database import connect_to_supabase, save_document, clean_markdown_artifacts
 
 # Base directory (parser/)
 PARSER_DIRECTORY = Path(__file__).resolve().parent
@@ -21,7 +21,63 @@ MARKDOWN_FILE = PARSER_DIRECTORY / "output_paper.md"
 
 IMAGE_OUTPUT_DIRECTORY = PARSER_DIRECTORY / "assets"
 
+BROWSER_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "svg", "webp"}
+PDF_IMAGE_EXTENSIONS_TO_CONVERT = {"jpx", "jp2", "j2k", "jpf", "jpm", "mj2"}
 
+
+def _image_content_type_from_extension(extension: str) -> str:
+    normalized = extension.lower().lstrip(".")
+    if normalized == "svg":
+        return "image/svg+xml"
+    if normalized in {"jpg", "jpeg"}:
+        return "image/jpeg"
+    if normalized == "webp":
+        return "image/webp"
+    if normalized == "png":
+        return "image/png"
+    if normalized in PDF_IMAGE_EXTENSIONS_TO_CONVERT:
+        return "image/jp2"
+    return f"image/{normalized}" if normalized else "application/octet-stream"
+
+
+def _browser_safe_image_payload(pdf_document, image_xref: int, image_data: dict) -> tuple[bytes, str]:
+    original_extension = str(image_data.get("ext") or "").lower()
+    image_bytes = image_data["image"]
+
+    if original_extension in BROWSER_IMAGE_EXTENSIONS:
+        return image_bytes, original_extension
+
+    try:
+        pixmap = pymupdf.Pixmap(pdf_document, image_xref)
+        if pixmap.n >= 5:
+            pixmap = pymupdf.Pixmap(pymupdf.csRGB, pixmap)
+        return pixmap.tobytes("png"), "png"
+    except Exception as error:
+        print(
+            f"Could not convert .{original_extension or 'unknown'} image to PNG; "
+            f"saving original bytes instead: {error}"
+        )
+        return image_bytes, original_extension or "bin"
+
+
+
+
+def _strip_null_bytes(value):
+    """
+    Postgres refuses to store the \\u0000 (null) character in text/json
+    columns -- some PDFs (scanned pages, damaged fonts, odd encodings)
+    produce it in their extracted text, which otherwise makes the
+    documents.insert() in save_document() fail after all the parsing work
+    is done. Recurses through the raw-text/structured-document dicts and
+    the markdown string so no null byte reaches the database call.
+    """
+    if isinstance(value, str):
+        return value.replace("\x00", "")
+    if isinstance(value, dict):
+        return {key: _strip_null_bytes(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_strip_null_bytes(item) for item in value]
+    return value
 
 
 def extract_raw_text_from_pdf(pdf_path):
@@ -43,7 +99,7 @@ def extract_raw_text_from_pdf(pdf_path):
     return raw_text_data
 
 
-def extract_title(document) -> Optional[str]:
+def _find_title_item(document):
     """
     Best-effort real paper title, read off Docling's own layout detection
     rather than the filename. In standard academic PDF layout the title is
@@ -52,14 +108,74 @@ def extract_title(document) -> Optional[str]:
     so "first one" is what distinguishes it). Returns None if the document
     has no section headers at all (e.g. a scanned PDF with no layout info),
     letting the caller fall back to a filename-derived title instead.
+
+    Returns the matched item itself (not just its text) so callers that
+    need the item's position in the document -- e.g. _trim_before_title,
+    to find and remove whatever precedes it -- don't have to re-run this
+    same scan themselves.
     """
     for text_item in document.texts:
         label = getattr(text_item, "label", None)
         if label is not None and getattr(label, "value", None) == "section_header":
-            title = text_item.text.strip()
-            if title:
-                return title
+            if text_item.text.strip():
+                return text_item
     return None
+
+
+def extract_title(document) -> Optional[str]:
+    item = _find_title_item(document)
+    return item.text.strip() if item is not None else None
+
+
+def _trim_before_title(document, title_item) -> bool:
+    """
+    Deletes whatever precedes the title from the document's body, in
+    place, so the exported markdown starts at the title instead of a
+    journal banner / DOI stamp / running header. Returns True if a trim
+    happened, False if it skipped -- title missing, already first,
+    structurally unsafe (title nested in a group rather than a direct
+    sibling of the document's first item), or looked too large to
+    plausibly be front matter. Callers should treat False as "leave the
+    document untouched," never as an error -- this only ever removes
+    content it's confident is front matter, on any doubt it does nothing.
+    """
+    if title_item is None or not document.body.children:
+        return False
+
+    first_ref = document.body.children[0]
+    first_item = first_ref.resolve(doc=document)
+
+    if first_item is title_item:
+        return False  # nothing precedes it
+
+    # How many top-level siblings would be deleted -- real front matter
+    # (a journal banner, a DOI/arXiv stamp) is at most a couple of short
+    # blocks. A number this large means the "title" is probably a
+    # mis-detected later heading, not real front matter -- bail rather
+    # than risk deleting a big chunk of the paper.
+    MAX_ITEMS_TO_TRIM = 5
+    try:
+        start_index = document.body.children.index(first_ref)
+        end_index = document.body.children.index(title_item.get_ref())
+    except ValueError:
+        return False
+    if end_index - start_index > MAX_ITEMS_TO_TRIM:
+        return False
+
+    try:
+        document.delete_items_range(
+            start=first_item,
+            end=title_item,
+            start_inclusive=True,
+            end_inclusive=False,
+        )
+    except ValueError:
+        # Title isn't a direct sibling of the first body item (e.g.
+        # nested in a group) -- delete_items_range's own safety check
+        # caught it. Leave the document exactly as it was.
+        return False
+
+    return True
 
 
 def extract_structured_document(pdf_path):
@@ -83,10 +199,17 @@ def extract_structured_document(pdf_path):
     )
 
     conversion_result = document_converter.convert(pdf_path)
+    document = conversion_result.document
 
-    markdown_document = conversion_result.document.export_to_markdown()
-    structured_document = conversion_result.document.export_to_dict()
-    title = extract_title(conversion_result.document)
+    # Captured before any trimming, so this stays exactly what it's
+    # always been -- only the markdown export below is affected.
+    structured_document = document.export_to_dict()
+    title_item = _find_title_item(document)
+
+    _trim_before_title(document, title_item)
+
+    markdown_document = document.export_to_markdown(image_placeholder="")
+    title = title_item.text.strip() if title_item is not None else None
 
     return markdown_document, structured_document, title
 
@@ -182,14 +305,18 @@ def extract_images_from_pdf(
                 print(f"Page {page_number}: failed to extract xref {image_xref}: {e}")
                 continue
 
-            image_extension = image_data["ext"]
+            image_bytes, image_extension = _browser_safe_image_payload(
+                pdf_document,
+                image_xref,
+                image_data,
+            )
             image_filename = (
                 f"page_{page_number}_raster_{image_number}.{image_extension}"
             )
             image_path = output_path / image_filename
 
             with open(image_path, "wb") as image_file:
-                image_file.write(image_data["image"])
+                image_file.write(image_bytes)
             saved_count += 1
 
             # Track raster placement so we don't duplicate it as a "vector figure"
@@ -266,14 +393,15 @@ def _image_metadata(output_directory: Path, document_id: str) -> list[dict]:
         if not image_path.is_file():
             continue
 
-        images.append(
-            {
-                "file_name": image_path.name,
-                "storage_path": f"/assets/{document_id}/{image_path.name}",
-                "page_number": _page_number_from_name(image_path.name),
-                "image_type": _image_type_from_name(image_path.name),
-            }
-        )
+        extension = image_path.suffix.lower().lstrip(".")
+        image = {
+            "file_name": image_path.name,
+            "storage_path": f"/assets/{document_id}/{image_path.name}",
+            "page_number": _page_number_from_name(image_path.name),
+            "image_type": _image_type_from_name(image_path.name),
+            "content_type": _image_content_type_from_extension(extension),
+        }
+        images.append(image)
     return images
 
 
@@ -281,8 +409,11 @@ def parse_and_save_pdf(pdf_path, user_id=None, file_name=None):
     pdf_path = Path(pdf_path)
     stored_file_name = file_name or pdf_path.name
 
-    raw_text_data = extract_raw_text_from_pdf(pdf_path)
+    raw_text_data = _strip_null_bytes(extract_raw_text_from_pdf(pdf_path))
     markdown_document, structured_document, extracted_title = extract_structured_document(pdf_path)
+    markdown_document = clean_markdown_artifacts(_strip_null_bytes(markdown_document))
+    structured_document = _strip_null_bytes(structured_document)
+    extracted_title = _strip_null_bytes(extracted_title) if extracted_title else extracted_title
 
     title = extracted_title or Path(stored_file_name).stem.replace("_", " ").replace("-", " ").title()
 

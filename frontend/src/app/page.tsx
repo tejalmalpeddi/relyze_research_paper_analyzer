@@ -23,8 +23,9 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import PreviousPapersSection from "@/components/History";
 import Popup from "@/components/popups/popup";
-import { importPdf } from "@/lib/api";
+import { importPdf, ApiError } from "@/lib/api";
 import VisualizeBlurb from "@/components/home/visualizeblurb";
+import { useAuth } from "./auth/auth-query";
 
 // Which popup (if any) the upload flow currently needs shown. "uploading"
 // needs its own uploadId (for the future cancelUpload() call) and the
@@ -58,6 +59,10 @@ export default function HomePage() {
   // showing.
   const [uploadPopup, setUploadPopup] = useState<UploadPopupState | null>(null);
 
+  //
+  const {loginAnonymously, isAuthenticated} = useAuth();
+
+
   // Runs when you click the big leather-pad tray (the visible "button").
   // fileInputRef.current is where React actually stores the real <input>
   function handleUploadTrayClick() {
@@ -86,7 +91,9 @@ export default function HomePage() {
       // particular upload (only used for the future cancelUpload() call
       // -- it has nothing to do with the backend yet).
       setUploadPopup({ stage: "uploading", uploadId: crypto.randomUUID(), fileName: file.name });
-
+      
+      if (!isAuthenticated) {await loginAnonymously();}
+      
       try {
         const imported = await importPdf(file);
         // This resolving IS the real "upload finished" signal -- instead
@@ -94,7 +101,11 @@ export default function HomePage() {
         // Difficulty Select for the paper that was just created.
         setUploadPopup({ stage: "difficultySelect", paperId: String(imported.history.id) });
       } catch (error) {
-        setImportError("Import failed. Check the backend logs.");
+        if (error instanceof ApiError && error.status === 401) {
+          setImportError("You need to be logged in to upload a PDF.");
+        } else {
+          setImportError("Import failed. Check the backend logs.");
+        }
         console.error("Failed to import PDF:", error);
         // Something went wrong -- close the popup and fall back to the
         // existing inline error text under the upload tray.
@@ -130,7 +141,7 @@ export default function HomePage() {
 
       {/* The main wood-desk hero area. */}
       <section
-        className="relative left-1/2 h-[90vh] max-h-[700px] w-screen -translate-x-1/2 bg-cover bg-center shadow-xl/50 flex items-center justify-center gap-10 pt-[5%]"
+        className="relative left-1/2 h-[90vh] max-h-[700px] w-screen -translate-x-1/2 bg-cover bg-center shadow-xl/50 flex items-center justify-center gap-10 pt-[5%] z-10"
         style={{ backgroundImage: "url('/background/wood.png')" }}
       >
         {/* The "Visualize your research, your way" card.*/}
@@ -195,7 +206,6 @@ export default function HomePage() {
       {/* The "Previous Papers" section -- entirely built and data-fetched
           inside History.tsx.*/}
       <PreviousPapersSection />
-      <div className="drawer-bottom-rail pointer-events-none fixed bottom-0 left-0 z-[60] h-16 w-full" aria-hidden="true"></div>
 
       {uploadPopup?.stage === "uploading" && (
         <Popup
@@ -215,11 +225,11 @@ export default function HomePage() {
       )}
 
 
-      {/* Drawer Background */}
+      {/* Drawer Border */}
       {/* fixed to the bottom of the screen to give "pulling out drawer" effect */}
       {/* borders adapt to screen size */}
-      <div className="drawer-bg fixed bottom-0 left-0 w-full h-screen box-border -z-10"></div>
-
+      <div className="drawer-bg pointer-events-none fixed bottom-0 left-0 w-full h-screen box-border"></div>
+      <div className="fixed bottom-0 left-0 w-full h-screen -z-10" style={{ backgroundImage: 'url("/background/wood.png")', backgroundPosition: 'bottom', backgroundSize: 'cover', backgroundRepeat: 'no-repeat', filter: 'brightness(50%)' }}></div>
     </main>
   );
 

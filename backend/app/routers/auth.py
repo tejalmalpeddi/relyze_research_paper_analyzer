@@ -1,10 +1,9 @@
 from app.schemas.schemas import UserCreate, UserLogin, UserEdit
 from app.core.db import supabase, new_auth_client
 from fastapi import APIRouter, HTTPException, Depends, status, Response
-from app.core.auth import verify_cookie
+from app.core.auth import verify_cookie, set_session_cookies, clear_session_cookies
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-COOKIE_MAX_AGE = 7 * 24 * 60 * 60
 
 @router.post("/signup", status_code=status.HTTP_201_CREATED)
 def sign_up(payload: UserCreate):
@@ -28,17 +27,8 @@ def login(payload: UserLogin, response: Response):
         res = auth_client.auth.sign_in_with_password(
             {"email": payload.email, "password": payload.password}
         )
-        access_token = res.session.access_token
 
-        response.set_cookie(
-            key="access_token",
-            value=f"Bearer {access_token}",
-            httponly=True,                 
-            secure=False,
-            samesite="lax",                
-            max_age=COOKIE_MAX_AGE,
-            path="/"                       
-        )
+        set_session_cookies(response, res.session.access_token, res.session.refresh_token)
 
         return {"message": "Login successful", "user": res.user}
     except Exception as e:
@@ -50,13 +40,7 @@ def logout(response: Response, user=Depends(verify_cookie)):
     try:
         new_auth_client().auth.sign_out(options={"scope": "local"})
 
-        # clear cookie
-        response.delete_cookie(
-            key="access_token",
-            path="/",
-            samesite="lax",
-            secure=False
-        )
+        clear_session_cookies(response)
         return {"message": "Logged out successfully"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Logout failed: {str(e)}")
@@ -92,12 +76,7 @@ def edit_user(payload: UserEdit, user=Depends(verify_cookie)):
 def delete_user(response: Response, user=Depends(verify_cookie)):
     try:
         supabase.auth.admin.delete_user(user.id)
-        response.delete_cookie(
-            key="access_token",
-            path="/",
-            samesite="lax",
-            secure=False
-        )
+        clear_session_cookies(response)
         return {"message": "User deleted successfully"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Delete failed: {str(e)}")
@@ -114,15 +93,7 @@ def login_anonymous(response: Response):
     try:
         auth_client = new_auth_client()
         res = auth_client.auth.sign_in_anonymously()
-        response.set_cookie(
-            key="access_token",
-            value=f"Bearer {res.session.access_token}",
-            httponly=True,                 
-            secure=False,
-            samesite="lax",                
-            max_age=COOKIE_MAX_AGE,
-            path="/"                       
-        )
+        set_session_cookies(response, res.session.access_token, res.session.refresh_token)
         return {"user": res.user}
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Anonymous login failed: {str(e)}")
