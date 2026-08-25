@@ -21,6 +21,44 @@ MARKDOWN_FILE = PARSER_DIRECTORY / "output_paper.md"
 
 IMAGE_OUTPUT_DIRECTORY = PARSER_DIRECTORY / "assets"
 
+BROWSER_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "svg", "webp"}
+PDF_IMAGE_EXTENSIONS_TO_CONVERT = {"jpx", "jp2", "j2k", "jpf", "jpm", "mj2"}
+
+
+def _image_content_type_from_extension(extension: str) -> str:
+    normalized = extension.lower().lstrip(".")
+    if normalized == "svg":
+        return "image/svg+xml"
+    if normalized in {"jpg", "jpeg"}:
+        return "image/jpeg"
+    if normalized == "webp":
+        return "image/webp"
+    if normalized == "png":
+        return "image/png"
+    if normalized in PDF_IMAGE_EXTENSIONS_TO_CONVERT:
+        return "image/jp2"
+    return f"image/{normalized}" if normalized else "application/octet-stream"
+
+
+def _browser_safe_image_payload(pdf_document, image_xref: int, image_data: dict) -> tuple[bytes, str]:
+    original_extension = str(image_data.get("ext") or "").lower()
+    image_bytes = image_data["image"]
+
+    if original_extension in BROWSER_IMAGE_EXTENSIONS:
+        return image_bytes, original_extension
+
+    try:
+        pixmap = pymupdf.Pixmap(pdf_document, image_xref)
+        if pixmap.n >= 5:
+            pixmap = pymupdf.Pixmap(pymupdf.csRGB, pixmap)
+        return pixmap.tobytes("png"), "png"
+    except Exception as error:
+        print(
+            f"Could not convert .{original_extension or 'unknown'} image to PNG; "
+            f"saving original bytes instead: {error}"
+        )
+        return image_bytes, original_extension or "bin"
+
 
 
 
@@ -200,14 +238,18 @@ def extract_images_from_pdf(
                 print(f"Page {page_number}: failed to extract xref {image_xref}: {e}")
                 continue
 
-            image_extension = image_data["ext"]
+            image_bytes, image_extension = _browser_safe_image_payload(
+                pdf_document,
+                image_xref,
+                image_data,
+            )
             image_filename = (
                 f"page_{page_number}_raster_{image_number}.{image_extension}"
             )
             image_path = output_path / image_filename
 
             with open(image_path, "wb") as image_file:
-                image_file.write(image_data["image"])
+                image_file.write(image_bytes)
             saved_count += 1
 
             # Track raster placement so we don't duplicate it as a "vector figure"
@@ -284,14 +326,15 @@ def _image_metadata(output_directory: Path, document_id: str) -> list[dict]:
         if not image_path.is_file():
             continue
 
-        images.append(
-            {
-                "file_name": image_path.name,
-                "storage_path": f"/assets/{document_id}/{image_path.name}",
-                "page_number": _page_number_from_name(image_path.name),
-                "image_type": _image_type_from_name(image_path.name),
-            }
-        )
+        extension = image_path.suffix.lower().lstrip(".")
+        image = {
+            "file_name": image_path.name,
+            "storage_path": f"/assets/{document_id}/{image_path.name}",
+            "page_number": _page_number_from_name(image_path.name),
+            "image_type": _image_type_from_name(image_path.name),
+            "content_type": _image_content_type_from_extension(extension),
+        }
+        images.append(image)
     return images
 
 

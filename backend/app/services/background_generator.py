@@ -146,11 +146,50 @@ def _summary_item(title: str, summary: str, title_key: str) -> dict:
 
 
 def _image_title(image: dict, index: int) -> str:
-    return (
-        _clean_string(image.get("file_name"))
-        or _clean_string(image.get("storage_path"))
-        or f"Image {index + 1}"
-    )
+    page_number = image.get("page_number")
+    if page_number is not None:
+        return f"Figure {index + 1} On Page {page_number}"
+    return f"Figure {index + 1}"
+
+
+def _image_context_summary(image: dict, subcategories: list, index: int) -> str:
+    page_number = image.get("page_number")
+    page_subcategories = [
+        sub
+        for sub in subcategories
+        if getattr(sub, "sourcePage", None) == page_number
+    ]
+
+    if page_subcategories:
+        primary_subcategory = sorted(
+            page_subcategories,
+            key=lambda sub: sub.importance,
+            reverse=True,
+        )[0]
+        return (
+            f"This figure appears near the discussion of {primary_subcategory.name}. "
+            f"It should be read alongside that section's explanation: "
+            f"{primary_subcategory.content.intermediate}"
+        )
+
+    return ""
+
+
+def _clean_image_summary(summary: str, image: dict, index: int) -> str:
+    cleaned = _clean_string(summary)
+    lower = cleaned.lower()
+    file_name = _clean_string(image.get("file_name")).lower()
+
+    if (
+        not cleaned
+        or "extracted visual" in lower
+        or "file metadata" in lower
+        or "storage" in lower
+        or (file_name and file_name in lower)
+    ):
+        return ""
+
+    return cleaned
 
 
 def _image_context(images: list[dict]) -> list[dict]:
@@ -166,17 +205,16 @@ def _image_context(images: list[dict]) -> list[dict]:
     ]
 
 
-def _image_summary_item(image: dict, summary: str, index: int) -> dict:
+def _image_summary_item(image: dict, summary: str, index: int, subcategories: Optional[list] = None) -> dict:
+    cleaned_summary = _clean_image_summary(summary, image, index)
+
     return {
         "file_name": image.get("file_name"),
         "storage_path": image.get("storage_path"),
         "page_number": image.get("page_number"),
         "image_type": image.get("image_type"),
-        "summary": summary.strip()
-        or (
-            f"{_image_title(image, index)} is an extracted visual from this paper. "
-            "Use its page and file metadata to review the figure alongside the text."
-        ),
+        "summary": cleaned_summary
+        or _image_context_summary(image, subcategories or [], index),
     }
 
 
@@ -218,7 +256,7 @@ def _fallback_background(
             for sub in important_subcategories
         ],
         "images": [
-            _image_summary_item(image, "", index)
+            _image_summary_item(image, "", index, subcategories)
             for index, image in enumerate(_image_context(images or []))
         ],
         "source_pages": sorted(
@@ -261,7 +299,7 @@ def _normalize_summary_items(items, title_key: str) -> list[dict]:
     return normalized
 
 
-def _normalize_image_items(items, source_images: list[dict]) -> list[dict]:
+def _normalize_image_items(items, source_images: list[dict], subcategories: Optional[list] = None) -> list[dict]:
     source_lookup = {}
     for index, image in enumerate(_image_context(source_images)):
         for key in (
@@ -311,14 +349,14 @@ def _normalize_image_items(items, source_images: list[dict]) -> list[dict]:
         if identifier in seen:
             continue
 
-        normalized.append(_image_summary_item(source_image, summary, source_index))
+        normalized.append(_image_summary_item(source_image, summary, source_index, subcategories))
         seen.add(identifier)
 
     if normalized:
         return normalized[:MAX_IMAGE_ITEMS]
 
     return [
-        _image_summary_item(image, "", index)
+        _image_summary_item(image, "", index, subcategories)
         for index, image in enumerate(_image_context(source_images))
     ]
 
@@ -328,6 +366,7 @@ def _normalize_background_content(
     file_name: str,
     source_images: Optional[list[dict]] = None,
     excluded_keyword_terms: Optional[set[str]] = None,
+    subcategories: Optional[list] = None,
 ) -> dict:
     if not isinstance(content, dict):
         return _fallback_background(file_name, [], {}, source_images)
@@ -348,7 +387,7 @@ def _normalize_background_content(
         or file_name.replace(".pdf", "").replace("-", " ").replace("_", " ").title(),
         "keywords": keywords,
         "related_info": related_info,
-        "images": _normalize_image_items(content.get("images"), source_images or []),
+        "images": _normalize_image_items(content.get("images"), source_images or [], subcategories),
         "source_pages": content.get("source_pages") or [],
     }
     return BackgroundContent(**normalized).model_dump()
@@ -411,7 +450,10 @@ def generate_background_content(
                     "term and summary. related_info must be an array of objects "
                     "with exactly: title and summary. images must be an array "
                     "of objects with exactly: file_name, storage_path, "
-                    "page_number, image_type, and summary. Every summary must be brief, "
+                    "page_number, image_type, and summary. Image summaries must explain "
+                    "what the visual likely represents or contributes in the context of "
+                    "the paper. Do not describe image file names, storage paths, file "
+                    "formats, extraction, or metadata. Every summary must be brief, "
                     f"no more than {SUMMARY_SENTENCE_LIMIT} sentences. "
                     "Return ONLY valid JSON, no markdown fences or commentary."
                 ),
@@ -464,6 +506,7 @@ def generate_background_content(
             file_name,
             images,
             excluded_keyword_terms,
+            subcategories,
         )
         normalized["keywords"] = _keyword_items_from_subcategories(
             subcategories,

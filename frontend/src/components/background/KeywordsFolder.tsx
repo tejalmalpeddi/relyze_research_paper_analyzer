@@ -8,7 +8,7 @@ import {
   KeywordSummary,
   RelatedInfoSummary,
 } from "@/lib/types";
-import { backendAssetUrl } from "@/lib/api";
+import { backendImagePreviewUrl } from "@/lib/api";
 import type { DifficultyLevel } from "@/components/map/MindMap";
 
 interface KeywordsFolderProps {
@@ -259,32 +259,66 @@ function RelatedInfoCard({ item }: { item: RelatedInfoSummary }) {
   );
 }
 
-function ImageCard({ image, index }: { image: DocumentImage; index: number }) {
-  const imageTitle = image.file_name ?? `Image ${index + 1}`;
-  const imageUrl = backendAssetUrl(image.storage_path);
+function cleanImageSummary(value: string | undefined, image: DocumentImage): string {
+  const summary = (value ?? "").replace(/\s+/g, " ").trim();
+  const fileName = image.file_name?.toLowerCase() ?? "";
+
+  if (
+    summary.length === 0 ||
+    /extracted visual|file metadata|storage:|storage path|image_type|raster|vector/i.test(summary) ||
+    (fileName.length > 0 && summary.toLowerCase().includes(fileName))
+  ) {
+    return "";
+  }
+
+  return summary;
+}
+
+function imageSummaryForContext(entry: HistoryEntry, image: DocumentImage, index: number): string {
+  const savedSummary = cleanImageSummary(image.summary, image);
+  if (savedSummary.length > 0) return savedSummary;
+
+  const pageNumber = image.page_number;
+  const pageNodes = entry.map_json.nodes
+    .filter((node) => node.metadata?.source_page === pageNumber)
+    .filter((node) => NON_KEYWORD_NODE_TITLES.has(keywordKey(node.data?.title ?? "")) === false);
+
+  const primaryNode = pageNodes[0];
+  if (primaryNode !== undefined) {
+    const nodeTitle = cleanKeywordTerm(primaryNode.data?.title ?? "");
+    const nodeSummary = cleanKeywordSummary(primaryNode.content?.intermediate ?? primaryNode.data?.bullets?.[0] ?? "");
+    if (nodeTitle.length > 0 && nodeSummary.length > 0) {
+      return `This figure appears with the paper's discussion of ${nodeTitle}. ${nodeSummary}`;
+    }
+  }
+
+  return "";
+}
+
+function ImageCard({ entry, image, index }: { entry: HistoryEntry; image: DocumentImage; index: number }) {
+  const [didImageFail, setDidImageFail] = useState(false);
+  const imageTitle = image.page_number !== undefined ? `Figure ${index + 1} - Page ${image.page_number}` : `Figure ${index + 1}`;
+  const imageUrl = backendImagePreviewUrl(image.storage_path);
+  const imageSummary = imageSummaryForContext(entry, image, index);
+
+  if (didImageFail || imageUrl === null) {
+    return null;
+  }
 
   return (
     <div className="mb-2 border border-[#5e503f] bg-[#d9d9d9] p-3">
-      {imageUrl !== null && (
-        <img
-          src={imageUrl}
-          alt={imageTitle}
-          className="mb-3 max-h-48 w-full object-contain"
-        />
-      )}
+      <img
+        src={imageUrl}
+        alt={imageTitle}
+        onError={() => setDidImageFail(true)}
+        className="mb-3 max-h-48 w-full object-contain"
+      />
       <h3 className="font-serif text-[18px] leading-[24px] text-black">{imageTitle}</h3>
-      {image.summary !== undefined && image.summary.trim().length > 0 && (
+      {imageSummary.length > 0 && (
         <p className="mt-2 font-serif text-[16px] leading-[21px] text-black">
-          {image.summary}
+          {imageSummary}
         </p>
       )}
-      <div className="mt-1 space-y-1 font-serif text-[13px] leading-[17px] text-black">
-        {image.page_number !== undefined && <p>Page {image.page_number}</p>}
-        {image.image_type !== undefined && <p>Type: {image.image_type}</p>}
-        {image.storage_path !== undefined && (
-          <p className="break-all">Storage: {image.storage_path}</p>
-        )}
-      </div>
     </div>
   );
 }
@@ -474,6 +508,7 @@ export function KeywordsFolder({ entry, difficultyLevel }: KeywordsFolderProps) 
                           {images.map((image, index) => (
                             <ImageCard
                               key={`${image.storage_path ?? image.file_name ?? "image"}-${index}`}
+                              entry={entry}
                               image={image}
                               index={index}
                             />
