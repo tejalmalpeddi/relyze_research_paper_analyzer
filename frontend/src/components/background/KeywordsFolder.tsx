@@ -9,51 +9,184 @@ import {
   RelatedInfoSummary,
 } from "@/lib/types";
 import { backendAssetUrl } from "@/lib/api";
+import type { DifficultyLevel } from "@/components/map/MindMap";
 
 interface KeywordsFolderProps {
   entry: HistoryEntry;
+  difficultyLevel: DifficultyLevel;
 }
 
-function collectFallbackKeywords(entry: HistoryEntry): KeywordSummary[] {
+const NON_KEYWORD_NODE_TITLES = new Set([
+  "problem",
+  "background",
+  "method",
+  "architecture",
+  "dataset",
+  "experiment",
+  "result",
+  "limitation",
+  "future work",
+  "key term",
+  "document overview",
+]);
+
+function cleanKeywordTerm(value: string): string {
+  const term = value.replace(/\s+/g, " ").replace(/^[\s\-*:;,.()[\]{}]+|[\s:;,.()[\]{}]+$/g, "");
+  const words = term.match(/[A-Za-z0-9]+(?:[-'][A-Za-z0-9]+)?/g) ?? [];
+  const lower = term.toLowerCase();
+  const firstWord = words[0]?.toLowerCase() ?? "";
+  const lastWord = words[words.length - 1]?.toLowerCase() ?? "";
+
+  if (
+    term.length === 0 ||
+    words.length === 0 ||
+    words.length > 5 ||
+    term.includes("@") ||
+    /https?:\/\/|www\.|[.?!]|\w+-\s+\w+|nlp analysis/i.test(term) ||
+    (words.length > 2 && ["a", "an", "the", "this", "that"].includes(firstWord)) ||
+    ["is", "are", "was", "were", "has", "have", "ensures", "includes", "shows"].includes(lastWord)
+  ) {
+    return "";
+  }
+
+  return term
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function cleanKeywordSummary(value: string): string {
+  const summary = value.replace(/\s+/g, " ").trim();
+  if (/nlp analysis|key concept surfaced/i.test(summary)) {
+    return "";
+  }
+  return summary;
+}
+
+function keywordKey(term: string): string {
+  return term.toLowerCase().replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function isPaperTitleKeyword(entry: HistoryEntry, term: string): boolean {
+  return keywordKey(entry.title) === keywordKey(term);
+}
+
+function nodeSummaryForLevel(node: HistoryEntry["map_json"]["nodes"][number], difficultyLevel: DifficultyLevel): string {
+  return cleanKeywordSummary(node.content?.[difficultyLevel] ?? node.data?.bullets?.[0] ?? "");
+}
+
+function summaryForKeyword(entry: HistoryEntry, keywordTerm: string, difficultyLevel: DifficultyLevel): string {
+  const key = keywordKey(keywordTerm);
+
+  for (const node of entry.map_json.nodes) {
+    const nodeTitle = cleanKeywordTerm(node.data?.title ?? "");
+    const nodeSummary = nodeSummaryForLevel(node, difficultyLevel);
+
+    if (nodeSummary.length === 0) continue;
+    if (keywordKey(nodeTitle) === key) return nodeSummary;
+
+    for (const relatedTerm of node.metadata?.related_terms ?? []) {
+      if (keywordKey(cleanKeywordTerm(relatedTerm)) === key) {
+        return nodeSummary;
+      }
+    }
+  }
+
+  return `${keywordTerm} is a key term from this paper and useful background for understanding its main ideas.`;
+}
+
+function collectFallbackKeywords(entry: HistoryEntry, difficultyLevel: DifficultyLevel): KeywordSummary[] {
   const seenLowercase = new Set<string>();
   const keywords: KeywordSummary[] = [];
 
   for (const node of entry.map_json.nodes) {
-    const terms = [...(node.metadata?.related_terms ?? []), ...(node.metadata?.tags ?? [])];
+    if (node.id === "root") continue;
 
-    for (const term of terms) {
-      const trimmed = term.trim();
-      if (trimmed.length === 0) continue;
+    const term = cleanKeywordTerm(node.data?.title ?? "");
+    const summary = nodeSummaryForLevel(node, difficultyLevel);
+    const key = keywordKey(term);
 
-      const key = trimmed.toLowerCase();
-      if (seenLowercase.has(key)) continue;
-
-      seenLowercase.add(key);
-      keywords.push({ term: trimmed, summary: "" });
+    if (
+      term.length === 0 ||
+      summary.length === 0 ||
+      NON_KEYWORD_NODE_TITLES.has(key) ||
+      isPaperTitleKeyword(entry, term) ||
+      seenLowercase.has(key)
+    ) {
+      continue;
     }
+
+    seenLowercase.add(key);
+    keywords.push({ term, summary });
   }
 
   return keywords.sort((a, b) => a.term.localeCompare(b.term));
 }
 
-function collectKeywords(entry: HistoryEntry): KeywordSummary[] {
+function collectKeywords(entry: HistoryEntry, difficultyLevel: DifficultyLevel): KeywordSummary[] {
+  const mapKeywords = collectFallbackKeywords(entry, difficultyLevel);
+  if (mapKeywords.length > 0) {
+    return mapKeywords;
+  }
+
   const generatedKeywords = entry.background?.keywords ?? [];
-  if (generatedKeywords.length > 0) {
-    return [...generatedKeywords].sort((a, b) => a.term.localeCompare(b.term));
+  const cleanedGeneratedKeywords = generatedKeywords
+    .map((keyword) => ({
+      ...keyword,
+      term: cleanKeywordTerm(keyword.term),
+      summary: cleanKeywordSummary(keyword.summary),
+    }))
+    .map((keyword) => ({
+      ...keyword,
+      summary: keyword.summary || summaryForKeyword(entry, keyword.term, difficultyLevel),
+    }))
+    .filter((keyword) => keyword.term.length > 0 && isPaperTitleKeyword(entry, keyword.term) === false);
+  if (cleanedGeneratedKeywords.length > 0) {
+    return cleanedGeneratedKeywords.sort((a, b) => a.term.localeCompare(b.term));
   }
 
   const supabaseKeywords = entry.keywords ?? [];
-  if (supabaseKeywords.length > 0) {
-    return [...supabaseKeywords]
+  const cleanedSupabaseKeywords = supabaseKeywords
+    .map(cleanKeywordTerm)
+    .filter((term) => term.length > 0 && isPaperTitleKeyword(entry, term) === false);
+  if (cleanedSupabaseKeywords.length > 0) {
+    return cleanedSupabaseKeywords
       .sort((a, b) => a.localeCompare(b))
-      .map((term) => ({ term, summary: "" }));
+      .map((term) => ({ term, summary: summaryForKeyword(entry, term, difficultyLevel) }));
   }
 
-  return collectFallbackKeywords(entry);
+  return collectFallbackKeywords(entry, difficultyLevel);
 }
 
-function collectRelatedInfo(entry: HistoryEntry): RelatedInfoSummary[] {
-  return entry.background?.related_info ?? entry.background?.related_information ?? [];
+function summaryForRelatedInfo(
+  entry: HistoryEntry,
+  relatedTitle: string,
+  difficultyLevel: DifficultyLevel
+): string {
+  const key = keywordKey(relatedTitle);
+
+  for (const node of entry.map_json.nodes) {
+    const nodeTitle = cleanKeywordTerm(node.data?.title ?? "");
+    const nodeSummary = nodeSummaryForLevel(node, difficultyLevel);
+
+    if (nodeSummary.length > 0 && keywordKey(nodeTitle) === key) {
+      return nodeSummary;
+    }
+  }
+
+  return "";
+}
+
+function collectRelatedInfo(entry: HistoryEntry, difficultyLevel: DifficultyLevel): RelatedInfoSummary[] {
+  const relatedInfo = entry.background?.related_info ?? entry.background?.related_information ?? [];
+
+  return relatedInfo.map((item) => {
+    const responsiveSummary = summaryForRelatedInfo(entry, item.title, difficultyLevel);
+    return {
+      ...item,
+      summary: responsiveSummary || cleanKeywordSummary(item.summary),
+    };
+  });
 }
 
 function VocabularyCard({ item }: { item: KeywordSummary }) {
@@ -83,7 +216,7 @@ function VocabularyCard({ item }: { item: KeywordSummary }) {
       {isExpanded === true && (
         <div className="px-4 pb-4">
           <p className="font-serif text-[16px] leading-[21px] text-black">
-            {item.summary || "No generated summary was saved for this keyword yet."}
+            {item.summary}
           </p>
         </div>
       )}
@@ -225,12 +358,12 @@ const FOLDERS: FolderSpec[] = [
 
 const OPEN_FOLDER_PUSH_PERCENT = 44;
 
-export function KeywordsFolder({ entry }: KeywordsFolderProps) {
+export function KeywordsFolder({ entry, difficultyLevel }: KeywordsFolderProps) {
   const [activeTab, setActiveTab] = useState<FolderKey | null>(null);
 
-  const keywords = useMemo(() => collectKeywords(entry), [entry]);
+  const keywords = useMemo(() => collectKeywords(entry, difficultyLevel), [entry, difficultyLevel]);
   const groupedKeywords = useMemo(() => groupByFirstLetter(keywords), [keywords]);
-  const relatedInfo = useMemo(() => collectRelatedInfo(entry), [entry]);
+  const relatedInfo = useMemo(() => collectRelatedInfo(entry, difficultyLevel), [entry, difficultyLevel]);
   const images = entry.images ?? entry.background?.images ?? [];
   const activeFolderIndex = FOLDERS.findIndex((folder) => folder.key === activeTab);
 
