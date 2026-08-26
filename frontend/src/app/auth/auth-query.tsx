@@ -95,7 +95,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const editUser = async (dataUpdate: UserEdit) => {
     const res = await requestWrapper<AuthMessageResponse, UserEdit>('/auth/edit-user', 'PUT', dataUpdate);
-    await fetchUser();
+    if (!dataUpdate.password) {
+      await fetchUser();
+    }
     return res;
   };
 
@@ -107,8 +109,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const requestPasswordReset = async (email: string) => {
-    void email;
-    return { message: "If that email is registered, it will reset." };
+    return requestWrapper<AuthMessageResponse, { email: string }>(
+      '/auth/forgot-password-request',
+      'POST',
+      { email }
+    );
+  };
+
+  const recoveryCode = async (email: string, code: string) => {
+    const res = await requestWrapper<AuthMessageResponse, { email: string; token: string }>(
+      '/auth/recovery-code',
+      'POST',
+      { email: email, token: code }
+    );
+    return res;
   };
 
   return (
@@ -125,6 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         editUser,
         deleteUser,
         requestPasswordReset,
+        recoveryCode,
       }}
     >
       {children}

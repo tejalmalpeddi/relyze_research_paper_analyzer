@@ -33,4 +33,5 @@ export interface AuthContextType {
   editUser: (updateData: UserEdit) => Promise<AuthMessageResponse>;
   deleteUser: (credentials: UserLogin) => Promise<AuthMessageResponse>;
   requestPasswordReset: (email: string) => Promise<AuthMessageResponse>;
+  recoveryCode: (email: string, code: string) => Promise<AuthMessageResponse>;
 }
