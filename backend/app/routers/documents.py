@@ -118,7 +118,7 @@ def _add_references(raw_text):
         params = {
             "query.bibliographic": cleaned_ref,
             "rows": 1,
-            # "mailto": "your-email@example.com",
+            "mailto": "dummy@relyze-app.com",
         }
 
         response = requests.get(url, params=params)
@@ -129,12 +129,12 @@ def _add_references(raw_text):
                 doi = items[0].get("DOI")
                 if doi:
                     link = f"https://doi.org/{doi}"
-            if link:
-                linked_refs.append(f"* [{cleaned_ref}]({link})")
-                print("[add references] SUCCESS", link, cleaned_ref)
-            else:
-                linked_refs.append(f"* {cleaned_ref}")
-                print("[add references] LINK NOT FOUND", link, cleaned_ref)
+        if link:
+            linked_refs.append(f"* [{cleaned_ref}]({link})")
+            print("[add references] SUCCESS", link, cleaned_ref)
+        else:
+            linked_refs.append(f"* {cleaned_ref}")
+            print("[add references] LINK NOT FOUND", link, cleaned_ref)
     return "\n".join(linked_refs)
 
 # ---------------------------------------------------------------------------
