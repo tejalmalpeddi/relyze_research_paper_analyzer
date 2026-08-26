@@ -259,47 +259,10 @@ function RelatedInfoCard({ item }: { item: RelatedInfoSummary }) {
   );
 }
 
-function cleanImageSummary(value: string | undefined, image: DocumentImage): string {
-  const summary = (value ?? "").replace(/\s+/g, " ").trim();
-  const fileName = image.file_name?.toLowerCase() ?? "";
-
-  if (
-    summary.length === 0 ||
-    /extracted visual|file metadata|storage:|storage path|image_type|raster|vector/i.test(summary) ||
-    (fileName.length > 0 && summary.toLowerCase().includes(fileName))
-  ) {
-    return "";
-  }
-
-  return summary;
-}
-
-function imageSummaryForContext(entry: HistoryEntry, image: DocumentImage, index: number): string {
-  const savedSummary = cleanImageSummary(image.summary, image);
-  if (savedSummary.length > 0) return savedSummary;
-
-  const pageNumber = image.page_number;
-  const pageNodes = entry.map_json.nodes
-    .filter((node) => node.metadata?.source_page === pageNumber)
-    .filter((node) => NON_KEYWORD_NODE_TITLES.has(keywordKey(node.data?.title ?? "")) === false);
-
-  const primaryNode = pageNodes[0];
-  if (primaryNode !== undefined) {
-    const nodeTitle = cleanKeywordTerm(primaryNode.data?.title ?? "");
-    const nodeSummary = cleanKeywordSummary(primaryNode.content?.intermediate ?? primaryNode.data?.bullets?.[0] ?? "");
-    if (nodeTitle.length > 0 && nodeSummary.length > 0) {
-      return `This figure appears with the paper's discussion of ${nodeTitle}. ${nodeSummary}`;
-    }
-  }
-
-  return "";
-}
-
-function ImageCard({ entry, image, index }: { entry: HistoryEntry; image: DocumentImage; index: number }) {
+function ImageCard({ image, index }: { image: DocumentImage; index: number }) {
   const [didImageFail, setDidImageFail] = useState(false);
   const imageTitle = image.page_number !== undefined ? `Figure ${index + 1} - Page ${image.page_number}` : `Figure ${index + 1}`;
   const imageUrl = backendImagePreviewUrl(image.storage_path);
-  const imageSummary = imageSummaryForContext(entry, image, index);
 
   if (didImageFail || imageUrl === null) {
     return null;
@@ -314,11 +277,6 @@ function ImageCard({ entry, image, index }: { entry: HistoryEntry; image: Docume
         className="mb-3 max-h-48 w-full object-contain"
       />
       <h3 className="font-serif text-[18px] leading-[24px] text-black">{imageTitle}</h3>
-      {imageSummary.length > 0 && (
-        <p className="mt-2 font-serif text-[16px] leading-[21px] text-black">
-          {imageSummary}
-        </p>
-      )}
     </div>
   );
 }
@@ -508,7 +466,6 @@ export function KeywordsFolder({ entry, difficultyLevel }: KeywordsFolderProps) 
                           {images.map((image, index) => (
                             <ImageCard
                               key={`${image.storage_path ?? image.file_name ?? "image"}-${index}`}
-                              entry={entry}
                               image={image}
                               index={index}
                             />
