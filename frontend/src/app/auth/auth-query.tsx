@@ -110,8 +110,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const requestPasswordReset = async (email: string) => {
     return requestWrapper<AuthMessageResponse, { email: string }>(
-      '/auth/forgot-password-request', 
-      'POST', 
+      '/auth/forgot-password-request',
+      'POST',
       { email }
     );
   };

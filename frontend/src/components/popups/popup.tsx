@@ -771,7 +771,7 @@ function NewPasswordPopup({
   const [password, setPassword] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
   const [error, setError] = useState('');
-  const {editUser} = useAuth();
+  const {editUser, logout} = useAuth();
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -783,6 +783,7 @@ function NewPasswordPopup({
     try {
       // Updates the password for the currently logged-in user.
       await editUser({password: password});
+      await logout();
     } catch (e: any){
       const errorMessage = e instanceof Error ? e.message : 'Could not update password. Please try again.';
       setError(errorMessage);

@@ -38,11 +38,11 @@ class UserEdit(BaseModel):
 
 class UserPasswordResetRequest(BaseModel):
     email: EmailStr
-    
+
 class UserPasswordCode(BaseModel):
     email: EmailStr
     token: str
-    
+
 class StickyNotesCreate(BaseModel):
     color: str
     content: str

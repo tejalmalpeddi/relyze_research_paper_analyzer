@@ -97,7 +97,7 @@ def login_anonymous(response: Response):
         return {"user": res.user}
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Anonymous login failed: {str(e)}")
-    
+
 @router.post("/forgot-password-request")
 def forgot_password(payload: UserPasswordResetRequest):
     try:
@@ -108,7 +108,7 @@ def forgot_password(payload: UserPasswordResetRequest):
         return {"message": "If this email is registered, a password reset code has been sent."}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
-    
+
 @router.post("/recovery-code")
 def reset_password(payload: UserPasswordCode, response: Response):
     try:
@@ -120,11 +120,11 @@ def reset_password(payload: UserPasswordCode, response: Response):
         })
         if not res or not res.user:
             raise HTTPException(status_code=401, detail="Unauthorized: Invalid or expired reset code.")
-  
+
         if res.session:
             set_session_cookies(response, res.session.access_token, res.session.refresh_token)
 
         return {"message": "Logged in successfully through reset code"}
-        
+
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
