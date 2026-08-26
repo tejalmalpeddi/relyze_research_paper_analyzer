@@ -774,6 +774,12 @@ function InsightPanel({ messages, isLoading }: InsightPanelProps) {
 
   return (
     <aside className={styles.insightPanel} aria-label="Paper assistant">
+      {messages.length === 0 && !isLoading && (
+        <h2 className={styles.defaultChatTitle}>
+          Ask questions about this paper here!
+        </h2>
+      )}
+
       {messages.map((message, index) =>
         message.role === 'user' ? (
           <p key={index} className={styles.userMessage}>
