@@ -2,10 +2,11 @@
 
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import { useSearchParams } from "next/navigation";
 import { useHistoryEntry } from "@/lib/useHistoryEntry";
 import { useDocumentScrollLock } from "@/lib/useDocumentScrollLock";
 import { KeywordsFolder } from "@/components/background/KeywordsFolder";
-import type { DifficultyLevel } from "@/components/map/MindMap";
+import { parseDifficultyLevel, type DifficultyLevel } from "@/components/map/MindMap";
 
 const MindMapView = dynamic(
   () => import("@/components/map/MindMap").then((module) => ({ default: module.MindMapView })),
@@ -37,7 +38,14 @@ function BackgroundPageContent() {
   const containerRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
   const [folderPanelPercent, setFolderPanelPercent] = useState(DEFAULT_FOLDER_PANEL_PERCENT);
-  const [selectedLevel, setSelectedLevel] = useState<DifficultyLevel>("beginner");
+
+  // Seeded once from "?difficulty=" (set by the Upload Successful popup's
+  // Beginner/Intermediate/Advanced picker) so landing here respects that
+  // choice instead of always starting at Beginner.
+  const searchParams = useSearchParams();
+  const [selectedLevel, setSelectedLevel] = useState<DifficultyLevel>(() =>
+    parseDifficultyLevel(searchParams.get("difficulty"))
+  );
 
   const handleDividerMouseDown = useCallback((event: React.MouseEvent) => {
     event.preventDefault();

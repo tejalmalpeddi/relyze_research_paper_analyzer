@@ -77,6 +77,14 @@
   margin: 0;
 }
 
+/* Second line inside .topText on the Uploading popup -- the current
+   pipeline stage, shown under the file name. */
+.stageMessage {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+
 /* Row holding the small text-link(s) at the bottom of a form -- e.g.
    "Forgot password?" + "Create account" on Login, or just "Log in to
    existing account" on Create Account. Right-aligned as a group so they

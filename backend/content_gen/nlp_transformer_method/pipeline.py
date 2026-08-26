@@ -372,9 +372,11 @@ def run_pipeline(document_id: str) -> dict:
             raise ValueError("Document has no pages — PDF parser may not have run yet")
 
         print("[pipeline] Running NLP enrichment")
+        update_status(document_id, "enriching")
         nlp_data = enrich_pages_with_nlp(pages)
 
         print("[pipeline] Running LLM subcategory generation")
+        update_status(document_id, "categorizing")
         parser_output = {
             "file_name": doc["file_name"],
             "pages":     pages,
@@ -385,6 +387,7 @@ def run_pipeline(document_id: str) -> dict:
         title = doc["title"] or doc["file_name"].replace(".pdf", "").replace("-", " ").title()
 
         print(f"[pipeline] Assembling map from {len(subcategories)} subcategories")
+        update_status(document_id, "mapping")
         map_json = build_map_json(
             title         = title,
             domain        = nlp_data["domain"],
@@ -402,6 +405,7 @@ def run_pipeline(document_id: str) -> dict:
 
         filters = generate_paper_tags(nlp_data)
         print("[pipeline] Generating background content")
+        update_status(document_id, "summarizing")
         background_content = generate_background_content(
             file_name=doc["file_name"],
             pages=pages,
@@ -411,6 +415,7 @@ def run_pipeline(document_id: str) -> dict:
         )
 
         print("[pipeline] Saving to Supabase")
+        update_status(document_id, "saving")
         history_row = save_results(
             document_id     = document_id,
             user_id         = doc["user_id"],

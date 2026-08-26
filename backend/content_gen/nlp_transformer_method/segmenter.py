@@ -67,8 +67,14 @@ def detect_domain(text: str) -> str:
     return max(scores, key=scores.get)
 
 
-# A fixed, broad taxonomy of subject-matter topics.
+# A fixed, broad taxonomy of subject-matter topics. Deliberately spans
+# STEM, health, social science, business/law, and humanities/arts fields
+# rather than skewing STEM-heavy -- detect_topics() (below) is a
+# multi-label match against whatever's in here, and a field that isn't
+# represented at all can never surface as a filter, regardless of how
+# many papers on it get uploaded.
 TOPIC_SIGNALS: dict[str, list[str]] = {
+    # --- Computing & engineering ---
     "Machine Learning": [
         "machine learning", "neural network", "training data", "supervised learning",
         "unsupervised learning", "gradient descent", "classifier", "deep learning",
@@ -97,6 +103,20 @@ TOPIC_SIGNALS: dict[str, list[str]] = {
         "data analysis", "data pipeline", "statistical model", "regression",
         "data visualization", "big data",
     ],
+    "Statistics": [
+        "statistical significance", "regression analysis", "hypothesis testing",
+        "probability distribution", "sample size", "confidence interval",
+    ],
+    "Engineering": [
+        "structural design", "mechanical system", "civil engineering",
+        "load bearing", "engineering design", "fluid dynamics",
+    ],
+    "Materials Science": [
+        "nanomaterial", "polymer", "alloy", "crystal structure",
+        "material properties", "composite material",
+    ],
+
+    # --- Natural & physical sciences ---
     "Biology": [
         "organism", "species", "ecosystem", "cell biology", "biological",
         "evolution", "biodiversity",
@@ -109,14 +129,6 @@ TOPIC_SIGNALS: dict[str, list[str]] = {
         "neuron", "brain", "cognitive", "synaptic", "neural activity",
         "cortex", "neuroscience",
     ],
-    "Medicine": [
-        "patient", "clinical trial", "diagnosis", "treatment", "disease",
-        "therapy", "medical",
-    ],
-    "Public Health": [
-        "public health", "epidemiology", "vaccination", "healthcare policy",
-        "disease outbreak", "population health",
-    ],
     "Chemistry": [
         "chemical reaction", "molecule", "compound", "catalyst",
         "chemical bond", "synthesis",
@@ -124,6 +136,14 @@ TOPIC_SIGNALS: dict[str, list[str]] = {
     "Physics": [
         "quantum", "particle", "electromagnetic", "thermodynamic",
         "relativity", "physics",
+    ],
+    "Astronomy": [
+        "astrophysics", "exoplanet", "telescope", "galaxy", "cosmology",
+        "stellar", "black hole",
+    ],
+    "Earth Science": [
+        "geology", "seismic", "tectonic", "mineral", "sedimentary",
+        "volcanic", "geological survey",
     ],
     "Environmental Science": [
         "climate change", "carbon emission", "renewable energy",
@@ -133,6 +153,122 @@ TOPIC_SIGNALS: dict[str, list[str]] = {
         "theorem", "proof", "equation", "algebraic", "mathematical model",
         "differential",
     ],
+    "Agriculture": [
+        "crop yield", "agricultural", "soil fertility", "irrigation",
+        "livestock", "farming practice",
+    ],
+
+    # --- Health & medicine ---
+    "Medicine": [
+        "patient", "clinical trial", "diagnosis", "treatment", "disease",
+        "therapy", "medical",
+    ],
+    "Public Health": [
+        "public health", "epidemiology", "vaccination", "healthcare policy",
+        "disease outbreak", "population health",
+    ],
+    "Nursing": [
+        "nursing care", "patient care", "clinical nursing",
+        "nurse practitioner", "nursing practice",
+    ],
+    "Pharmacology": [
+        "pharmacokinetics", "drug interaction", "dosage", "pharmaceutical",
+        "pharmacological", "drug efficacy",
+    ],
+    "Nutrition": [
+        "dietary intake", "nutritional", "micronutrient", "caloric",
+        "diet quality", "nutrient",
+    ],
+    "Sports Science": [
+        "athletic performance", "exercise physiology", "sports medicine",
+        "kinesiology", "muscle strength", "physical fitness",
+    ],
+    "Veterinary Science": [
+        "veterinary", "animal health", "livestock disease",
+        "companion animal", "zoonotic",
+    ],
+
+    # --- Social sciences ---
+    "Psychology": [
+        "behavioral", "cognitive bias", "psychological", "mental health",
+        "emotion regulation", "personality",
+    ],
+    "Sociology": [
+        "social structure", "social inequality", "sociological",
+        "social norm", "social capital", "demographic",
+    ],
+    "Political Science": [
+        "political system", "governance", "democracy", "election",
+        "policy analysis", "political institution",
+    ],
+    "Anthropology": [
+        "ethnography", "cultural practice", "anthropological", "fieldwork",
+        "indigenous", "kinship",
+    ],
+    "International Relations": [
+        "foreign policy", "diplomacy", "geopolitical",
+        "international relations", "bilateral", "sovereignty",
+    ],
+    "Criminology": [
+        "crime rate", "criminal justice", "recidivism", "criminology",
+        "law enforcement", "incarceration",
+    ],
+    "Linguistics": [
+        "phonetics", "syntax", "morphology", "linguistic",
+        "language acquisition", "semantics",
+    ],
+    "Geography": [
+        "spatial analysis", "geographic information", "urbanization",
+        "land use", "cartography",
+    ],
+    "Communication Studies": [
+        "mass media", "communication theory", "media effects", "audience",
+        "journalism", "public relations",
+    ],
+    "Public Policy": [
+        "policy implementation", "regulatory", "public administration",
+        "policymaker", "legislation",
+    ],
+    "Education": [
+        "curriculum", "pedagogy", "student learning", "classroom",
+        "educational outcomes",
+    ],
+
+    # --- Humanities & arts ---
+    "History": [
+        "historical record", "historiography", "archival", "colonial",
+        "medieval", "historical context",
+    ],
+    "Philosophy": [
+        "epistemology", "metaphysics", "ethical theory", "philosophical",
+        "moral philosophy", "ontology",
+    ],
+    "Art History": [
+        "iconography", "art historical", "renaissance", "artistic movement",
+        "painting", "sculpture",
+    ],
+    "Literature": [
+        "literary criticism", "narrative structure", "poetics", "novel",
+        "literary theory", "protagonist",
+    ],
+    "Religious Studies": [
+        "theology", "religious tradition", "scripture", "spirituality",
+        "doctrine", "religious practice",
+    ],
+    "Music": [
+        "musical composition", "harmony", "musicology", "orchestration",
+        "musical performance", "rhythm",
+    ],
+    "Performing Arts": [
+        "theatrical", "stage performance", "choreography", "dramaturgy",
+        "playwright", "performance art",
+    ],
+    "Film Studies": [
+        "cinematography", "film theory", "mise-en-scene", "screenplay",
+        "film narrative", "documentary film",
+    ],
+
+    # --- Business & law ---
     "Economics": [
         "market equilibrium", "supply and demand", "gdp", "inflation",
         "economic growth", "monetary policy",
@@ -145,17 +281,21 @@ TOPIC_SIGNALS: dict[str, list[str]] = {
         "business model", "competitive advantage", "stakeholder",
         "market share", "corporate strategy",
     ],
+    "Marketing": [
+        "consumer behavior", "brand", "advertising", "marketing strategy",
+        "market segmentation", "promotional",
+    ],
+    "Accounting": [
+        "financial statement", "auditing", "accounting standard",
+        "balance sheet", "bookkeeping",
+    ],
+    "Management": [
+        "organizational behavior", "leadership", "human resources",
+        "workplace", "employee performance", "management practice",
+    ],
     "Law": [
         "plaintiff", "defendant", "statute", "jurisdiction", "court ruling",
         "legal precedent", "contract",
-    ],
-    "Psychology": [
-        "behavioral", "cognitive bias", "psychological", "mental health",
-        "emotion regulation", "personality",
-    ],
-    "Education": [
-        "curriculum", "pedagogy", "student learning", "classroom",
-        "educational outcomes",
     ],
 }
 

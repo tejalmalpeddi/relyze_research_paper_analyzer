@@ -231,17 +231,30 @@ def _prerequisite_terms(subcategories: list) -> list[str]:
     return _dedupe(terms)
 
 
+def _top_subcategories(subcategories: list, limit: int = 5) -> list:
+    return sorted(subcategories, key=lambda sub: sub.importance, reverse=True)[:limit]
+
+
+def _related_info_from_subcategories(subcategories: list) -> list[dict]:
+    """
+    Falls back to the top subcategories by importance when there's nothing
+    better -- used both for the fully-offline fallback path and to backfill
+    related_info when the LLM's own JSON came back with that field empty
+    (it isn't required to populate it, so it sometimes just doesn't).
+    """
+    return [
+        _summary_item(sub.name, sub.content.intermediate, "title")
+        for sub in _top_subcategories(subcategories)
+    ]
+
+
 def _fallback_background(
     file_name: str,
     subcategories: list,
     nlp_data: dict,
     images: Optional[list[dict]] = None,
 ) -> dict:
-    important_subcategories = sorted(
-        subcategories,
-        key=lambda sub: sub.importance,
-        reverse=True,
-    )[:5]
+    important_subcategories = _top_subcategories(subcategories)
 
     content = {
         "title": (
@@ -514,6 +527,13 @@ def generate_background_content(
         )
         if not normalized.get("keywords"):
             return _fallback_background(file_name, subcategories, nlp_data, images)
+        # The model isn't required to populate related_info the way
+        # keywords are guaranteed above -- it sometimes just returns an
+        # empty array for it even though the rest of the response is
+        # fine. Backfill from subcategories rather than shipping an
+        # otherwise-good result with an empty related-info section.
+        if not normalized.get("related_info"):
+            normalized["related_info"] = _related_info_from_subcategories(subcategories)
         return normalized
     except Exception:
         return _fallback_background(file_name, subcategories, nlp_data, images)

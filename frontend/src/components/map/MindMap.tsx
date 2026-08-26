@@ -377,6 +377,21 @@ function PaperNode({ data }: NodeProps<PaperFlowNode>) {
 
 export type DifficultyLevel = "beginner" | "intermediate" | "advanced";
 
+const DIFFICULTY_LEVELS: readonly DifficultyLevel[] = ["beginner", "intermediate", "advanced"];
+
+// Reads the "?difficulty=" query param a page was navigated to with (set
+// by the Upload Successful popup's Beginner/Intermediate/Advanced picker,
+// see DifficultySelectPopup in components/popups/popup.tsx) and turns it
+// into a valid DifficultyLevel, falling back to "beginner" for anything
+// missing, misspelled, or tampered with -- the same default this always
+// had before a level could be passed in at all.
+export function parseDifficultyLevel(value: string | null): DifficultyLevel {
+    const normalized = value?.toLowerCase();
+    return (DIFFICULTY_LEVELS as readonly string[]).includes(normalized ?? "")
+        ? (normalized as DifficultyLevel)
+        : "beginner";
+}
+
 function DifficultyToggle({
     selectedLevel,
     onSelectLevel,

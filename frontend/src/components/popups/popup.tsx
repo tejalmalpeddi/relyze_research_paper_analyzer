@@ -7,7 +7,7 @@ import DifficultySelect, { type Difficulty } from '@/components/difficulty-selec
 // popup.tsx itself has no self-reference to fix here -- the "/components/popups/popup"
 // path is what OTHER files (like profile/page.tsx) import this file as.
 import styles from './popup.module.css';
-import {deleteHistory, cancelUpload} from '@/lib/api'
+import {deleteHistory, cancelUpload, fetchDocumentById} from '@/lib/api'
 import {useAuth} from '@/app/auth/auth-query'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -92,15 +92,81 @@ function PopupShell({ title, children, footer, onClose }: PopupShellProps) {
 // type="difficultySelect" instead. See PopupProps/the dispatcher below.
 // -----------------------------------------------------------------------
 
+// Backend `documents.status` values (set by run_pipeline as it works
+// through the paper, see backend/content_gen/nlp_transformer_method/
+// pipeline.py) mapped to plain-language statements for this popup.
+// Anything not listed here (including the initial "processing" written
+// the moment the document row is created) falls back to a generic
+// message rather than showing the raw backend status string.
+const PIPELINE_STAGE_MESSAGES: Record<string, string> = {
+  enriching: "Reading through the paper and pulling out key terms...",
+  categorizing: "Identifying the paper's main topics...",
+  mapping: "Building your mind map...",
+  summarizing: "Writing background context for tricky concepts...",
+  saving: "Saving everything to your library...",
+};
+
+const DEFAULT_STAGE_MESSAGE = "Processing your paper...";
+
+// How often to poll GET /documents/{id} for a status change while this
+// popup is up. The pipeline's stages each take a few seconds at minimum
+// (LLM calls), so this doesn't need to be fast.
+const STATUS_POLL_INTERVAL_MS = 1500;
+
 function UploadingPopup({
   uploadId,
   fileName,
+  documentId,
   onClose,
+  onPipelineReady,
+  onPipelineError,
 }: {
   uploadId: string;
   fileName: string;
+  documentId?: string;
   onClose: () => void;
+  onPipelineReady: (paperId: string) => void;
+  onPipelineError: () => void;
 }) {
+  // Shown before documentId exists (the initial parse is still in
+  // flight) and as the starting point once it does, until the first
+  // poll comes back.
+  const [stageMessage, setStageMessage] = useState("Uploading your PDF...");
+
+  useEffect(() => {
+    if (!documentId) return;
+
+    let cancelled = false;
+
+    async function poll() {
+      try {
+        const doc = await fetchDocumentById(documentId!);
+        if (cancelled) return;
+
+        if (doc.status === "completed") {
+          onPipelineReady(documentId!);
+          return;
+        }
+        if (doc.status === "failed") {
+          onPipelineError();
+          return;
+        }
+        setStageMessage(PIPELINE_STAGE_MESSAGES[doc.status] ?? DEFAULT_STAGE_MESSAGE);
+      } catch {
+        // A single failed poll isn't fatal (e.g. a dropped network
+        // request) -- just try again on the next tick instead of
+        // surfacing an error over a transient blip.
+      }
+    }
+
+    poll();
+    const intervalId = setInterval(poll, STATUS_POLL_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+    };
+  }, [documentId, onPipelineReady, onPipelineError]);
+
   async function handleCancel() {
     try {
       // TODO: connect to the real cancel-upload backend call once it
@@ -125,7 +191,10 @@ function UploadingPopup({
         </button>
       }
     >
-      <p className={styles.topText}>{fileName}</p>
+      <div className={styles.topText}>
+        <p>{fileName}</p>
+        <p className={styles.stageMessage}>{stageMessage}</p>
+      </div>
       <img className={styles.loadingGif} src="/interface/loading.gif" alt="Uploading, please wait..." />
     </PopupShell>
   );
@@ -142,8 +211,12 @@ function DifficultySelectPopup({
   const [difficulty, setDifficulty] = useState<Difficulty>('Beginner');
 
   function goTo(path: string) {
-    // TODO: persist the chosen difficulty for `paperId` before navigating.
-    router.push(`${path}?id=${encodeURIComponent(paperId)}`);
+    // Lowercased to match DifficultyLevel ("beginner"/"intermediate"/
+    // "advanced"), which is what the destination pages actually read --
+    // see parseDifficultyLevel in components/map/MindMap.tsx.
+    router.push(
+      `${path}?id=${encodeURIComponent(paperId)}&difficulty=${encodeURIComponent(difficulty.toLowerCase())}`
+    );
   }
 
   return (
@@ -895,7 +968,22 @@ function AuthFlowPopup({ initialView, onClose }: { initialView: AuthView; onClos
 // -----------------------------------------------------------------------
 
 export type PopupProps =
-  | { type: 'uploading'; uploadId: string; fileName: string; onClose: () => void }
+  | {
+      type: 'uploading';
+      uploadId: string;
+      fileName: string;
+      // Unset until importPdf() resolves with the newly-created document's
+      // id -- UploadingPopup starts polling its status for live pipeline
+      // progress as soon as this is filled in.
+      documentId?: string;
+      onClose: () => void;
+      // Called once the backend pipeline's status reaches "completed",
+      // with the same document id, so the caller can move on to
+      // Difficulty Select.
+      onPipelineReady: (paperId: string) => void;
+      // Called if the backend pipeline's status reaches "failed".
+      onPipelineError: () => void;
+    }
   | { type: 'difficultySelect'; paperId: string; onClose: () => void }
   | { type: 'login'; onClose: () => void }
   | { type: 'createAccount'; onClose: () => void }
@@ -916,7 +1004,14 @@ export default function Popup(props: PopupProps) {
   switch (props.type) {
     case 'uploading':
       return (
-        <UploadingPopup uploadId={props.uploadId} fileName={props.fileName} onClose={props.onClose} />
+        <UploadingPopup
+          uploadId={props.uploadId}
+          fileName={props.fileName}
+          documentId={props.documentId}
+          onClose={props.onClose}
+          onPipelineReady={props.onPipelineReady}
+          onPipelineError={props.onPipelineError}
+        />
       );
     case 'difficultySelect':
       return <DifficultySelectPopup paperId={props.paperId} onClose={props.onClose} />;

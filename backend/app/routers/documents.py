@@ -98,7 +98,7 @@ def _filter_references(row, document_id):
     return {
         "id": row.get("id"),
         "title": row.get("title"),
-        "markdown_content": references or "No citations matched; please to manually refer pdf.",
+        "markdown_content": references or "No citations matched; please manually refer to pdf.",
     }
 
 

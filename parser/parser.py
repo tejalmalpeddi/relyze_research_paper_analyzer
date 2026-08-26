@@ -99,27 +99,88 @@ def extract_raw_text_from_pdf(pdf_path):
     return raw_text_data
 
 
+_NON_TITLE_MARKERS = (
+    "journal of",
+    "contents lists available",
+    "available online",
+    "sciencedirect",
+    "journal homepage",
+    "elsevier",
+    "issn",
+    "doi:",
+    "http://",
+    "https://",
+    "www.",
+)
+
+
+def _looks_like_non_title(text: str) -> bool:
+    """
+    True for text that Docling sometimes mislabels as the title/first
+    section header but is actually publisher boilerplate rather than the
+    paper's real title -- a journal kicker ("REVIEW", "OPEN ACCESS"), an
+    author-note marker ("*For correspondence:"), or a journal masthead
+    ("Journal of Business Research", "Contents lists available at
+    ScienceDirect"). Real paper titles are essentially never this short-
+    and-shouty or this boilerplate-shaped, so this is used to keep
+    scanning past a false match instead of trusting the first one found.
+    """
+    stripped = text.strip()
+    if not stripped:
+        return True
+    if stripped.startswith("*") or stripped.endswith(":"):
+        return True
+    # Short + ALL CAPS catches one/two-word kickers like "REVIEW" or "OPEN
+    # ACCESS" without also rejecting genuine short all-caps titles, which
+    # are almost always longer than three words (e.g. "MIRRORS IN THE
+    # MIND").
+    if len(stripped.split()) <= 3 and stripped.isupper():
+        return True
+    lower = stripped.lower()
+    return any(marker in lower for marker in _NON_TITLE_MARKERS)
+
+
 def _find_title_item(document):
     """
     Best-effort real paper title, read off Docling's own layout detection
-    rather than the filename. In standard academic PDF layout the title is
-    the first section-header-labeled text block on the page (it sits above
-    the author line, which layout detection also tags as a section header,
-    so "first one" is what distinguishes it). Returns None if the document
-    has no section headers at all (e.g. a scanned PDF with no layout info),
-    letting the caller fall back to a filename-derived title instead.
+    rather than the filename. Docling's layout model tags the paper title
+    itself with a dedicated "title" label, so that's checked first. Only if
+    no text is tagged "title" (layout detection missed it) do we fall back
+    to the first section-header-labeled text block, since in standard
+    academic PDF layout that's usually still the title (it sits above the
+    author line, which layout detection also tags as a section header, so
+    "first one" is what distinguishes it).
+
+    Either way, a candidate is only accepted if it doesn't look like
+    publisher boilerplate (see _looks_like_non_title) -- Docling's "title"
+    label isn't always trustworthy either; on journal-formatted PDFs it
+    sometimes lands on the masthead instead of the real title, since that's
+    the most visually prominent text on the page. A candidate that fails
+    the check is skipped rather than trusted, so the scan keeps looking for
+    a later, more plausible one.
+
+    Returns None if the document has no plausible title or section header
+    at all (e.g. a scanned PDF with no layout info, or one that's all
+    boilerplate), letting the caller fall back to a filename-derived title
+    instead.
 
     Returns the matched item itself (not just its text) so callers that
     need the item's position in the document -- e.g. _trim_before_title,
     to find and remove whatever precedes it -- don't have to re-run this
     same scan themselves.
     """
+    fallback = None
     for text_item in document.texts:
         label = getattr(text_item, "label", None)
-        if label is not None and getattr(label, "value", None) == "section_header":
-            if text_item.text.strip():
-                return text_item
-    return None
+        label_value = getattr(label, "value", None)
+        text = text_item.text.strip()
+        if not text or _looks_like_non_title(text):
+            continue
+        if label_value == "title":
+            return text_item
+        if label_value == "section_header" and fallback is None:
+            fallback = text_item
+    return fallback
 
 
 def extract_title(document) -> Optional[str]:

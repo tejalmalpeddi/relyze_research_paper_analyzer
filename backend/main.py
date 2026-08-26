@@ -4,7 +4,7 @@ import tempfile
 import mimetypes
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Depends
+from fastapi import BackgroundTasks, FastAPI, HTTPException, UploadFile, File, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, Response
@@ -109,7 +109,11 @@ def health_check():
 
 
 @app.post("/documents/import")
-async def import_document(file: UploadFile = File(...), user=Depends(verify_cookie)):
+async def import_document(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    user=Depends(verify_cookie),
+):
     filename = file.filename or ""
     suffix = Path(filename).suffix or ".pdf"
 
@@ -122,10 +126,16 @@ async def import_document(file: UploadFile = File(...), user=Depends(verify_cook
 
         try:
             document = parse_and_save_pdf(temp_file.name, user.id, file_name=filename)
-            result = run_pipeline(document_id=document["id"])
-            return {"document": document, **result}
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
+
+    # The rest of the pipeline (NLP enrichment, LLM generation, saving)
+    # can take a while -- it runs in the background so this request can
+    # return as soon as the document exists, letting the frontend start
+    # polling GET /documents/{id}'s `status` for live pipeline progress
+    # instead of blocking on the whole thing.
+    background_tasks.add_task(run_pipeline, document_id=document["id"])
+    return {"document": document}
 
 
 class GenerateMapRequest(BaseModel):

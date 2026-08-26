@@ -217,7 +217,11 @@ export async function renameHistory(documentId: string | number, payload: string
     return res.json();
 }
 
-export async function importPdf(file: File): Promise<{ history: { id: string } }> {
+// Returns as soon as the PDF is parsed and its document row exists --
+// the rest of the pipeline (NLP enrichment, LLM generation, saving) then
+// runs in the background on the server. Poll fetchDocumentById(id) for
+// the `status` field to track its progress from here.
+export async function importPdf(file: File): Promise<{ document: { id: string } }> {
   const formData = new FormData();
   formData.append("file", file);
 
@@ -227,7 +231,7 @@ export async function importPdf(file: File): Promise<{ history: { id: string } }
     body: formData,
   });
 
-  return handleResponse<{ history: { id: string } }>(response);
+  return handleResponse<{ document: { id: string } }>(response);
 }
 
 export async function cancelUpload(uploadId: string): Promise<void> {

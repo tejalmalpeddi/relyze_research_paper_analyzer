@@ -29,10 +29,14 @@ import { useAuth } from '@/app/auth/auth-query';
 
 // Which popup (if any) the upload flow currently needs shown. "uploading"
 // needs its own uploadId (for the future cancelUpload() call) and the
-// picked file's name (shown as the popup's topText); "difficultySelect"
-// only needs the id the backend gave back for the newly-created paper.
+// picked file's name (shown as the popup's topText). Its documentId starts
+// out unset -- importPdf() hasn't resolved yet, so there's nothing to poll
+// -- and gets filled in once the backend hands back the newly-created
+// document's id, at which point UploadingPopup starts polling it for live
+// pipeline progress. "difficultySelect" only needs that same id, by then
+// under the name the backend/paper-view code already knows it by.
 type UploadPopupState =
-  | { stage: "uploading"; uploadId: string; fileName: string }
+  | { stage: "uploading"; uploadId: string; fileName: string; documentId?: string }
   | { stage: "difficultySelect"; paperId: string };
 
 export default function HomePage() {
@@ -96,10 +100,16 @@ export default function HomePage() {
       
       try {
         const imported = await importPdf(file);
-        // This resolving IS the real "upload finished" signal -- instead
-        // of routing straight to the mind map, swap the popup over to
-        // Difficulty Select for the paper that was just created.
-        setUploadPopup({ stage: "difficultySelect", paperId: String(imported.history.id) });
+        // The PDF is parsed and its document row exists, but the rest of
+        // the pipeline (NLP enrichment, LLM generation, saving) is still
+        // running in the background. Fill in documentId so UploadingPopup
+        // starts polling it for live progress -- onPipelineReady below is
+        // the real "upload finished" signal now, not this resolving.
+        setUploadPopup((current) =>
+          current?.stage === "uploading"
+            ? { ...current, documentId: String(imported.document.id) }
+            : current
+        );
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) {
           setImportError("You need to be logged in to upload a PDF.");
@@ -212,7 +222,13 @@ export default function HomePage() {
           type="uploading"
           uploadId={uploadPopup.uploadId}
           fileName={uploadPopup.fileName}
+          documentId={uploadPopup.documentId}
           onClose={handleUploadCancelled}
+          onPipelineReady={(paperId) => setUploadPopup({ stage: "difficultySelect", paperId })}
+          onPipelineError={() => {
+            setImportError("Import failed. Check the backend logs.");
+            setUploadPopup(null);
+          }}
         />
       )}
 
