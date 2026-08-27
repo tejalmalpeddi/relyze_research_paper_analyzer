@@ -834,7 +834,7 @@ function BottomChatBar({
 
     try {
       const response = await fetch(
-        `http://localhost:8000/chat/${documentId}`,
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/chat/${documentId}`,
         {
           method: 'POST',
           headers: {

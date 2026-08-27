@@ -7,7 +7,13 @@ os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 import pymupdf
 from docling.document_converter import DocumentConverter
 
-from database import connect_to_supabase, save_document, clean_markdown_artifacts
+from database import (
+    connect_to_supabase,
+    save_document,
+    clean_markdown_artifacts,
+    create_pending_document,
+    update_parsed_document,
+)
 
 # Base directory (parser/)
 PARSER_DIRECTORY = Path(__file__).resolve().parent
@@ -466,7 +472,25 @@ def _image_metadata(output_directory: Path, document_id: str) -> list[dict]:
     return images
 
 
-def parse_and_save_pdf(pdf_path, user_id=None, file_name=None):
+def create_pending_document_entry(user_id=None, file_name=None):
+    """
+    Fast path for the import endpoint: inserts a document row with no
+    parsed content yet, so it can hand an id back to the frontend (for
+    status polling) before the slow docling parse below has even started.
+    """
+    supabase = connect_to_supabase()
+    stored_file_name = file_name or "document.pdf"
+    placeholder_title = Path(stored_file_name).stem.replace("_", " ").replace("-", " ").title()
+    return create_pending_document(supabase, stored_file_name, user_id, placeholder_title)
+
+
+def parse_pdf_into_document(document_id, pdf_path, file_name=None):
+    """
+    The slow half of what parse_and_save_pdf used to do in one shot --
+    runs docling against the PDF and fills in the row create_pending_document_entry()
+    already created, instead of inserting a new one. Meant to run in a
+    background task, well after the import request has already responded.
+    """
     pdf_path = Path(pdf_path)
     stored_file_name = file_name or pdf_path.name
 
@@ -479,18 +503,15 @@ def parse_and_save_pdf(pdf_path, user_id=None, file_name=None):
     title = extracted_title or Path(stored_file_name).stem.replace("_", " ").replace("-", " ").title()
 
     supabase = connect_to_supabase()
-    response = save_document(
+    document = update_parsed_document(
         supabase,
-        stored_file_name,
+        document_id,
         raw_text_data,
         structured_document,
         markdown_document,
-        user_id,
         title,
     )
 
-    document = response.data[0]
-    document_id = document["id"]
     document_image_directory = IMAGE_OUTPUT_DIRECTORY / document_id
     extract_images_from_pdf(pdf_path, document_image_directory)
     images = _image_metadata(IMAGE_OUTPUT_DIRECTORY, document_id)
