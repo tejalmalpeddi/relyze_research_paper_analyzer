@@ -5,7 +5,7 @@ import { AuthMessageResponse, UserLogin, UserProfile, UserEdit, AuthContextType 
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const BASE_URL = 'http://localhost:8000';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 function toError(error: unknown, fallbackMessage: string) {
   return error instanceof Error ? error : new Error(fallbackMessage);

@@ -15,7 +15,7 @@ from app.routers.subcategories import router as subcategories_router
 from app.routers.documents import router as documents_router
 from app.core.auth import verify_cookie
 from pydantic import BaseModel
-from content_gen.nlp_transformer_method.pipeline import run_pipeline
+from content_gen.nlp_transformer_method.pipeline import run_pipeline, update_status
 
 from app.routers.chatbot import router as chatbot_router
 from app.routers.documents import router as documents_router
@@ -29,7 +29,7 @@ torch._dynamo.config.suppress_errors = True
 ROOT_DIRECTORY = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT_DIRECTORY / "parser"))
 
-from parser import parse_and_save_pdf
+from parser import create_pending_document_entry, parse_pdf_into_document
 
 # parser/assets/ is where extracted PDF images get saved -- it's
 # git-ignored (nothing in it is meant to be committed), so it simply
@@ -108,6 +108,29 @@ def health_check():
     return {"status": "ok"}
 
 
+def _parse_then_run_pipeline(document_id: str, pdf_path: str, file_name: str) -> None:
+    """
+    Background-task body: runs the (slow) docling parse against the
+    uploaded PDF, then hands off to the (already-backgrounded) NLP/LLM
+    pipeline. Runs well after /documents/import has already responded, so
+    neither step here can block the request.
+    """
+    try:
+        parse_pdf_into_document(document_id, pdf_path, file_name=file_name)
+    except Exception as e:
+        print(f"[import] Parsing failed for document {document_id}: {e}")
+        update_status(document_id, "failed")
+        return
+    finally:
+        Path(pdf_path).unlink(missing_ok=True)
+
+    try:
+        run_pipeline(document_id=document_id)
+    except Exception:
+        # run_pipeline already records "failed" status on its own errors.
+        pass
+
+
 @app.post("/documents/import")
 async def import_document(
     background_tasks: BackgroundTasks,
@@ -120,22 +143,29 @@ async def import_document(
     if file.content_type != "application/pdf" and suffix.lower() != ".pdf":
         raise HTTPException(status_code=400, detail="Only PDF files are supported.")
 
-    with tempfile.NamedTemporaryFile(delete=True, suffix=suffix) as temp_file:
+    try:
+        document = create_pending_document_entry(user_id=user.id, file_name=filename)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+    try:
         shutil.copyfileobj(file.file, temp_file)
-        temp_file.flush()
+    finally:
+        temp_file.close()
 
-        try:
-            document = parse_and_save_pdf(temp_file.name, user.id, file_name=filename)
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
-
-    # The rest of the pipeline (NLP enrichment, LLM generation, saving)
-    # can take a while -- it runs in the background so this request can
-    # return as soon as the document exists, letting the frontend start
-    # polling GET /documents/{id}'s `status` for live pipeline progress
-    # instead of blocking on the whole thing.
-    background_tasks.add_task(run_pipeline, document_id=document["id"])
-    return {"document": document}
+    # Parsing (docling) and the rest of the pipeline (NLP enrichment, LLM
+    # generation, saving) both run in the background now, so this request
+    # can return the instant the document row exists -- letting the
+    # frontend start polling GET /documents/{id}'s `status` right away
+    # instead of blocking on the slow parse too.
+    background_tasks.add_task(
+        _parse_then_run_pipeline,
+        document_id=document["id"],
+        pdf_path=temp_file.name,
+        file_name=filename,
+    )
+    return {"document": {"id": document["id"], "status": document["status"]}}
 
 
 class GenerateMapRequest(BaseModel):

@@ -11,7 +11,7 @@ const DESIGN_VIEWPORT_WIDTH = 1440;
 const FOLDER_DESKTOP_LEFT = 421;
 const FOLDER_SHIFT_RATE = 0.5;
 const FOLDER_MIN_LEFT = -20;
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 interface HistoryTitle {
   title: string;
